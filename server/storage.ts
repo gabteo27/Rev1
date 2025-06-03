@@ -128,7 +128,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(contentItems)
       .where(and(eq(contentItems.id, id), eq(contentItems.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Playlist operations
@@ -189,7 +189,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(playlists)
       .where(and(eq(playlists.id, id), eq(playlists.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Playlist item operations
@@ -233,7 +233,7 @@ export class DatabaseStorage implements IStorage {
     if (!existing) return false;
 
     const result = await db.delete(playlistItems).where(eq(playlistItems.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async reorderPlaylistItems(playlistId: number, itemOrders: { id: number; order: number }[], userId: string): Promise<void> {
@@ -287,7 +287,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(screens)
       .where(and(eq(screens.id, id), eq(screens.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Alert operations
@@ -325,7 +325,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(alerts)
       .where(and(eq(alerts.id, id), eq(alerts.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Widget operations
@@ -355,7 +355,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(widgets)
       .where(and(eq(widgets.id, id), eq(widgets.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 }
 
