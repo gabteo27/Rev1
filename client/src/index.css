@@ -1,0 +1,223 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 11% 98%; /* #F5F7FA */
+  --foreground: 220 16% 22%; /* #2D3748 */
+  --muted: 220 9% 96%; /* #F4F6F8 */
+  --muted-foreground: 220 9% 46%; /* #718096 */
+  --popover: 0 0% 100%; /* #FFFFFF */
+  --popover-foreground: 220 16% 22%; /* #2D3748 */
+  --card: 0 0% 100%; /* #FFFFFF */
+  --card-foreground: 220 16% 22%; /* #2D3748 */
+  --border: 220 9% 91%; /* #E2E8F0 */
+  --input: 220 9% 91%; /* #E2E8F0 */
+  --primary: 207 90% 54%; /* #3B82F6 */
+  --primary-foreground: 0 0% 100%; /* #FFFFFF */
+  --secondary: 220 9% 96%; /* #F4F6F8 */
+  --secondary-foreground: 220 16% 22%; /* #2D3748 */
+  --accent: 207 90% 97%; /* #EFF6FF */
+  --accent-foreground: 207 90% 54%; /* #3B82F6 */
+  --destructive: 0 84% 60%; /* #EF4444 */
+  --destructive-foreground: 0 0% 100%; /* #FFFFFF */
+  --ring: 207 90% 54%; /* #3B82F6 */
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 222 47% 11%; /* #1A202C */
+  --foreground: 210 40% 98%; /* #F7FAFC */
+  --muted: 217 19% 18%; /* #2D3748 */
+  --muted-foreground: 215 13% 65%; /* #A0AEC0 */
+  --popover: 222 47% 11%; /* #1A202C */
+  --popover-foreground: 210 40% 98%; /* #F7FAFC */
+  --card: 222 47% 11%; /* #1A202C */
+  --card-foreground: 210 40% 98%; /* #F7FAFC */
+  --border: 217 19% 18%; /* #2D3748 */
+  --input: 217 19% 18%; /* #2D3748 */
+  --primary: 207 90% 54%; /* #3B82F6 */
+  --primary-foreground: 0 0% 100%; /* #FFFFFF */
+  --secondary: 217 19% 18%; /* #2D3748 */
+  --secondary-foreground: 210 40% 98%; /* #F7FAFC */
+  --accent: 217 19% 18%; /* #2D3748 */
+  --accent-foreground: 210 40% 98%; /* #F7FAFC */
+  --destructive: 0 63% 31%; /* #991B1B */
+  --destructive-foreground: 210 40% 98%; /* #F7FAFC */
+  --ring: 207 90% 54%; /* #3B82F6 */
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+/* Custom toggle switch styles */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #3b82f6;
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+/* Drag and drop styles */
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.sortable-item {
+  transition: transform 0.2s ease-in-out;
+}
+
+.sortable-item.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+}
+
+/* Loading animations */
+@keyframes pulse-blue {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-blue {
+  animation: pulse-blue 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Preview screen styles */
+.preview-screen {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Content type icons */
+.content-icon {
+  @apply w-8 h-8 rounded flex items-center justify-center text-sm;
+}
+
+.content-icon.image {
+  @apply bg-blue-100 text-blue-600;
+}
+
+.content-icon.video {
+  @apply bg-green-100 text-green-600;
+}
+
+.content-icon.pdf {
+  @apply bg-purple-100 text-purple-600;
+}
+
+.content-icon.webpage {
+  @apply bg-orange-100 text-orange-600;
+}
+
+.content-icon.text {
+  @apply bg-yellow-100 text-yellow-600;
+}
+
+/* Alert styles */
+.alert-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.alert-content {
+  padding: 2rem;
+  border-radius: 0.5rem;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  max-width: 80%;
+}
+
+/* Responsive grid */
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
