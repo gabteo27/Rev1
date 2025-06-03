@@ -108,11 +108,64 @@ export const alerts = pgTable("alerts", {
 export const widgets = pgTable("widgets", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
-  type: varchar("type").notNull(), // 'clock', 'weather', 'rss', 'social'
+  type: varchar("type").notNull(), // 'clock', 'weather', 'rss', 'social', 'news'
   name: varchar("name").notNull(),
   isEnabled: boolean("is_enabled").default(true),
   position: varchar("position").default("top-right"), // Widget position on screen
   settings: jsonb("settings"), // Widget-specific settings
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Advanced scheduling system
+export const schedules = pgTable("schedules", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  name: varchar("name").notNull(),
+  playlistId: integer("playlist_id").references(() => playlists.id, { onDelete: "cascade" }),
+  screenIds: integer("screen_ids").array(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  startTime: varchar("start_time").notNull(), // HH:MM format
+  endTime: varchar("end_time").notNull(),
+  daysOfWeek: integer("days_of_week").array(), // 0=Sunday, 1=Monday, etc.
+  priority: integer("priority").default(1),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Multi-screen groups for synchronized playback
+export const screenGroups = pgTable("screen_groups", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  screenIds: integer("screen_ids").array(),
+  syncEnabled: boolean("sync_enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Offline sync tracking
+export const syncStatus = pgTable("sync_status", {
+  id: serial("id").primaryKey(),
+  screenId: integer("screen_id").references(() => screens.id, { onDelete: "cascade" }),
+  lastSyncAt: timestamp("last_sync_at"),
+  contentVersion: integer("content_version").default(1),
+  isOnline: boolean("is_online").default(false),
+  pendingUpdates: jsonb("pending_updates").default({}),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// APK deployment tracking
+export const deployments = pgTable("deployments", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  version: varchar("version").notNull(),
+  buildUrl: varchar("build_url"),
+  status: varchar("status").notNull(), // pending, building, ready, deployed, failed
+  targetDevices: varchar("target_devices").array(), // screen IDs or device identifiers
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -124,6 +177,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   screens: many(screens),
   alerts: many(alerts),
   widgets: many(widgets),
+  schedules: many(schedules),
+  screenGroups: many(screenGroups),
+  deployments: many(deployments),
 }));
 
 export const contentItemsRelations = relations(contentItems, ({ one, many }) => ({
@@ -179,6 +235,38 @@ export const widgetsRelations = relations(widgets, ({ one }) => ({
   }),
 }));
 
+export const schedulesRelations = relations(schedules, ({ one }) => ({
+  user: one(users, {
+    fields: [schedules.userId],
+    references: [users.id],
+  }),
+  playlist: one(playlists, {
+    fields: [schedules.playlistId],
+    references: [playlists.id],
+  }),
+}));
+
+export const screenGroupsRelations = relations(screenGroups, ({ one }) => ({
+  user: one(users, {
+    fields: [screenGroups.userId],
+    references: [users.id],
+  }),
+}));
+
+export const syncStatusRelations = relations(syncStatus, ({ one }) => ({
+  screen: one(screens, {
+    fields: [syncStatus.screenId],
+    references: [screens.id],
+  }),
+}));
+
+export const deploymentsRelations = relations(deployments, ({ one }) => ({
+  user: one(users, {
+    fields: [deployments.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertContentItemSchema = createInsertSchema(contentItems).omit({
   id: true,
@@ -210,6 +298,24 @@ export const insertAlertSchema = createInsertSchema(alerts).omit({
 });
 
 export const insertWidgetSchema = createInsertSchema(widgets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScheduleSchema = createInsertSchema(schedules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreenGroupSchema = createInsertSchema(screenGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDeploymentSchema = createInsertSchema(deployments).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

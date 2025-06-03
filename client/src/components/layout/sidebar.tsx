@@ -70,8 +70,34 @@ export default function Sidebar() {
             {navigation.map((item) => {
               const isActive = location === item.href;
               return (
-                <Link key={item.name} href={item.href}>
-                  <div
+                <Link 
+                  key={item.name} 
+                  href={item.href}
+                  className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                    isActive
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  <item.icon 
+                    className={`mr-3 w-5 h-5 ${
+                      isActive ? "text-blue-500" : "text-slate-400"
+                    }`} 
+                  />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
+          
+          <div className="pt-6 border-t border-slate-200">
+            <div className="space-y-1">
+              {secondaryNavigation.map((item) => {
+                const isActive = location === item.href;
+                return (
+                  <Link 
+                    key={item.name} 
+                    href={item.href}
                     className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                       isActive
                         ? "bg-blue-50 text-blue-700"
@@ -84,32 +110,6 @@ export default function Sidebar() {
                       }`} 
                     />
                     {item.name}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-          
-          <div className="pt-6 border-t border-slate-200">
-            <div className="space-y-1">
-              {secondaryNavigation.map((item) => {
-                const isActive = location === item.href;
-                return (
-                  <Link key={item.name} href={item.href}>
-                    <div
-                      className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
-                        isActive
-                          ? "bg-blue-50 text-blue-700"
-                          : "text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      <item.icon 
-                        className={`mr-3 w-5 h-5 ${
-                          isActive ? "text-blue-500" : "text-slate-400"
-                        }`} 
-                      />
-                      {item.name}
-                    </div>
                   </Link>
                 );
               })}
