@@ -10,6 +10,9 @@ import Content from "@/pages/content";
 import Playlists from "@/pages/playlists";
 import Screens from "@/pages/screens";
 import Alerts from "@/pages/alerts";
+import Scheduling from "@/pages/scheduling";
+import Widgets from "@/pages/widgets";
+import Deployment from "@/pages/deployment";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 
@@ -41,6 +44,9 @@ function Router() {
               <Route path="/playlists" component={Playlists} />
               <Route path="/screens" component={Screens} />
               <Route path="/alerts" component={Alerts} />
+              <Route path="/scheduling" component={Scheduling} />
+              <Route path="/widgets" component={Widgets} />
+              <Route path="/deployment" component={Deployment} />
               <Route component={NotFound} />
             </Switch>
           </div>
