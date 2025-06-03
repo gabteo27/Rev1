@@ -12,7 +12,8 @@ import {
   Puzzle,
   BarChart3,
   Settings,
-  LogOut
+  LogOut,
+  Package
 } from "lucide-react";
 
 const navigation = [
@@ -26,6 +27,7 @@ const navigation = [
 ];
 
 const secondaryNavigation = [
+  { name: "Despliegue", href: "/deployment", icon: Package },
   { name: "Analíticas", href: "/analytics", icon: BarChart3 },
   { name: "Configuración", href: "/settings", icon: Settings },
 ];
