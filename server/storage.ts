@@ -1,0 +1,362 @@
+import {
+  users,
+  contentItems,
+  playlists,
+  playlistItems,
+  screens,
+  alerts,
+  widgets,
+  type User,
+  type UpsertUser,
+  type ContentItem,
+  type InsertContentItem,
+  type Playlist,
+  type InsertPlaylist,
+  type PlaylistItem,
+  type InsertPlaylistItem,
+  type Screen,
+  type InsertScreen,
+  type Alert,
+  type InsertAlert,
+  type Widget,
+  type InsertWidget,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, asc } from "drizzle-orm";
+
+export interface IStorage {
+  // User operations (required for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+
+  // Content operations
+  getContentItems(userId: string): Promise<ContentItem[]>;
+  getContentItem(id: number, userId: string): Promise<ContentItem | undefined>;
+  createContentItem(contentItem: InsertContentItem): Promise<ContentItem>;
+  updateContentItem(id: number, contentItem: Partial<InsertContentItem>, userId: string): Promise<ContentItem | undefined>;
+  deleteContentItem(id: number, userId: string): Promise<boolean>;
+
+  // Playlist operations
+  getPlaylists(userId: string): Promise<Playlist[]>;
+  getPlaylist(id: number, userId: string): Promise<Playlist | undefined>;
+  getPlaylistWithItems(id: number, userId: string): Promise<(Playlist & { items: (PlaylistItem & { contentItem: ContentItem })[] }) | undefined>;
+  createPlaylist(playlist: InsertPlaylist): Promise<Playlist>;
+  updatePlaylist(id: number, playlist: Partial<InsertPlaylist>, userId: string): Promise<Playlist | undefined>;
+  deletePlaylist(id: number, userId: string): Promise<boolean>;
+
+  // Playlist item operations
+  addPlaylistItem(playlistItem: InsertPlaylistItem, userId: string): Promise<PlaylistItem>;
+  updatePlaylistItem(id: number, playlistItem: Partial<InsertPlaylistItem>, userId: string): Promise<PlaylistItem | undefined>;
+  deletePlaylistItem(id: number, userId: string): Promise<boolean>;
+  reorderPlaylistItems(playlistId: number, itemOrders: { id: number; order: number }[], userId: string): Promise<void>;
+
+  // Screen operations
+  getScreens(userId: string): Promise<Screen[]>;
+  getScreen(id: number, userId: string): Promise<Screen | undefined>;
+  createScreen(screen: InsertScreen): Promise<Screen>;
+  updateScreen(id: number, screen: Partial<InsertScreen>, userId: string): Promise<Screen | undefined>;
+  deleteScreen(id: number, userId: string): Promise<boolean>;
+
+  // Alert operations
+  getAlerts(userId: string): Promise<Alert[]>;
+  getActiveAlerts(userId: string): Promise<Alert[]>;
+  createAlert(alert: InsertAlert): Promise<Alert>;
+  updateAlert(id: number, alert: Partial<InsertAlert>, userId: string): Promise<Alert | undefined>;
+  deleteAlert(id: number, userId: string): Promise<boolean>;
+
+  // Widget operations
+  getWidgets(userId: string): Promise<Widget[]>;
+  createWidget(widget: InsertWidget): Promise<Widget>;
+  updateWidget(id: number, widget: Partial<InsertWidget>, userId: string): Promise<Widget | undefined>;
+  deleteWidget(id: number, userId: string): Promise<boolean>;
+}
+
+export class DatabaseStorage implements IStorage {
+  // User operations (required for Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  // Content operations
+  async getContentItems(userId: string): Promise<ContentItem[]> {
+    return await db
+      .select()
+      .from(contentItems)
+      .where(eq(contentItems.userId, userId))
+      .orderBy(desc(contentItems.createdAt));
+  }
+
+  async getContentItem(id: number, userId: string): Promise<ContentItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(contentItems)
+      .where(and(eq(contentItems.id, id), eq(contentItems.userId, userId)));
+    return item;
+  }
+
+  async createContentItem(contentItem: InsertContentItem): Promise<ContentItem> {
+    const [item] = await db.insert(contentItems).values(contentItem).returning();
+    return item;
+  }
+
+  async updateContentItem(id: number, contentItem: Partial<InsertContentItem>, userId: string): Promise<ContentItem | undefined> {
+    const [item] = await db
+      .update(contentItems)
+      .set({ ...contentItem, updatedAt: new Date() })
+      .where(and(eq(contentItems.id, id), eq(contentItems.userId, userId)))
+      .returning();
+    return item;
+  }
+
+  async deleteContentItem(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(contentItems)
+      .where(and(eq(contentItems.id, id), eq(contentItems.userId, userId)));
+    return result.rowCount > 0;
+  }
+
+  // Playlist operations
+  async getPlaylists(userId: string): Promise<Playlist[]> {
+    return await db
+      .select()
+      .from(playlists)
+      .where(eq(playlists.userId, userId))
+      .orderBy(desc(playlists.createdAt));
+  }
+
+  async getPlaylist(id: number, userId: string): Promise<Playlist | undefined> {
+    const [playlist] = await db
+      .select()
+      .from(playlists)
+      .where(and(eq(playlists.id, id), eq(playlists.userId, userId)));
+    return playlist;
+  }
+
+  async getPlaylistWithItems(id: number, userId: string): Promise<(Playlist & { items: (PlaylistItem & { contentItem: ContentItem })[] }) | undefined> {
+    const playlist = await this.getPlaylist(id, userId);
+    if (!playlist) return undefined;
+
+    const items = await db
+      .select({
+        playlistItem: playlistItems,
+        contentItem: contentItems,
+      })
+      .from(playlistItems)
+      .innerJoin(contentItems, eq(playlistItems.contentItemId, contentItems.id))
+      .where(eq(playlistItems.playlistId, id))
+      .orderBy(asc(playlistItems.order));
+
+    return {
+      ...playlist,
+      items: items.map(({ playlistItem, contentItem }) => ({
+        ...playlistItem,
+        contentItem,
+      })),
+    };
+  }
+
+  async createPlaylist(playlist: InsertPlaylist): Promise<Playlist> {
+    const [item] = await db.insert(playlists).values(playlist).returning();
+    return item;
+  }
+
+  async updatePlaylist(id: number, playlist: Partial<InsertPlaylist>, userId: string): Promise<Playlist | undefined> {
+    const [item] = await db
+      .update(playlists)
+      .set({ ...playlist, updatedAt: new Date() })
+      .where(and(eq(playlists.id, id), eq(playlists.userId, userId)))
+      .returning();
+    return item;
+  }
+
+  async deletePlaylist(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(playlists)
+      .where(and(eq(playlists.id, id), eq(playlists.userId, userId)));
+    return result.rowCount > 0;
+  }
+
+  // Playlist item operations
+  async addPlaylistItem(playlistItem: InsertPlaylistItem, userId: string): Promise<PlaylistItem> {
+    // Verify playlist belongs to user
+    const playlist = await this.getPlaylist(playlistItem.playlistId, userId);
+    if (!playlist) {
+      throw new Error("Playlist not found or access denied");
+    }
+
+    const [item] = await db.insert(playlistItems).values(playlistItem).returning();
+    return item;
+  }
+
+  async updatePlaylistItem(id: number, playlistItem: Partial<InsertPlaylistItem>, userId: string): Promise<PlaylistItem | undefined> {
+    // First get the playlist item to verify ownership
+    const [existing] = await db
+      .select({ playlistItem: playlistItems, playlist: playlists })
+      .from(playlistItems)
+      .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)));
+
+    if (!existing) return undefined;
+
+    const [item] = await db
+      .update(playlistItems)
+      .set(playlistItem)
+      .where(eq(playlistItems.id, id))
+      .returning();
+    return item;
+  }
+
+  async deletePlaylistItem(id: number, userId: string): Promise<boolean> {
+    // First get the playlist item to verify ownership
+    const [existing] = await db
+      .select({ playlistItem: playlistItems, playlist: playlists })
+      .from(playlistItems)
+      .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)));
+
+    if (!existing) return false;
+
+    const result = await db.delete(playlistItems).where(eq(playlistItems.id, id));
+    return result.rowCount > 0;
+  }
+
+  async reorderPlaylistItems(playlistId: number, itemOrders: { id: number; order: number }[], userId: string): Promise<void> {
+    // Verify playlist belongs to user
+    const playlist = await this.getPlaylist(playlistId, userId);
+    if (!playlist) {
+      throw new Error("Playlist not found or access denied");
+    }
+
+    // Update each item's order
+    for (const { id, order } of itemOrders) {
+      await db
+        .update(playlistItems)
+        .set({ order })
+        .where(eq(playlistItems.id, id));
+    }
+  }
+
+  // Screen operations
+  async getScreens(userId: string): Promise<Screen[]> {
+    return await db
+      .select()
+      .from(screens)
+      .where(eq(screens.userId, userId))
+      .orderBy(desc(screens.createdAt));
+  }
+
+  async getScreen(id: number, userId: string): Promise<Screen | undefined> {
+    const [screen] = await db
+      .select()
+      .from(screens)
+      .where(and(eq(screens.id, id), eq(screens.userId, userId)));
+    return screen;
+  }
+
+  async createScreen(screen: InsertScreen): Promise<Screen> {
+    const [item] = await db.insert(screens).values(screen).returning();
+    return item;
+  }
+
+  async updateScreen(id: number, screen: Partial<InsertScreen>, userId: string): Promise<Screen | undefined> {
+    const [item] = await db
+      .update(screens)
+      .set({ ...screen, updatedAt: new Date() })
+      .where(and(eq(screens.id, id), eq(screens.userId, userId)))
+      .returning();
+    return item;
+  }
+
+  async deleteScreen(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(screens)
+      .where(and(eq(screens.id, id), eq(screens.userId, userId)));
+    return result.rowCount > 0;
+  }
+
+  // Alert operations
+  async getAlerts(userId: string): Promise<Alert[]> {
+    return await db
+      .select()
+      .from(alerts)
+      .where(eq(alerts.userId, userId))
+      .orderBy(desc(alerts.createdAt));
+  }
+
+  async getActiveAlerts(userId: string): Promise<Alert[]> {
+    return await db
+      .select()
+      .from(alerts)
+      .where(and(eq(alerts.userId, userId), eq(alerts.isActive, true)))
+      .orderBy(desc(alerts.createdAt));
+  }
+
+  async createAlert(alert: InsertAlert): Promise<Alert> {
+    const [item] = await db.insert(alerts).values(alert).returning();
+    return item;
+  }
+
+  async updateAlert(id: number, alert: Partial<InsertAlert>, userId: string): Promise<Alert | undefined> {
+    const [item] = await db
+      .update(alerts)
+      .set({ ...alert, updatedAt: new Date() })
+      .where(and(eq(alerts.id, id), eq(alerts.userId, userId)))
+      .returning();
+    return item;
+  }
+
+  async deleteAlert(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(alerts)
+      .where(and(eq(alerts.id, id), eq(alerts.userId, userId)));
+    return result.rowCount > 0;
+  }
+
+  // Widget operations
+  async getWidgets(userId: string): Promise<Widget[]> {
+    return await db
+      .select()
+      .from(widgets)
+      .where(eq(widgets.userId, userId))
+      .orderBy(desc(widgets.createdAt));
+  }
+
+  async createWidget(widget: InsertWidget): Promise<Widget> {
+    const [item] = await db.insert(widgets).values(widget).returning();
+    return item;
+  }
+
+  async updateWidget(id: number, widget: Partial<InsertWidget>, userId: string): Promise<Widget | undefined> {
+    const [item] = await db
+      .update(widgets)
+      .set({ ...widget, updatedAt: new Date() })
+      .where(and(eq(widgets.id, id), eq(widgets.userId, userId)))
+      .returning();
+    return item;
+  }
+
+  async deleteWidget(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(widgets)
+      .where(and(eq(widgets.id, id), eq(widgets.userId, userId)));
+    return result.rowCount > 0;
+  }
+}
+
+export const storage = new DatabaseStorage();

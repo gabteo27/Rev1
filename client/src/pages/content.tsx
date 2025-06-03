@@ -1,0 +1,309 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import Header from "@/components/layout/header";
+import UploadModal from "@/components/content/upload-modal";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Plus, 
+  Image, 
+  Video, 
+  FileText, 
+  Globe, 
+  Type,
+  Calendar,
+  Trash2,
+  Edit,
+  Download
+} from "lucide-react";
+
+export default function Content() {
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const { data: content, isLoading } = useQuery({
+    queryKey: ["/api/content"],
+    retry: false,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/content/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Contenido eliminado",
+        description: "El contenido ha sido eliminado exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el contenido.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getContentIcon = (type: string) => {
+    switch (type) {
+      case "image":
+        return <Image className="w-5 h-5 text-blue-600" />;
+      case "video":
+        return <Video className="w-5 h-5 text-green-600" />;
+      case "pdf":
+        return <FileText className="w-5 h-5 text-purple-600" />;
+      case "webpage":
+        return <Globe className="w-5 h-5 text-orange-600" />;
+      case "text":
+        return <Type className="w-5 h-5 text-yellow-600" />;
+      default:
+        return <FileText className="w-5 h-5 text-slate-600" />;
+    }
+  };
+
+  const getContentBadgeColor = (type: string) => {
+    switch (type) {
+      case "image":
+        return "bg-blue-100 text-blue-800";
+      case "video":
+        return "bg-green-100 text-green-800";
+      case "pdf":
+        return "bg-purple-100 text-purple-800";
+      case "webpage":
+        return "bg-orange-100 text-orange-800";
+      case "text":
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-slate-100 text-slate-800";
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (!bytes) return "N/A";
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + " " + sizes[i];
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+
+  const categories = ["Promociones", "Institucional", "Noticias", "Entretenimiento", "Información"];
+  
+  const filteredContent = selectedCategory 
+    ? content?.filter((item: any) => item.category === selectedCategory)
+    : content;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        <Header title="Contenido" subtitle="Gestiona tus archivos multimedia" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-slate-600">Cargando contenido...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <Header
+        title="Contenido"
+        subtitle="Gestiona tus archivos multimedia"
+        actions={
+          <Button 
+            onClick={() => setUploadModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Contenido
+          </Button>
+        }
+      />
+
+      <div className="flex-1 px-6 py-6 overflow-auto">
+        {/* Category Filter */}
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={selectedCategory === null ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(null)}
+            >
+              Todos
+            </Button>
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content Grid */}
+        {!filteredContent || filteredContent.length === 0 ? (
+          <Card className="border-dashed border-2 border-slate-300">
+            <CardContent className="p-12 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Folder className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                {selectedCategory ? `No hay contenido en ${selectedCategory}` : "No tienes contenido aún"}
+              </h3>
+              <p className="text-slate-600 mb-6">
+                {selectedCategory 
+                  ? "Intenta seleccionar otra categoría o sube nuevo contenido."
+                  : "Comienza subiendo imágenes, videos, PDFs o agregando páginas web."
+                }
+              </p>
+              <Button 
+                onClick={() => setUploadModalOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Subir Contenido
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="content-grid">
+            {filteredContent.map((item: any) => (
+              <Card key={item.id} className="border-slate-200 hover:shadow-lg transition-shadow">
+                <CardContent className="p-0">
+                  {/* Content Preview */}
+                  <div className="aspect-video bg-slate-100 relative overflow-hidden rounded-t-lg">
+                    {item.type === "image" && item.url && (
+                      <img 
+                        src={item.url} 
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    {item.type === "video" && item.url && (
+                      <video 
+                        src={item.url} 
+                        className="w-full h-full object-cover"
+                        muted
+                      />
+                    )}
+                    {(item.type === "pdf" || item.type === "webpage" || item.type === "text") && (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                        {getContentIcon(item.type)}
+                      </div>
+                    )}
+                    
+                    {/* Type Badge */}
+                    <div className="absolute top-3 left-3">
+                      <Badge className={getContentBadgeColor(item.type)}>
+                        {item.type}
+                      </Badge>
+                    </div>
+
+                    {/* Duration Badge */}
+                    <div className="absolute top-3 right-3 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs">
+                      {item.duration}s
+                    </div>
+                  </div>
+
+                  {/* Content Info */}
+                  <div className="p-4">
+                    <h4 className="font-semibold text-slate-900 mb-1 truncate">
+                      {item.title}
+                    </h4>
+                    {item.description && (
+                      <p className="text-sm text-slate-600 mb-3 line-clamp-2">
+                        {item.description}
+                      </p>
+                    )}
+
+                    {/* Meta Info */}
+                    <div className="space-y-2 text-xs text-slate-500">
+                      <div className="flex items-center">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {formatDate(item.createdAt)}
+                      </div>
+                      {item.fileSize && (
+                        <div className="flex items-center">
+                          <Download className="w-3 h-3 mr-1" />
+                          {formatFileSize(item.fileSize)}
+                        </div>
+                      )}
+                      {item.category && (
+                        <Badge variant="outline" className="text-xs">
+                          {item.category}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Tags */}
+                    {item.tags && item.tags.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {item.tags.slice(0, 3).map((tag: string, index: number) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {item.tags.length > 3 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{item.tags.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="mt-4 flex justify-between items-center">
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline" className="h-8 px-2">
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-2 text-red-600 hover:text-red-700"
+                          onClick={() => deleteMutation.mutate(item.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <Button size="sm" className="h-8 px-3 text-xs">
+                        Usar
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <UploadModal 
+        open={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+      />
+    </div>
+  );
+}
