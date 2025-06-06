@@ -107,8 +107,9 @@ export default function Screens() {
     createMutation.mutate(newScreen);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
+  const formatDate = (date: Date | null | string) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("es-ES", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -117,7 +118,7 @@ export default function Screens() {
     });
   };
 
-  const getStatusBadge = (isOnline: boolean, lastSeen?: string) => {
+  const getStatusBadge = (isOnline: boolean | null, lastSeen?: string) => {
     if (isOnline) {
       return <Badge className="bg-green-100 text-green-800">En línea</Badge>;
     }
@@ -281,7 +282,7 @@ export default function Screens() {
                         ) : (
                           <WifiOff className="w-5 h-5 text-red-600" />
                         )}
-                        {getStatusBadge(screen.isOnline, screen.lastSeen)}
+                        {getStatusBadge(screen.isOnline, screen.lastSeen ? new Date(screen.lastSeen).toISOString() : undefined)}
                       </div>
                     </div>
                   </div>
