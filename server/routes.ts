@@ -465,6 +465,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Schedules routes
+  app.get("/api/schedules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const schedules = await storage.getSchedules(userId);
+      res.json(schedules);
+    } catch (error) {
+      console.error("Error fetching schedules:", error);
+      res.status(500).json({ message: "Failed to fetch schedules" });
+    }
+  });
+
+  app.post("/api/schedules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const scheduleData = { ...req.body, userId };
+      
+      const validatedData = insertScheduleSchema.parse(scheduleData);
+      const schedule = await storage.createSchedule(validatedData);
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error creating schedule:", error);
+      res.status(500).json({ message: "Failed to create schedule" });
+    }
+  });
+
+  app.patch("/api/schedules/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const schedule = await storage.updateSchedule(id, updates, userId);
+      if (!schedule) {
+        return res.status(404).json({ message: "Schedule not found" });
+      }
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error updating schedule:", error);
+      res.status(500).json({ message: "Failed to update schedule" });
+    }
+  });
+
+  app.delete("/api/schedules/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      
+      const success = await storage.deleteSchedule(id, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Schedule not found" });
+      }
+      res.json({ message: "Schedule deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting schedule:", error);
+      res.status(500).json({ message: "Failed to delete schedule" });
+    }
+  });
+
+  // Deployments routes
+  app.get("/api/deployments", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const deployments = await storage.getDeployments(userId);
+      res.json(deployments);
+    } catch (error) {
+      console.error("Error fetching deployments:", error);
+      res.status(500).json({ message: "Failed to fetch deployments" });
+    }
+  });
+
+  app.post("/api/deployments", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const deploymentData = { ...req.body, userId };
+      
+      const validatedData = insertDeploymentSchema.parse(deploymentData);
+      const deployment = await storage.createDeployment(validatedData);
+      res.json(deployment);
+    } catch (error) {
+      console.error("Error creating deployment:", error);
+      res.status(500).json({ message: "Failed to create deployment" });
+    }
+  });
+
+  app.post("/api/deployments/:id/build", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      
+      // Update deployment status to building
+      const deployment = await storage.updateDeployment(id, { status: "building" }, userId);
+      if (!deployment) {
+        return res.status(404).json({ message: "Deployment not found" });
+      }
+      
+      // In a real implementation, this would trigger the APK build process
+      // For now, we'll simulate it by updating to ready status after a delay
+      setTimeout(async () => {
+        await storage.updateDeployment(id, { 
+          status: "ready",
+          buildUrl: `https://example.com/builds/app-v${deployment.version}.apk`
+        }, userId);
+      }, 5000);
+      
+      res.json({ message: "Build started" });
+    } catch (error) {
+      console.error("Error starting build:", error);
+      res.status(500).json({ message: "Failed to start build" });
+    }
+  });
+
+  app.post("/api/deployments/:id/deploy", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      
+      const deployment = await storage.updateDeployment(id, { status: "deployed" }, userId);
+      if (!deployment) {
+        return res.status(404).json({ message: "Deployment not found" });
+      }
+      
+      res.json({ message: "Deployment completed" });
+    } catch (error) {
+      console.error("Error deploying:", error);
+      res.status(500).json({ message: "Failed to deploy" });
+    }
+  });
+
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
 

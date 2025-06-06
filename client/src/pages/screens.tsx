@@ -46,11 +46,13 @@ export default function Screens() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/screens", {
-        ...data,
-        playlistId: data.playlistId ? parseInt(data.playlistId) : null
+      await apiRequest("/api/screens", {
+        method: "POST",
+        body: JSON.stringify({
+          ...data,
+          playlistId: data.playlistId ? parseInt(data.playlistId) : null
+        }),
       });
-      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -72,7 +74,9 @@ export default function Screens() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/screens/${id}`);
+      await apiRequest(`/api/screens/${id}`, {
+        method: "DELETE",
+      });
     },
     onSuccess: () => {
       toast({
