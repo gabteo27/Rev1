@@ -6,6 +6,8 @@ import {
   screens,
   alerts,
   widgets,
+  schedules,
+  deployments,
   type User,
   type UpsertUser,
   type ContentItem,
@@ -20,6 +22,10 @@ import {
   type InsertAlert,
   type Widget,
   type InsertWidget,
+  type Schedule,
+  type InsertSchedule,
+  type Deployment,
+  type InsertDeployment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
