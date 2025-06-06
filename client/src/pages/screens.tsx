@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { Screen, Playlist } from "@shared/schema";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,12 +35,12 @@ export default function Screens() {
   });
   const { toast } = useToast();
 
-  const { data: screens = [], isLoading } = useQuery({
+  const { data: screens = [], isLoading } = useQuery<Screen[]>({
     queryKey: ["/api/screens"],
     retry: false,
   });
 
-  const { data: playlists = [] } = useQuery({
+  const { data: playlists = [] } = useQuery<Playlist[]>({
     queryKey: ["/api/playlists"],
     retry: false,
   });
@@ -203,7 +204,7 @@ export default function Screens() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Sin playlist</SelectItem>
-                      {playlists.map((playlist: any) => (
+                      {playlists.map((playlist) => (
                         <SelectItem key={playlist.id} value={playlist.id.toString()}>
                           {playlist.name}
                         </SelectItem>
@@ -229,7 +230,7 @@ export default function Screens() {
       />
 
       <div className="flex-1 px-6 py-6 overflow-auto">
-        {!screens || screens.length === 0 ? (
+        {screens.length === 0 ? (
           <Card className="border-dashed border-2 border-slate-300">
             <CardContent className="p-12 text-center">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -252,7 +253,7 @@ export default function Screens() {
           </Card>
         ) : (
           <div className="content-grid">
-            {screens.map((screen: any) => (
+            {screens.map((screen) => (
               <Card key={screen.id} className="border-slate-200 hover:shadow-lg transition-shadow">
                 <CardContent className="p-0">
                   {/* Screen Header */}
@@ -299,7 +300,7 @@ export default function Screens() {
                       {screen.playlistId ? (
                         <div className="mt-1 flex items-center space-x-2">
                           <Badge variant="outline">
-                            {playlists?.find((p: any) => p.id === screen.playlistId)?.name || "Playlist no encontrada"}
+                            {playlists.find((p) => p.id === screen.playlistId)?.name || "Playlist no encontrada"}
                           </Badge>
                         </div>
                       ) : (
