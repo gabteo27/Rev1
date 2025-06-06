@@ -13,6 +13,8 @@ import {
   insertScreenSchema,
   insertAlertSchema,
   insertWidgetSchema,
+  insertScheduleSchema,
+  insertDeploymentSchema,
 } from "@shared/schema";
 
 // Configure multer for file uploads

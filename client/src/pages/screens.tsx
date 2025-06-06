@@ -34,12 +34,12 @@ export default function Screens() {
   });
   const { toast } = useToast();
 
-  const { data: screens, isLoading } = useQuery({
+  const { data: screens = [], isLoading } = useQuery({
     queryKey: ["/api/screens"],
     retry: false,
   });
 
-  const { data: playlists } = useQuery({
+  const { data: playlists = [] } = useQuery({
     queryKey: ["/api/playlists"],
     retry: false,
   });
@@ -203,7 +203,7 @@ export default function Screens() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Sin playlist</SelectItem>
-                      {playlists?.map((playlist: any) => (
+                      {playlists.map((playlist: any) => (
                         <SelectItem key={playlist.id} value={playlist.id.toString()}>
                           {playlist.name}
                         </SelectItem>

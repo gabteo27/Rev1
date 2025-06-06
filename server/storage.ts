@@ -75,6 +75,17 @@ export interface IStorage {
   createWidget(widget: InsertWidget): Promise<Widget>;
   updateWidget(id: number, widget: Partial<InsertWidget>, userId: string): Promise<Widget | undefined>;
   deleteWidget(id: number, userId: string): Promise<boolean>;
+
+  // Schedule operations
+  getSchedules(userId: string): Promise<Schedule[]>;
+  createSchedule(schedule: InsertSchedule): Promise<Schedule>;
+  updateSchedule(id: number, schedule: Partial<InsertSchedule>, userId: string): Promise<Schedule | undefined>;
+  deleteSchedule(id: number, userId: string): Promise<boolean>;
+
+  // Deployment operations
+  getDeployments(userId: string): Promise<Deployment[]>;
+  createDeployment(deployment: InsertDeployment): Promise<Deployment>;
+  updateDeployment(id: number, deployment: Partial<InsertDeployment>, userId: string): Promise<Deployment | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -362,6 +373,59 @@ export class DatabaseStorage implements IStorage {
       .delete(widgets)
       .where(and(eq(widgets.id, id), eq(widgets.userId, userId)));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Schedule operations
+  async getSchedules(userId: string): Promise<Schedule[]> {
+    return await db
+      .select()
+      .from(schedules)
+      .where(eq(schedules.userId, userId))
+      .orderBy(desc(schedules.createdAt));
+  }
+
+  async createSchedule(schedule: InsertSchedule): Promise<Schedule> {
+    const [item] = await db.insert(schedules).values(schedule).returning();
+    return item;
+  }
+
+  async updateSchedule(id: number, schedule: Partial<InsertSchedule>, userId: string): Promise<Schedule | undefined> {
+    const [item] = await db
+      .update(schedules)
+      .set({ ...schedule, updatedAt: new Date() })
+      .where(and(eq(schedules.id, id), eq(schedules.userId, userId)))
+      .returning();
+    return item;
+  }
+
+  async deleteSchedule(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(schedules)
+      .where(and(eq(schedules.id, id), eq(schedules.userId, userId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Deployment operations
+  async getDeployments(userId: string): Promise<Deployment[]> {
+    return await db
+      .select()
+      .from(deployments)
+      .where(eq(deployments.userId, userId))
+      .orderBy(desc(deployments.createdAt));
+  }
+
+  async createDeployment(deployment: InsertDeployment): Promise<Deployment> {
+    const [item] = await db.insert(deployments).values(deployment).returning();
+    return item;
+  }
+
+  async updateDeployment(id: number, deployment: Partial<InsertDeployment>, userId: string): Promise<Deployment | undefined> {
+    const [item] = await db
+      .update(deployments)
+      .set({ ...deployment, updatedAt: new Date() })
+      .where(and(eq(deployments.id, id), eq(deployments.userId, userId)))
+      .returning();
+    return item;
   }
 }
 
