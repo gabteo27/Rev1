@@ -14,12 +14,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { insertScheduleSchema, type Schedule, type Playlist, type Screen } from "@shared/schema";
+import type { Schedule, Playlist, Screen } from "@shared/schema";
 import Header from "@/components/layout/header";
 
-const scheduleFormSchema = insertScheduleSchema.extend({
+const scheduleFormSchema = z.object({
+  name: z.string().min(1, "El nombre es requerido"),
+  playlistId: z.number().optional(),
   screenIds: z.array(z.number()).min(1, "Selecciona al menos una pantalla"),
+  startDate: z.string().min(1, "La fecha de inicio es requerida"),
+  endDate: z.string().optional(),
+  startTime: z.string().min(1, "La hora de inicio es requerida"),
+  endTime: z.string().min(1, "La hora de fin es requerida"),
   daysOfWeek: z.array(z.number()).min(1, "Selecciona al menos un día"),
+  priority: z.number().min(1).max(4).default(1),
+  isActive: z.boolean().default(true),
 });
 
 type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
@@ -56,10 +64,10 @@ export default function Scheduling() {
       name: "",
       playlistId: undefined,
       screenIds: [],
-      startDate: "",
+      startDate: new Date().toISOString().split('T')[0],
       endDate: "",
-      startTime: "",
-      endTime: "",
+      startTime: "09:00",
+      endTime: "17:00",
       daysOfWeek: [],
       priority: 1,
       isActive: true,
@@ -68,9 +76,14 @@ export default function Scheduling() {
 
   const createMutation = useMutation({
     mutationFn: async (data: ScheduleFormData) => {
+      const payload = {
+        ...data,
+        startDate: new Date(data.startDate),
+        endDate: data.endDate ? new Date(data.endDate) : null,
+      };
       await apiRequest("/api/schedules", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
     },
     onSuccess: () => {
