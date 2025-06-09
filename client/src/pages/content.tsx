@@ -103,7 +103,7 @@ export default function Content() {
   };
 
   const categories = ["Promociones", "Institucional", "Noticias", "Entretenimiento", "Información"];
-  
+
   const filteredContent = selectedCategory 
     ? content?.filter((item: any) => item.category === selectedCategory)
     : content;
@@ -213,7 +213,7 @@ export default function Content() {
                         {getContentIcon(item.type)}
                       </div>
                     )}
-                    
+
                     {/* Type Badge */}
                     <div className="absolute top-3 left-3">
                       <Badge className={getContentBadgeColor(item.type)}>

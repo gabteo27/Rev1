@@ -20,7 +20,7 @@ import {
   Settings
 } from "lucide-react";
 
-export default function PlaylistEditor() {
+export function PlaylistEditor() {
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>("");
   const { toast } = useToast();
 
