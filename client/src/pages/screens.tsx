@@ -120,7 +120,7 @@ export default function Screens() {
         name: newScreen.name.trim(),
         description: newScreen.description.trim() || null,
         location: newScreen.location.trim() || null,
-        playlistId: newScreen.playlistId ? parseInt(newScreen.playlistId) : null
+        playlistId: newScreen.playlistId && newScreen.playlistId !== "none" ? parseInt(newScreen.playlistId) : null
       };
       
       console.log("Submitting screen data:", screenData);
@@ -232,7 +232,7 @@ export default function Screens() {
                       <SelectValue placeholder="Seleccionar playlist (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sin playlist</SelectItem>
+                      <SelectItem value="none">Sin playlist</SelectItem>
                       {playlists.map((playlist) => (
                         <SelectItem key={playlist.id} value={playlist.id.toString()}>
                           {playlist.name}
