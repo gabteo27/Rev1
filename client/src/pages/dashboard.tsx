@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tv, List, Folder, Clock, Play, Eye, Settings, Plus } from "lucide-react";
 import { PlaylistEditor } from "@/components/playlist/playlist-editor";
+import LivePreview from "@/components/preview/live-preview";
+import ContentLibrary from "@/components/content/content-library";
+import WidgetPanel from "@/components/widgets/widget-panel";
 
 export default function Dashboard() {
   const { toast } = useToast();
