@@ -41,23 +41,40 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
+
+  // --- INICIO DE LA SECCIÓN MODIFICADA ---
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "..",
-        "client",
-        "index.html",
-      );
+      let templatePath;
 
-      // always reload the index.html file from disk incase it changes
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
-      );
+      // Determinamos qué archivo HTML servir basado en la URL
+      if (url === '/player.html') {
+        templatePath = path.resolve(
+          __dirname,
+          "..",
+          "client",
+          "player.html"
+        );
+      } else {
+        // Por defecto, para cualquier otra ruta, servimos el index.html principal
+        templatePath = path.resolve(
+          __dirname,
+          "..",
+          "client",
+          "index.html"
+        );
+      }
+
+      // Verificamos si el archivo existe
+      if (!fs.existsSync(templatePath)) {
+          return res.status(404).send("Not Found");
+      }
+
+      let template = await fs.promises.readFile(templatePath, "utf-8");
+
+      // Aplicamos las transformaciones de Vite
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
@@ -65,10 +82,12 @@ export async function setupVite(app: Express, server: Server) {
       next(e);
     }
   });
+  // --- FIN DE LA SECCIÓN MODIFICADA ---
 }
 
+
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  const distPath = path.resolve(__dirname, "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
@@ -78,7 +97,9 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
+  // En producción, el enrutamiento es más complejo y usualmente se maneja
+  // para que las rutas apunten al index.html correcto o se use un enrutador del lado del servidor.
+  // Por ahora, para el desarrollo, el cambio anterior es suficiente.
   app.use("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
