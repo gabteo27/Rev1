@@ -47,15 +47,18 @@ export default function Screens() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("/api/screens", {
+      console.log("Creating screen with data:", data);
+      const response = await apiRequest("/api/screens", {
         method: "POST",
-        body: JSON.stringify({
-          ...data,
-          playlistId: data.playlistId ? parseInt(data.playlistId) : null
-        }),
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Screen created successfully:", data);
       toast({
         title: "Pantalla creada",
         description: "La pantalla ha sido creada exitosamente.",
@@ -64,10 +67,11 @@ export default function Screens() {
       setCreateModalOpen(false);
       setNewScreen({ name: "", description: "", location: "", playlistId: "" });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Error creating screen:", error);
       toast({
         title: "Error",
-        description: "No se pudo crear la pantalla.",
+        description: error?.message || "No se pudo crear la pantalla.",
         variant: "destructive",
       });
     },
@@ -104,7 +108,15 @@ export default function Screens() {
       });
       return;
     }
-    createMutation.mutate(newScreen);
+    
+    const screenData = {
+      name: newScreen.name.trim(),
+      description: newScreen.description.trim() || null,
+      location: newScreen.location.trim() || null,
+      playlistId: newScreen.playlistId ? parseInt(newScreen.playlistId) : null
+    };
+    
+    createMutation.mutate(screenData);
   };
 
   const formatDate = (date: Date | null | string) => {
@@ -219,7 +231,7 @@ export default function Screens() {
                   </Button>
                   <Button 
                     onClick={handleCreateScreen}
-                    disabled={createMutation.isPending}
+                    disabled={createMutation.isPending || !newScreen.name.trim()}
                   >
                     {createMutation.isPending ? "Creando..." : "Crear Pantalla"}
                   </Button>
