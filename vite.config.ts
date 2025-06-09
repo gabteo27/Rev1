@@ -27,6 +27,14 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        // La app principal (Panel de Admin) se compila desde index.html
+        main: path.resolve((import.meta.dirname, "client", "index.html"),
+        // La app secundaria (Reproductor) se compila desde player.html
+        player: path.resolve((import.meta.dirname, "client", "player.html")
+      },
+    },
   },
   server: {
     fs: {

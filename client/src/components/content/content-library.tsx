@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-export default function ContentLibrary() {
+export function ContentLibrary() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const { data: content } = useQuery({

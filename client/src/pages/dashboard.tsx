@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { ContentLibrary } from "@/components/content/content-library";
 import { WidgetPanel } from "@/components/widgets/widget-panel";
 import { LivePreview } from "@/components/preview/live-preview";
+import { PlaylistEditor } from "@/components/playlist/playlist-editor";
+import { Tv, List, Folder, Clock } from "lucide-react";
 
 export default function Dashboard() {
   const { toast } = useToast();
