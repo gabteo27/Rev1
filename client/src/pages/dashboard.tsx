@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tv, List, Folder, Clock, Play, Eye, Settings, Plus } from "lucide-react";
+import { PlaylistEditor } from "@/components/playlist/playlist-editor";
 
 export default function Dashboard() {
   const { toast } = useToast();
