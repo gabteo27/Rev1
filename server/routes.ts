@@ -284,14 +284,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/screens", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log("Creating screen for user:", userId);
+      console.log("Screen data received:", req.body);
+      
       const screenData = { ...req.body, userId };
       
       const validatedData = insertScreenSchema.parse(screenData);
+      console.log("Validated screen data:", validatedData);
+      
       const screen = await storage.createScreen(validatedData);
+      console.log("Screen created successfully:", screen);
+      
       res.json(screen);
     } catch (error) {
       console.error("Error creating screen:", error);
-      res.status(500).json({ message: "Failed to create screen" });
+      if (error.name === 'ZodError') {
+        res.status(400).json({ message: "Invalid data provided", errors: error.errors });
+      } else {
+        res.status(500).json({ message: error.message || "Failed to create screen" });
+      }
     }
   });
 

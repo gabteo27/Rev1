@@ -47,15 +47,24 @@ export default function Screens() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("/api/screens", {
+      console.log("Creating screen with data:", data);
+      const response = await apiRequest("/api/screens", {
         method: "POST",
-        body: JSON.stringify({
-          ...data,
-          playlistId: data.playlistId ? parseInt(data.playlistId) : null
-        }),
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(errorData || `HTTP ${response.status}`);
+      }
+      
+      return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Screen created successfully:", data);
       toast({
         title: "Pantalla creada",
         description: "La pantalla ha sido creada exitosamente.",
@@ -64,10 +73,11 @@ export default function Screens() {
       setCreateModalOpen(false);
       setNewScreen({ name: "", description: "", location: "", playlistId: "" });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Error creating screen:", error);
       toast({
         title: "Error",
-        description: "No se pudo crear la pantalla.",
+        description: error?.message || "No se pudo crear la pantalla.",
         variant: "destructive",
       });
     },
@@ -95,7 +105,7 @@ export default function Screens() {
     },
   });
 
-  const handleCreateScreen = () => {
+  const handleCreateScreen = async () => {
     if (!newScreen.name.trim()) {
       toast({
         title: "Error",
@@ -104,7 +114,25 @@ export default function Screens() {
       });
       return;
     }
-    createMutation.mutate(newScreen);
+    
+    try {
+      const screenData = {
+        name: newScreen.name.trim(),
+        description: newScreen.description.trim() || null,
+        location: newScreen.location.trim() || null,
+        playlistId: newScreen.playlistId ? parseInt(newScreen.playlistId) : null
+      };
+      
+      console.log("Submitting screen data:", screenData);
+      createMutation.mutate(screenData);
+    } catch (error) {
+      console.error("Error in handleCreateScreen:", error);
+      toast({
+        title: "Error",
+        description: "Error al procesar los datos del formulario.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (date: Date | null | string) => {
@@ -218,8 +246,12 @@ export default function Screens() {
                     Cancelar
                   </Button>
                   <Button 
-                    onClick={handleCreateScreen}
-                    disabled={createMutation.isPending}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleCreateScreen();
+                    }}
+                    disabled={createMutation.isPending || !newScreen.name.trim()}
+                    type="button"
                   >
                     {createMutation.isPending ? "Creando..." : "Crear Pantalla"}
                   </Button>
