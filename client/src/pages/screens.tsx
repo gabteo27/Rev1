@@ -55,7 +55,13 @@ export default function Screens() {
           'Content-Type': 'application/json'
         }
       });
-      return response;
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(errorData || `HTTP ${response.status}`);
+      }
+      
+      return await response.json();
     },
     onSuccess: (data) => {
       console.log("Screen created successfully:", data);
@@ -99,7 +105,7 @@ export default function Screens() {
     },
   });
 
-  const handleCreateScreen = () => {
+  const handleCreateScreen = async () => {
     if (!newScreen.name.trim()) {
       toast({
         title: "Error",
@@ -109,14 +115,24 @@ export default function Screens() {
       return;
     }
     
-    const screenData = {
-      name: newScreen.name.trim(),
-      description: newScreen.description.trim() || null,
-      location: newScreen.location.trim() || null,
-      playlistId: newScreen.playlistId ? parseInt(newScreen.playlistId) : null
-    };
-    
-    createMutation.mutate(screenData);
+    try {
+      const screenData = {
+        name: newScreen.name.trim(),
+        description: newScreen.description.trim() || null,
+        location: newScreen.location.trim() || null,
+        playlistId: newScreen.playlistId ? parseInt(newScreen.playlistId) : null
+      };
+      
+      console.log("Submitting screen data:", screenData);
+      createMutation.mutate(screenData);
+    } catch (error) {
+      console.error("Error in handleCreateScreen:", error);
+      toast({
+        title: "Error",
+        description: "Error al procesar los datos del formulario.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (date: Date | null | string) => {
@@ -230,8 +246,12 @@ export default function Screens() {
                     Cancelar
                   </Button>
                   <Button 
-                    onClick={handleCreateScreen}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleCreateScreen();
+                    }}
                     disabled={createMutation.isPending || !newScreen.name.trim()}
+                    type="button"
                   >
                     {createMutation.isPending ? "Creando..." : "Crear Pantalla"}
                   </Button>
