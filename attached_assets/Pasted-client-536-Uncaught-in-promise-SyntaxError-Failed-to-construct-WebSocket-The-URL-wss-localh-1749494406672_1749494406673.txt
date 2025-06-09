@@ -1,0 +1,45 @@
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=gMU6d4BDJjm1' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)Understand this error
+chunk-RPCDYKBN.js?v=1b05290a:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+2dashboard.tsx:121 Uncaught ReferenceError: PlaylistEditor is not defined
+    at Dashboard (dashboard.tsx:121:14)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=1b05290a:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=1b05290a:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=1b05290a:15914:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=1b05290a:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=1b05290a:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=1b05290a:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=1b05290a:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=1b05290a:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=1b05290a:19137:13)Understand this error
+chunk-RPCDYKBN.js?v=1b05290a:14032 The above error occurred in the <Dashboard> component:
+
+    at Dashboard (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/dashboard.tsx:25:21)
+    at Route (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1b05290a:323:16)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1b05290a:379:17)
+    at div
+    at div
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1b05290a:379:17)
+    at Router (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx?v=LgLYMUQylUuH7ci4_qRbt:40:42)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=1b05290a:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=1b05290a:61:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=1b05290a:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=1b05290a:14032Understand this error
+chunk-RPCDYKBN.js?v=1b05290a:9129 Uncaught ReferenceError: PlaylistEditor is not defined
+    at Dashboard (dashboard.tsx:121:14)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=1b05290a:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=1b05290a:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=1b05290a:15914:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=1b05290a:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=1b05290a:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=1b05290a:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=1b05290a:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=1b05290a:18736:28)
+    at performSyncWorkOnRoot (chunk-RPCDYKBN.js?v=1b05290a:18879:28)Understand this error
