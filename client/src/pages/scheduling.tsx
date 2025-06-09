@@ -274,15 +274,16 @@ export default function Scheduling() {
       )}
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nueva Programación</DialogTitle>
             <DialogDescription>
               Configura horarios automáticos para reproducir contenido en tus pantallas
             </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="max-h-[70vh] overflow-y-auto px-1">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
                 name="name"
@@ -486,8 +487,9 @@ export default function Scheduling() {
                   {createMutation.isPending ? "Creando..." : "Crear Programación"}
                 </Button>
               </div>
-            </form>
-          </Form>
+              </form>
+            </Form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

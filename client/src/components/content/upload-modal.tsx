@@ -101,8 +101,10 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
 
   const urlMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/content", data);
-      return response.json();
+      await apiRequest("/api/content", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
       toast({
@@ -112,10 +114,10 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/content"] });
       handleClose();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "No se pudo agregar la URL.",
+        description: error.message || "No se pudo agregar la URL.",
         variant: "destructive",
       });
     },
@@ -164,7 +166,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
       "video/mp4",
       "application/pdf"
     ];
-    return allowedTypes.includes(file.mimetype);
+    return allowedTypes.includes(file.type);
   };
 
   const getFileIcon = (file: File) => {
