@@ -1,1 +1,13 @@
 modules = ["postgresql-16"]
+
+[workflows]
+runButton = "Development Server"
+
+[[workflows.workflow]]
+name = "Development Server"
+author = 38813652
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
