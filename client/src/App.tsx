@@ -15,6 +15,8 @@ import Widgets from "@/pages/widgets";
 import Deployment from "@/pages/deployment";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
+import Settings from "@/pages/settings";
+import Analytics from "@/pages/analytics";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -47,6 +49,8 @@ function Router() {
               <Route path="/scheduling" component={Scheduling} />
               <Route path="/widgets" component={Widgets} />
               <Route path="/deployment" component={Deployment} />
+              <Route path="/settings" component={Settings} />
+              <Route path="/analytics" component={Analytics} />
               <Route component={NotFound} />
             </Switch>
           </div>
