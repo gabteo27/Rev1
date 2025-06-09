@@ -1,171 +1,268 @@
-
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import Header from "@/components/layout/header";
+import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import Header from "@/components/layout/header";
 import { 
   Settings as SettingsIcon, 
-  User, 
+  Moon, 
+  Sun, 
   Monitor, 
-  Globe, 
-  Shield,
-  Bell,
-  Palette
+  Bell, 
+  Shield, 
+  Database,
+  Wifi,
+  Save
 } from "lucide-react";
 
 export default function Settings() {
-  const [settings, setSettings] = useState({
-    companyName: "Mi Empresa",
-    defaultPlaylistDuration: "30",
-    autoUpdate: true,
-    notifications: true,
-    theme: "light",
-    language: "es",
-    timezone: "America/Mexico_City"
-  });
+  const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  
+  const [notifications, setNotifications] = useState(true);
+  const [autoSync, setAutoSync] = useState(true);
+  const [dataRetention, setDataRetention] = useState("30");
+  const [maxScreens, setMaxScreens] = useState("50");
+  const [apiRefreshRate, setApiRefreshRate] = useState("30");
 
-  const handleSave = () => {
+  const handleSaveSettings = () => {
     toast({
       title: "Configuración guardada",
-      description: "Los cambios han sido guardados exitosamente.",
+      description: "Las configuraciones se han actualizado correctamente.",
     });
   };
 
+  const getThemeIcon = () => {
+    switch (theme) {
+      case "light":
+        return <Sun className="h-4 w-4" />;
+      case "dark":
+        return <Moon className="h-4 w-4" />;
+      default:
+        return <Monitor className="h-4 w-4" />;
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="space-y-6">
       <Header
         title="Configuración"
-        subtitle="Gestiona las preferencias del sistema"
+        subtitle="Personaliza XcienTV según tus preferencias"
+        actions={
+          <Button onClick={handleSaveSettings}>
+            <Save className="w-4 h-4 mr-2" />
+            Guardar Cambios
+          </Button>
+        }
       />
 
-      <div className="flex-1 px-6 py-6 overflow-auto">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* General Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <SettingsIcon className="w-5 h-5" />
-                <span>Configuración General</span>
-              </CardTitle>
-              <CardDescription>
-                Configuración básica del sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="companyName">Nombre de la Empresa</Label>
-                <Input
-                  id="companyName"
-                  value={settings.companyName}
-                  onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="defaultDuration">Duración por Defecto (segundos)</Label>
-                <Input
-                  id="defaultDuration"
-                  type="number"
-                  value={settings.defaultPlaylistDuration}
-                  onChange={(e) => setSettings({ ...settings, defaultPlaylistDuration: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="language">Idioma</Label>
-                <Select value={settings.language} onValueChange={(value) => setSettings({ ...settings, language: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="es">Español</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Appearance Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sun className="h-5 w-5" />
+              Apariencia
+            </CardTitle>
+            <CardDescription>
+              Personaliza la apariencia de la interfaz
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="theme">Tema</Label>
+              <Select value={theme} onValueChange={setTheme}>
+                <SelectTrigger>
+                  <SelectValue>
+                    <div className="flex items-center gap-2">
+                      {getThemeIcon()}
+                      <span className="capitalize">
+                        {theme === "system" ? "Sistema" : theme === "dark" ? "Oscuro" : "Claro"}
+                      </span>
+                    </div>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">
+                    <div className="flex items-center gap-2">
+                      <Sun className="h-4 w-4" />
+                      Claro
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="dark">
+                    <div className="flex items-center gap-2">
+                      <Moon className="h-4 w-4" />
+                      Oscuro
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="system">
+                    <div className="flex items-center gap-2">
+                      <Monitor className="h-4 w-4" />
+                      Sistema
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Display Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Monitor className="w-5 h-5" />
-                <span>Configuración de Pantallas</span>
-              </CardTitle>
-              <CardDescription>
-                Configuración para dispositivos de visualización
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Actualización Automática</Label>
-                  <p className="text-sm text-slate-500">
-                    Actualizar contenido automáticamente en las pantallas
-                  </p>
+        {/* Notification Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Notificaciones
+            </CardTitle>
+            <CardDescription>
+              Configura cómo recibes las notificaciones
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notifications">Notificaciones push</Label>
+                <p className="text-sm text-muted-foreground">
+                  Recibe alertas en tiempo real
+                </p>
+              </div>
+              <Switch
+                id="notifications"
+                checked={notifications}
+                onCheckedChange={setNotifications}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* System Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <SettingsIcon className="h-5 w-5" />
+              Sistema
+            </CardTitle>
+            <CardDescription>
+              Configuraciones del sistema y rendimiento
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="autoSync">Sincronización automática</Label>
+                <p className="text-sm text-muted-foreground">
+                  Sincroniza datos automáticamente
+                </p>
+              </div>
+              <Switch
+                id="autoSync"
+                checked={autoSync}
+                onCheckedChange={setAutoSync}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label htmlFor="apiRefresh">Tasa de actualización API (segundos)</Label>
+              <Input
+                id="apiRefresh"
+                type="number"
+                value={apiRefreshRate}
+                onChange={(e) => setApiRefreshRate(e.target.value)}
+                min="10"
+                max="300"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="maxScreens">Máximo de pantallas</Label>
+              <Input
+                id="maxScreens"
+                type="number"
+                value={maxScreens}
+                onChange={(e) => setMaxScreens(e.target.value)}
+                min="1"
+                max="1000"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Data Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Gestión de Datos
+            </CardTitle>
+            <CardDescription>
+              Configuraciones de almacenamiento y retención
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="dataRetention">Retención de datos (días)</Label>
+              <Select value={dataRetention} onValueChange={setDataRetention}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 días</SelectItem>
+                  <SelectItem value="30">30 días</SelectItem>
+                  <SelectItem value="90">90 días</SelectItem>
+                  <SelectItem value="365">1 año</SelectItem>
+                  <SelectItem value="-1">Indefinido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Security Settings */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Seguridad
+            </CardTitle>
+            <CardDescription>
+              Configuraciones de seguridad y acceso
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Estado de la sesión</Label>
+                <div className="flex items-center gap-2 text-sm">
+                  <Wifi className="h-4 w-4 text-green-500" />
+                  <span>Conectado - Sesión activa</span>
                 </div>
-                <Switch
-                  checked={settings.autoUpdate}
-                  onCheckedChange={(checked) => setSettings({ ...settings, autoUpdate: checked })}
-                />
               </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Notificaciones</Label>
-                  <p className="text-sm text-slate-500">
-                    Recibir notificaciones del sistema
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.notifications}
-                  onCheckedChange={(checked) => setSettings({ ...settings, notifications: checked })}
-                />
+              
+              <div className="space-y-2">
+                <Label>Última actividad</Label>
+                <p className="text-sm text-muted-foreground">
+                  {new Date().toLocaleString()}
+                </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Appearance */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Palette className="w-5 h-5" />
-                <span>Apariencia</span>
-              </CardTitle>
-              <CardDescription>
-                Personaliza la apariencia de la interfaz
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="theme">Tema</Label>
-                <Select value={settings.theme} onValueChange={(value) => setSettings({ ...settings, theme: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Claro</SelectItem>
-                    <SelectItem value="dark">Oscuro</SelectItem>
-                    <SelectItem value="system">Sistema</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+            <Separator />
 
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
-              Guardar Cambios
-            </Button>
-          </div>
-        </div>
+            <div className="flex justify-start">
+              <Button variant="outline" onClick={() => window.location.href = "/api/logout"}>
+                Cerrar Sesión
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

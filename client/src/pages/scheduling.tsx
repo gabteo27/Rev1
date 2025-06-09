@@ -148,12 +148,13 @@ export default function Scheduling() {
   const onSubmit = (data: ScheduleFormData) => {
     createMutation.mutate({
       ...data,
-      startDate: new Date(data.startDate),
-      endDate: data.endDate ? new Date(data.endDate) : null,
+      startDate: data.startDate,
+      endDate: data.endDate || undefined,
     });
   };
 
-  const formatDays = (days: number[]) => {
+  const formatDays = (days: number[] | null) => {
+    if (!days) return "Sin días";
     return days.map(d => daysOfWeek.find(day => day.value === d)?.label).join(", ");
   };
 
@@ -161,7 +162,8 @@ export default function Scheduling() {
     return playlists.find(p => p.id === playlistId)?.name || "Playlist eliminada";
   };
 
-  const getScreenNames = (screenIds: number[]) => {
+  const getScreenNames = (screenIds: number[] | null) => {
+    if (!screenIds) return "Sin pantallas";
     return screenIds.map(id => 
       screens.find(s => s.id === id)?.name || "Pantalla eliminada"
     ).join(", ");
