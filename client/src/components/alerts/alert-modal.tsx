@@ -44,8 +44,10 @@ export default function AlertModal({ open, onClose }: AlertModalProps) {
 
   const createAlertMutation = useMutation({
     mutationFn: async (alertData: any) => {
-      const response = await apiRequest("POST", "/api/alerts", alertData);
-      return response.json();
+      await apiRequest("/api/alerts", {
+        method: "POST",
+        body: JSON.stringify(alertData),
+      });
     },
     onSuccess: () => {
       toast({
@@ -55,10 +57,10 @@ export default function AlertModal({ open, onClose }: AlertModalProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
       handleClose();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "No se pudo crear la alerta.",
+        title: "Error al crear alerta",
+        description: error.message || "Verifica que todos los campos estén completos y que tengas pantallas disponibles.",
         variant: "destructive",
       });
     },
