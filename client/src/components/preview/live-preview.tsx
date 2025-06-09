@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Monitor, Play, Pause, RotateCcw, Settings } from "lucide-react";
 import { useState } from "react";
 
-export default function LivePreview() {
+export function LivePreview() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentScreen, setCurrentScreen] = useState("Pantalla Principal");
 

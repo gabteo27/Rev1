@@ -25,7 +25,7 @@ interface Widget {
   data?: any;
 }
 
-export default function WidgetPanel() {
+export function WidgetPanel() {
   const [widgets, setWidgets] = useState<Widget[]>([
     {
       id: "1",
