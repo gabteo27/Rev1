@@ -3,12 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Header from "@/components/layout/header";
-import PlaylistEditor from "@/components/playlist/playlist-editor";
-import LivePreview from "@/components/preview/live-preview";
-import ContentLibrary from "@/components/content/content-library";
-import WidgetPanel from "@/components/widgets/widget-panel";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tv, List, Folder, Clock } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tv, List, Folder, Clock, Play, Eye, Settings, Plus } from "lucide-react";
 
 export default function Dashboard() {
   const { toast } = useToast();
