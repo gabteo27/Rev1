@@ -16,6 +16,7 @@ import {
   insertScheduleSchema,
   insertDeploymentSchema,
 } from "@shared/schema";
+import { buildApk } from "./apk-builder";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -537,38 +538,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Deployments routes
-  app.get("/api/deployments", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const deployments = await storage.getDeployments(userId);
-      res.json(deployments);
-    } catch (error) {
-      console.error("Error fetching deployments:", error);
-      res.status(500).json({ message: "Failed to fetch deployments" });
-    }
-  });
+      // Deployments routes
+      app.get("/api/deployments", isAuthenticated, async (req: any, res) => {
+        try {
+          const userId = req.user.claims.sub;
+          const deployments = await storage.getDeployments(userId);
+          res.json(deployments);
+        } catch (error) {
+          console.error("Error fetching deployments:", error);
+          res.status(500).json({ message: "Failed to fetch deployments" });
+        }
+      });
 
-  app.post("/api/deployments", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const deploymentData = { ...req.body, userId };
-      
-      const validatedData = insertDeploymentSchema.parse(deploymentData);
-      const deployment = await storage.createDeployment(validatedData);
-      res.json(deployment);
-    } catch (error) {
-      console.error("Error creating deployment:", error);
-      res.status(500).json({ message: "Failed to create deployment" });
-    }
-  });
+      app.post("/api/deployments", isAuthenticated, async (req: any, res) => {
+        try {
+          const userId = req.user.claims.sub;
+          const deploymentData = { ...req.body, userId, status: 'pending' };
 
-  app.post("/api/deployments/:id/build", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id);
+          const validatedData = insertDeploymentSchema.parse(deploymentData);
+          const deployment = await storage.createDeployment(validatedData);
+          res.json(deployment);
+        } catch (error) {
+          console.error("Error creating deployment:", error);
+          res.status(500).json({ message: "Failed to create deployment" });
+        }
+      });
+
+      app.post("/api/deployments/:id/build", isAuthenticated, async (req: any, res) => {
+        try {
+          const userId = req.user.claims.sub;
+          const id = parseInt(req.params.id);
+
+          const deployment = await storage.getDeployment(id, userId);
+          if (!deployment) {
+            return res.status(404).json({ message: "Deployment not found" });
+          }
+
+          await storage.updateDeployment(id, { status: "building" }, userId);
+
+          buildApk(deployment.version).then(async (apkUrl) => {
+            await storage.updateDeployment(id, {
+              status: "ready",
+              buildUrl: apkUrl,
+            }, userId);
+          }).catch(async (error) => {
+            console.error("APK Build failed", error);
+            await storage.updateDeployment(id, { status: "failed" }, userId);
+          });
+
+          res.json({ message: "Build started" });
+        } catch (error) {
+          console.error("Error starting build:", error);
+          res.status(500).json({ message: "Failed to start build" });
+        }
+      });
       
-      // Update deployment status to building
+      /* Update deployment status to building
       const deployment = await storage.updateDeployment(id, { status: "building" }, userId);
       if (!deployment) {
         return res.status(404).json({ message: "Deployment not found" });
@@ -605,19 +630,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error deploying:", error);
       res.status(500).json({ message: "Failed to deploy" });
     }
-  });
+  }); */
 
-  // Serve uploaded files
+ // Serve uploaded files and APKs
   app.use("/uploads", express.static("uploads"));
+  app.use("/apks", express.static(path.resolve(process.cwd(), "dist/apks")));
+
 
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
-  
+
   wss.on("connection", (ws: WebSocket) => {
     console.log("Client connected to WebSocket");
-    
+
     ws.on("close", () => {
       console.log("Client disconnected from WebSocket");
     });
@@ -629,7 +656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       type: "alert",
       data: alert,
     });
-    
+
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
