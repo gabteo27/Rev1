@@ -101,10 +101,11 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
 
   const urlMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("/api/content", {
+      const response = await apiRequest("/api/content", {
         method: "POST",
         body: JSON.stringify(data),
       });
+      return response.json();
     },
     onSuccess: () => {
       toast({
