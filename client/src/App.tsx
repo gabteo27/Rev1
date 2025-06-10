@@ -20,7 +20,6 @@ import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import Settings from "@/pages/settings";
 import Analytics from "@/pages/analytics";
-import { Provider } from 'jotai' // Added Provider import
 import { SidebarProvider } from "@/components/ui/sidebar"; //Import SidebarProvider
 
 // La importación lazy se mantiene igual
@@ -83,12 +82,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="xcientv-ui-theme">
         <TooltipProvider>
-          <Provider client={queryClient}>
-            <SidebarProvider>
-              <Toaster />
-              <Router />
-            </SidebarProvider>
-          </Provider>
+          <SidebarProvider>
+            <Toaster />
+            <Router />
+          </SidebarProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
