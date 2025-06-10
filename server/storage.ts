@@ -383,11 +383,7 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updatePlaylistItem(
-    id: number,
-    playlistItem: Partial<InsertPlaylistItem>,
-    userId: string,
-  ): Promise<PlaylistItem | undefined> {
+  async updatePlaylistItem(id: number, playlistItem: Partial<InsertPlaylistItem>, userId: string): Promise<PlaylistItem | undefined> {
     // First get the playlist item to verify ownership
     const [existing] = await db
       .select({ playlistItem: playlistItems, playlist: playlists })
@@ -641,6 +637,129 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(deployments.id, id), eq(deployments.userId, userId)))
       .returning();
     return item;
+  }
+  async createPlaylistItem(data: InsertPlaylistItem) {
+    const [item] = await db
+      .insert(playlistItems)
+      .values(data)
+      .returning();
+    return item;
+  }
+
+  async updatePlaylistItem(id: number, updates: any, userId: string) {
+    const [item] = await db
+      .update(playlistItems)
+      .set(updates)
+      .where(
+        and(
+          eq(playlistItems.id, id),
+          exists(
+            db
+              .select()
+              .from(playlists)
+              .where(
+                and(
+                  eq(playlists.id, playlistItems.playlistId),
+                  eq(playlists.userId, userId)
+                )
+              )
+          )
+        )
+      )
+      .returning();
+
+    if (item) {
+      // Recalculate total duration when duration changes
+      await this.updatePlaylistDuration(item.playlistId);
+    }
+
+    return item;
+  }
+
+  async updatePlaylistDuration(playlistId: number) {
+    // Get all items in the playlist with their durations
+    const items = await db
+      .select({
+        customDuration: playlistItems.customDuration,
+        defaultDuration: contentItems.duration
+      })
+      .from(playlistItems)
+      .innerJoin(contentItems, eq(playlistItems.contentItemId, contentItems.id))
+      .where(eq(playlistItems.playlistId, playlistId));
+
+    // Calculate total duration
+    const totalDuration = items.reduce((total, item) => {
+      return total + (item.customDuration || item.defaultDuration || 0);
+    }, 0);
+
+    // Update playlist with new total duration
+    await db
+      .update(playlists)
+      .set({ totalDuration })
+      .where(eq(playlists.id, playlistId));
+  }
+  async deletePlaylistItem(id: number, userId: string): Promise<boolean> {
+    // First get the playlist ID before deleting
+    const [itemToDelete] = await db
+      .select({ playlistId: playlistItems.playlistId })
+      .from(playlistItems)
+      .where(
+        and(
+          eq(playlistItems.id, id),
+          exists(
+            db
+              .select()
+              .from(playlists)
+              .where(
+                and(
+                  eq(playlists.id, playlistItems.playlistId),
+                  eq(playlists.userId, userId)
+                )
+              )
+          )
+        )
+      )
+      .limit(1);
+
+    if (!itemToDelete) {
+      return false;
+    }
+
+    const result = await db
+      .delete(playlistItems)
+      .where(eq(playlistItems.id, id))
+      .returning();
+
+    if (result.length > 0) {
+      // Recalculate total duration
+      await this.updatePlaylistDuration(itemToDelete.playlistId);
+      return true;
+    }
+
+    return false;
+  }
+  async reorderPlaylistItems(playlistId: number, itemOrders: { id: number; order: number }[], userId: string) {
+    // Verify playlist ownership
+    const playlist = await db
+      .select()
+      .from(playlists)
+      .where(and(eq(playlists.id, playlistId), eq(playlists.userId, userId)))
+      .limit(1);
+
+    if (playlist.length === 0) {
+      throw new Error("Playlist not found or access denied");
+    }
+
+    // Update each item's order
+    for (const { id, order } of itemOrders) {
+      await db
+        .update(playlistItems)
+        .set({ order })
+        .where(eq(playlistItems.id, id));
+    }
+
+    // Recalculate total duration
+    await this.updatePlaylistDuration(playlistId);
   }
 }
 

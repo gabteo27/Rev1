@@ -299,10 +299,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const playlistId = parseInt(req.params.id);
-      const itemData = { ...req.body, playlistId };
+      const { contentItemId, order } = req.body;
+
+      // First verify the playlist belongs to the user
+      const playlist = await storage.getPlaylistWithItems(playlistId, userId);
+      if (!playlist) {
+        return res.status(404).json({ message: "Playlist not found" });
+      }
+
+      // Create the playlist item
+      const itemData = {
+        playlistId,
+        contentItemId: parseInt(contentItemId),
+        order: order || 0
+      };
 
       const validatedData = insertPlaylistItemSchema.parse(itemData);
-      const item = await storage.addPlaylistItem(validatedData, userId);
+      const item = await storage.createPlaylistItem(validatedData);
+      
+      // Recalculate total duration
+      await storage.updatePlaylistDuration(playlistId);
+      
       res.json(item);
     } catch (error) {
       console.error("Error adding playlist item:", error);
