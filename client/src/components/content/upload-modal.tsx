@@ -36,7 +36,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
   const [duration, setDuration] = useState(30);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -46,7 +46,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
     mutationFn: async (formData: FormData) => {
       setIsUploading(true);
       setUploadProgress(0);
-      
+
       // Simulate upload progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -141,7 +141,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
 
     const files = Array.from(e.dataTransfer.files);
     const validFiles = files.filter(file => isValidFileType(file));
-    
+
     if (validFiles.length !== files.length) {
       toast({
         title: "Archivos no válidos",
@@ -149,7 +149,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
         variant: "destructive",
       });
     }
-    
+
     setSelectedFiles(prev => [...prev, ...validFiles]);
   };
 
@@ -216,7 +216,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
     selectedFiles.forEach(file => {
       formData.append("file", file);
     });
-    
+
     formData.append("title", title);
     formData.append("description", description);
     formData.append("type", getFileType(selectedFiles[0]));
@@ -228,33 +228,45 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
   };
 
   const handleUrlSubmit = () => {
-    if (!url.trim()) {
+    if (!url || !title) {
       toast({
         title: "Error",
-        description: "La URL es requerida.",
+        description: "La URL y el título son requeridos.",
         variant: "destructive",
       });
       return;
     }
 
-    if (!title.trim()) {
+    // Auto-fix and validate URL format
+    let processedUrl = url.trim();
+
+    // Add protocol if missing
+    if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
+      processedUrl = 'https://' + processedUrl;
+    }
+
+    try {
+      new URL(processedUrl);
+    } catch (error) {
       toast({
         title: "Error",
-        description: "El título es requerido.",
+        description: "Por favor ingresa una URL válida (ej: https://ejemplo.com)",
         variant: "destructive",
       });
       return;
     }
 
-    urlMutation.mutate({
+    const urlData = {
       title,
       description,
       type: "webpage",
-      url,
-      duration,
-      category,
+      url: processedUrl,
+      duration: parseInt(duration.toString()) || 30,
+      category: category === "none" ? "" : category,
       tags: tags ? tags.split(",").map(t => t.trim()) : [],
-    });
+    };
+
+    urlMutation.mutate(urlData);
   };
 
   const getFileType = (file: File) => {

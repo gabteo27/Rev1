@@ -110,19 +110,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         title,
         description,
-        type,
         duration: duration ? parseInt(duration) : 30,
-        category,
+        category: category || null,
         tags: tags ? (Array.isArray(tags) ? tags : tags.split(",").map((t: string) => t.trim())) : [],
       };
 
       if (req.file) {
-        // File upload
+        // File upload - determine type from file
+        const mimeType = req.file.mimetype;
+        if (mimeType.startsWith('image/')) {
+          contentData.type = 'image';
+        } else if (mimeType.startsWith('video/')) {
+          contentData.type = 'video';
+        } else if (mimeType === 'application/pdf') {
+          contentData.type = 'pdf';
+        } else {
+          contentData.type = 'file';
+        }
         contentData.url = `/uploads/${req.file.filename}`;
         contentData.fileSize = req.file.size;
       } else if (url) {
-        // URL content
+        // URL content - set type as webpage
+        contentData.type = 'webpage';
         contentData.url = url;
+        // Validate URL format
+        try {
+          new URL(url);
+        } catch (error) {
+          return res.status(400).json({ message: "Invalid URL format" });
+        }
       } else {
         return res.status(400).json({ message: "Either file or URL is required" });
       }
@@ -132,7 +148,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(item);
     } catch (error) {
       console.error("Error creating content:", error);
-      res.status(500).json({ message: "Failed to create content" });
+      if (error.name === 'ZodError') {
+        res.status(400).json({ message: "Invalid data provided", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create content" });
+      }
     }
   });
 
