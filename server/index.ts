@@ -38,7 +38,7 @@ app.use((req, res, next) => {
 
 (async () => {
   // Use the new routes
-  app.use(routes);
+  app.use('/', routes);
   
   const server = require('http').createServer(app);
 

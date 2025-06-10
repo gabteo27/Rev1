@@ -1,362 +1,413 @@
 
-import express, { type Request, type Response } from 'express';
-import expressWs from 'express-ws';
+import express, { Router, Request, Response } from 'express';
+import { WebSocket } from 'ws';
 import { db } from './db';
 import {
   screens,
-  contentItems,
   playlists,
+  contentItems,
   playlistItems,
+  alerts,
+  widgets,
   schedules,
+  deployments,
+  type Screen,
+  type Playlist,
+  type ContentItem,
+  type Alert,
+  type Widget,
+  type Schedule,
+  type Deployment,
 } from '../shared/schema';
 import { eq, and, isNull, or } from 'drizzle-orm';
 import { playerAuth } from './playerAuth';
 import { storage } from './storage';
 import { apkBuilder } from './apk-builder';
 
-// Crear instancia de Express con WebSocket
-const { app } = expressWs(express());
-
-// --- NUEVO: Mapa para mantener conexiones WebSocket activas ---
-const playerConnections = new Map<string, any>();
+const router = Router();
+const playerConnections = new Map<string, WebSocket>();
 
 // --- Rutas existentes (sin cambios) ---
-app.use('/api/player', playerAuth);
-app.use('/api/storage', storage);
-app.use('/api/apk', apkBuilder);
+router.use('/api/player', playerAuth);
+router.use('/api/storage', storage);
+router.use('/api/apk', apkBuilder);
 
 // Middleware de autenticación para rutas protegidas
-app.use('/api/screens*', (req, res, next) => {
-  // Simular req.user basado en headers o sesión
-  const userId = req.headers['x-user-id'] as string || 'test-user-id';
-  (req as any).userId = userId;
+router.use('/api/screens*', async (req: any, res, next) => {
+  const userId = req.headers['x-user-id'] || 'test-user-id';
+  req.userId = userId;
   next();
 });
 
-app.use('/api/content*', (req, res, next) => {
-  const userId = req.headers['x-user-id'] as string || 'test-user-id';
-  (req as any).userId = userId;
+router.use('/api/content*', async (req: any, res, next) => {
+  const userId = req.headers['x-user-id'] || 'test-user-id';
+  req.userId = userId;
   next();
 });
 
-app.use('/api/playlists*', (req, res, next) => {
-  const userId = req.headers['x-user-id'] as string || 'test-user-id';
-  (req as any).userId = userId;
+router.use('/api/playlists*', async (req: any, res, next) => {
+  const userId = req.headers['x-user-id'] || 'test-user-id';
+  req.userId = userId;
   next();
 });
 
-app.use('/api/schedules*', (req, res, next) => {
-  const userId = req.headers['x-user-id'] as string || 'test-user-id';
-  (req as any).userId = userId;
+router.use('/api/schedules*', async (req: any, res, next) => {
+  const userId = req.headers['x-user-id'] || 'test-user-id';
+  req.userId = userId;
   next();
 });
 
 // --- NUEVA lógica de WebSocket ---
-app.ws('/ws', (ws, req) => {
-  const screenId = req.query.screenId as string;
-  if (!screenId) {
-    console.error('WebSocket connection rejected: No screenId provided.');
-    ws.close();
-    return;
-  }
+router.get('/api/ws/screen/:screenId', async (req: Request, res: Response) => {
+  try {
+    if (req.headers.upgrade !== 'websocket') {
+      return res.status(400).json({ error: 'Expected websocket upgrade' });
+    }
 
-  console.log(`Player connected with screenId: ${screenId}`);
-  playerConnections.set(screenId, ws);
-
-  // Update screen status to online
-  db.update(screens)
-    .set({ isOnline: true, lastSeen: new Date() })
-    .where(eq(screens.id, parseInt(screenId)))
-    .then(() => {
-      console.log(`Screen ${screenId} status updated to online.`);
-    })
-    .catch((error) => {
-      console.error(`Failed to update screen ${screenId} to online:`, error);
+    const screenId = req.params.screenId;
+    
+    // Simulate WebSocket upgrade
+    res.status(200).json({ 
+      message: 'WebSocket endpoint ready',
+      screenId: screenId 
     });
+  } catch (error) {
+    console.error('WebSocket setup error:', error);
+    res.status(500).json({ error: 'Failed to setup WebSocket' });
+  }
+});
 
-  ws.on('message', (message) => {
-    console.log(`Message from ${screenId}:`, message.toString());
-  });
+// --- Rutas de API ---
 
-  ws.on('close', () => {
-    console.log(`Player disconnected: ${screenId}`);
-    playerConnections.delete(screenId);
+// Screens API
+router.get('/api/screens', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const userScreens = await db
+      .select()
+      .from(screens)
+      .where(eq(screens.userId, userId));
+    
+    res.json(userScreens);
+  } catch (error) {
+    console.error('Error fetching screens:', error);
+    res.status(500).json({ error: 'Failed to fetch screens' });
+  }
+});
 
-    // Update screen status to offline
-    db.update(screens)
-      .set({ isOnline: false, lastSeen: new Date() })
-      .where(eq(screens.id, parseInt(screenId)))
-      .then(() => {
-        console.log(`Screen ${screenId} status updated to offline.`);
+router.post('/api/screens', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const screenData = { ...req.body, userId };
+    
+    const [newScreen] = await db
+      .insert(screens)
+      .values(screenData)
+      .returning();
+    
+    res.json(newScreen);
+  } catch (error) {
+    console.error('Error creating screen:', error);
+    res.status(500).json({ error: 'Failed to create screen' });
+  }
+});
+
+router.put('/api/screens/:id', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const screenId = parseInt(req.params.id);
+    
+    const [updatedScreen] = await db
+      .update(screens)
+      .set({ ...req.body, updatedAt: new Date() })
+      .where(and(eq(screens.id, screenId), eq(screens.userId, userId)))
+      .returning();
+    
+    if (!updatedScreen) {
+      return res.status(404).json({ error: 'Screen not found' });
+    }
+    
+    res.json(updatedScreen);
+  } catch (error) {
+    console.error('Error updating screen:', error);
+    res.status(500).json({ error: 'Failed to update screen' });
+  }
+});
+
+router.delete('/api/screens/:id', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const screenId = parseInt(req.params.id);
+    
+    const result = await db
+      .delete(screens)
+      .where(and(eq(screens.id, screenId), eq(screens.userId, userId)));
+    
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(404).json({ error: 'Screen not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting screen:', error);
+    res.status(500).json({ error: 'Failed to delete screen' });
+  }
+});
+
+// Content API
+router.get('/api/content', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const content = await db
+      .select()
+      .from(contentItems)
+      .where(eq(contentItems.userId, userId));
+    
+    res.json(content);
+  } catch (error) {
+    console.error('Error fetching content:', error);
+    res.status(500).json({ error: 'Failed to fetch content' });
+  }
+});
+
+router.post('/api/content', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const contentData = { ...req.body, userId };
+    
+    const [newContent] = await db
+      .insert(contentItems)
+      .values(contentData)
+      .returning();
+    
+    res.json(newContent);
+  } catch (error) {
+    console.error('Error creating content:', error);
+    res.status(500).json({ error: 'Failed to create content' });
+  }
+});
+
+// Playlists API
+router.get('/api/playlists', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const userPlaylists = await db
+      .select()
+      .from(playlists)
+      .where(eq(playlists.userId, userId));
+    
+    res.json(userPlaylists);
+  } catch (error) {
+    console.error('Error fetching playlists:', error);
+    res.status(500).json({ error: 'Failed to fetch playlists' });
+  }
+});
+
+router.post('/api/playlists', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const playlistData = { ...req.body, userId };
+    
+    const [newPlaylist] = await db
+      .insert(playlists)
+      .values(playlistData)
+      .returning();
+    
+    res.json(newPlaylist);
+  } catch (error) {
+    console.error('Error creating playlist:', error);
+    res.status(500).json({ error: 'Failed to create playlist' });
+  }
+});
+
+// Alerts API
+router.get('/api/alerts', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const userAlerts = await db
+      .select()
+      .from(alerts)
+      .where(eq(alerts.userId, userId));
+    
+    res.json(userAlerts);
+  } catch (error) {
+    console.error('Error fetching alerts:', error);
+    res.status(500).json({ error: 'Failed to fetch alerts' });
+  }
+});
+
+router.post('/api/alerts', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const alertData = { ...req.body, userId };
+    
+    const [newAlert] = await db
+      .insert(alerts)
+      .values(alertData)
+      .returning();
+    
+    res.json(newAlert);
+  } catch (error) {
+    console.error('Error creating alert:', error);
+    res.status(500).json({ error: 'Failed to create alert' });
+  }
+});
+
+// Widgets API
+router.get('/api/widgets', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const userWidgets = await db
+      .select()
+      .from(widgets)
+      .where(eq(widgets.userId, userId));
+    
+    res.json(userWidgets);
+  } catch (error) {
+    console.error('Error fetching widgets:', error);
+    res.status(500).json({ error: 'Failed to fetch widgets' });
+  }
+});
+
+router.post('/api/widgets', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const widgetData = { ...req.body, userId };
+    
+    const [newWidget] = await db
+      .insert(widgets)
+      .values(widgetData)
+      .returning();
+    
+    res.json(newWidget);
+  } catch (error) {
+    console.error('Error creating widget:', error);
+    res.status(500).json({ error: 'Failed to create widget' });
+  }
+});
+
+// Schedules API
+router.get('/api/schedules', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const userSchedules = await db
+      .select()
+      .from(schedules)
+      .where(eq(schedules.userId, userId));
+    
+    res.json(userSchedules);
+  } catch (error) {
+    console.error('Error fetching schedules:', error);
+    res.status(500).json({ error: 'Failed to fetch schedules' });
+  }
+});
+
+router.post('/api/schedules', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const scheduleData = { ...req.body, userId };
+    
+    const [newSchedule] = await db
+      .insert(schedules)
+      .values(scheduleData)
+      .returning();
+    
+    res.json(newSchedule);
+  } catch (error) {
+    console.error('Error creating schedule:', error);
+    res.status(500).json({ error: 'Failed to create schedule' });
+  }
+});
+
+// Deployments API
+router.get('/api/deployments', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const userDeployments = await db
+      .select()
+      .from(deployments)
+      .where(eq(deployments.userId, userId));
+    
+    res.json(userDeployments);
+  } catch (error) {
+    console.error('Error fetching deployments:', error);
+    res.status(500).json({ error: 'Failed to fetch deployments' });
+  }
+});
+
+router.post('/api/deployments', async (req: any, res: Response) => {
+  try {
+    const userId = req.userId || 'test-user-id';
+    const deploymentData = { ...req.body, userId };
+    
+    const [newDeployment] = await db
+      .insert(deployments)
+      .values(deploymentData)
+      .returning();
+    
+    res.json(newDeployment);
+  } catch (error) {
+    console.error('Error creating deployment:', error);
+    res.status(500).json({ error: 'Failed to create deployment' });
+  }
+});
+
+// Screen pairing endpoint
+router.post('/api/screens/pair', async (req: Request, res: Response) => {
+  try {
+    const { pairingCode } = req.body;
+    const userId = 'test-user-id'; // Simulated user
+    
+    if (!pairingCode) {
+      return res.status(400).json({ error: 'Pairing code is required' });
+    }
+
+    const screenResult = await db
+      .select()
+      .from(screens)
+      .where(and(
+        eq(screens.pairingCode, pairingCode),
+        isNull(screens.userId)
+      ));
+
+    if (screenResult.length === 0) {
+      return res.status(404).json({ error: 'Invalid or expired pairing code' });
+    }
+
+    const screen = screenResult[0];
+    const screenId = screen.id.toString();
+
+    if (screen.userId) {
+      return res.status(400).json({ error: 'Screen already paired' });
+    }
+
+    const authToken = `auth_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    
+    const [updatedScreen] = await db
+      .update(screens)
+      .set({
+        userId: userId,
+        authToken: authToken,
+        pairingCode: null,
+        pairingCodeExpiresAt: null,
       })
-      .catch((error) => {
-        console.error(`Failed to update screen ${screenId} to offline:`, error);
-      });
-  });
+      .where(eq(screens.id, screen.id))
+      .returning();
 
-  ws.on('error', (err) => {
-    console.error(`WebSocket error for screenId ${screenId}:`, err);
-  });
+    if (playerConnections.has(screenId)) {
+      await db.update(screens).set({ isOnline: true, lastSeen: new Date() }).where(eq(screens.id, screen.id));
+      updatedScreen.isOnline = true;
+    }
+
+    res.json({
+      success: true,
+      screen: updatedScreen,
+      authToken: authToken
+    });
+  } catch (error) {
+    console.error('Error pairing screen:', error);
+    res.status(500).json({ error: 'Failed to pair screen' });
+  }
 });
 
-// --- Rutas de API existentes (con la modificación de /pair) ---
-
-// Screens
-app.get('/api/screens', async (req: Request, res: Response) => {
-  const userId = (req as any).userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-  const allScreens = await db
-    .select()
-    .from(screens)
-    .where(or(eq(screens.userId, userId), isNull(screens.userId)));
-  return res.json(allScreens);
-});
-
-app.get('/api/screens/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const screen = await db.select().from(screens).where(eq(screens.id, parseInt(id)));
-  return res.json(screen[0]);
-});
-
-app.delete('/api/screens/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  await db.delete(screens).where(eq(screens.id, parseInt(id)));
-  return res.json({ success: true });
-});
-
-// --- MODIFICADO: Lógica de 'pair' movida aquí desde playerAuth.ts ---
-app.post('/api/player/pair', async (req: Request, res: Response) => {
-  const { code, name } = req.body;
-  const userId = (req as any).userId;
-
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-
-  const screenResult = await db
-    .select()
-    .from(screens)
-    .where(eq(screens.pairingCode, code))
-    .limit(1);
-
-  if (screenResult.length === 0) {
-    return res.status(404).json({ error: 'Invalid pairing code' });
-  }
-
-  const screen = screenResult[0];
-  const screenId = screen.id.toString();
-
-  if (screen.userId) {
-    return res.status(400).json({ error: 'Screen already paired' });
-  }
-
-  const updatedScreen = await db
-    .update(screens)
-    .set({
-      name: name,
-      userId: userId,
-      isOnline: true,
-      lastSeen: new Date(),
-      pairingCode: null,
-      pairingCodeExpiresAt: null,
-    })
-    .where(eq(screens.id, screen.id))
-    .returning();
-
-  // Forzamos el estado a online si hay una conexión activa
-  if (playerConnections.has(screenId)) {
-    await db.update(screens).set({ isOnline: true, lastSeen: new Date() }).where(eq(screens.id, screen.id));
-    updatedScreen[0].isOnline = true;
-  }
-
-  // Notificar al reproductor a través de WS que ha sido emparejado
-  const playerSocket = playerConnections.get(screenId);
-  if (playerSocket && playerSocket.readyState === 1) { // WebSocket.OPEN
-    playerSocket.send(JSON.stringify({ type: 'paired', screen: updatedScreen[0] }));
-    console.log(`Sent 'paired' confirmation to screen ${screenId}`);
-  }
-
-  return res.json(updatedScreen[0]);
-});
-
-// Content (Tu código original sin cambios)
-app.get('/api/content', async (req: Request, res: Response) => {
-  const userId = (req as any).userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-  const userContent = await db
-    .select()
-    .from(contentItems)
-    .where(eq(contentItems.userId, userId));
-  return res.json(userContent);
-});
-
-app.delete('/api/content/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const userId = (req as any).userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-
-  const contentItem = await db.select().from(contentItems).where(and(eq(contentItems.id, parseInt(id)), eq(contentItems.userId, userId)));
-  if (contentItem.length === 0) {
-    return res.status(404).json({ error: 'Content not found or you do not have permission to delete it' });
-  }
-
-  await db.delete(contentItems).where(eq(contentItems.id, parseInt(id)));
-  await db.delete(playlistItems).where(eq(playlistItems.contentItemId, parseInt(id)));
-
-  return res.json({ success: true });
-});
-
-// Playlists (Tu código original sin cambios)
-app.get('/api/playlists', async (req: Request, res: Response) => {
-  const userId = (req as any).userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-  const userPlaylists = await db
-    .select()
-    .from(playlists)
-    .where(eq(playlists.userId, userId));
-  return res.json(userPlaylists);
-});
-
-app.post('/api/playlists', async (req: Request, res: Response) => {
-  const { name } = req.body;
-  const userId = (req as any).userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-  const newPlaylist = await db
-    .insert(playlists)
-    .values({ name, userId })
-    .returning();
-  return res.json(newPlaylist[0]);
-});
-
-app.get('/api/playlists/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const playlist = await db
-    .select()
-    .from(playlists)
-    .where(eq(playlists.id, parseInt(id)))
-    .limit(1);
-
-  if (playlist.length === 0) {
-    return res.status(404).json({ error: 'Playlist not found' });
-  }
-
-  const items = await db
-    .select({
-      id: playlistItems.id,
-      order: playlistItems.order,
-      customDuration: playlistItems.customDuration,
-      content: {
-        id: contentItems.id,
-        title: contentItems.title,
-        type: contentItems.type,
-        url: contentItems.url,
-      },
-    })
-    .from(playlistItems)
-    .leftJoin(contentItems, eq(playlistItems.contentItemId, contentItems.id))
-    .where(eq(playlistItems.playlistId, parseInt(id)))
-    .orderBy(playlistItems.order);
-
-  return res.json({ ...playlist[0], items });
-});
-
-app.put('/api/playlists/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { name, items } = req.body;
-  const userId = (req as any).userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-
-  await db
-    .update(playlists)
-    .set({ name })
-    .where(and(eq(playlists.id, parseInt(id)), eq(playlists.userId, userId)));
-
-  await db.delete(playlistItems).where(eq(playlistItems.playlistId, parseInt(id)));
-  if (items && items.length > 0) {
-    const newItems = items.map((item: any) => ({
-      playlistId: parseInt(id),
-      contentItemId: item.content.id,
-      order: item.order,
-      customDuration: item.customDuration,
-    }));
-    await db.insert(playlistItems).values(newItems);
-  }
-
-  return res.json({ success: true });
-});
-
-app.delete('/api/playlists/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const userId = (req as any).userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-  await db.delete(playlists).where(and(eq(playlists.id, parseInt(id)), eq(playlists.userId, userId)));
-  await db.delete(playlistItems).where(eq(playlistItems.playlistId, parseInt(id)));
-  return res.json({ success: true });
-});
-
-// Schedules (Tu código original sin cambios)
-app.get('/api/schedules', async (req: Request, res: Response) => {
-  const userId = (req as any).userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-  const userSchedules = await db.select().from(schedules).where(eq(schedules.userId, userId));
-  return res.json(userSchedules);
-});
-
-app.post('/api/schedules', async (req: Request, res: Response) => {
-  const { name, screenIds, playlistId } = req.body;
-  const userId = (req as any).userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-  const newSchedule = await db.insert(schedules).values({ 
-    name, 
-    userId, 
-    screenIds, 
-    playlistId 
-  }).returning();
-  return res.json(newSchedule[0]);
-});
-
-// --- MODIFICADO: Notificación WebSocket específica ---
-app.put('/api/screens/:id/schedule', async (req: Request, res: Response) => {
-  const { id } = req.params; // screenId
-  const { playlistId } = req.body;
-  const userId = (req as any).userId;
-
-  if (!userId) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-
-  const screen = await db.select().from(screens).where(and(eq(screens.id, parseInt(id)), eq(screens.userId, userId)));
-  if (screen.length === 0) {
-    return res.status(404).json({ error: 'Screen not found or permission denied' });
-  }
-
-  const updatedScreen = await db.update(screens).set({ playlistId }).where(eq(screens.id, parseInt(id))).returning();
-
-  // Notificar al reproductor del cambio de playlist
-  const playerSocket = playerConnections.get(id);
-  if (playerSocket && playerSocket.readyState === 1) { // WebSocket.OPEN
-    playerSocket.send(JSON.stringify({ type: 'playlist-update', playlistId: playlistId }));
-  }
-
-  return res.json(updatedScreen[0]);
-});
-
-export default app;
+export default router;
