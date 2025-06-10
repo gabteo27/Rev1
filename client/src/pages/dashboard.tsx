@@ -55,89 +55,91 @@ export default function Dashboard() {
 
   return (
     <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <Header
-          title="Dashboard"
-          subtitle="Gestiona tu contenido digital y playlists"
-        />
+      <div className="flex min-h-screen">
+        <AppSidebar />
+        <SidebarInset className="flex-1">
+          <Header
+            title="Dashboard"
+            subtitle="Gestiona tu contenido digital y playlists"
+          />
 
-        <div className="flex-1 px-6 py-6 overflow-auto">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="border-slate-200">
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Tv className="w-6 h-6 text-blue-600" />
+          <div className="flex-1 px-6 py-6 overflow-auto">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <Card className="border-border bg-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                      <Tv className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm text-muted-foreground">Pantallas Activas</p>
+                      <p className="text-2xl font-bold text-foreground">{activeScreens}</p>
+                    </div>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm text-slate-600">Pantallas Activas</p>
-                    <p className="text-2xl font-bold text-slate-900">{activeScreens}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card className="border-slate-200">
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <List className="w-6 h-6 text-green-600" />
+              <Card className="border-border bg-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                      <List className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm text-muted-foreground">Playlists</p>
+                      <p className="text-2xl font-bold text-foreground">{totalPlaylists}</p>
+                    </div>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm text-slate-600">Playlists</p>
-                    <p className="text-2xl font-bold text-slate-900">{totalPlaylists}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card className="border-slate-200">
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Folder className="w-6 h-6 text-purple-600" />
+              <Card className="border-border bg-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                      <Folder className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm text-muted-foreground">Archivos</p>
+                      <p className="text-2xl font-bold text-foreground">{totalFiles}</p>
+                    </div>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm text-slate-600">Archivos</p>
-                    <p className="text-2xl font-bold text-slate-900">{totalFiles}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card className="border-slate-200">
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                    <Clock className="w-6 h-6 text-yellow-600" />
+              <Card className="border-border bg-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center">
+                      <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm text-muted-foreground">Tiempo Total</p>
+                      <p className="text-2xl font-bold text-foreground">{formatDuration(totalDuration)}</p>
+                    </div>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm text-slate-600">Tiempo Total</p>
-                    <p className="text-2xl font-bold text-slate-900">{formatDuration(totalDuration)}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Main Grid Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Playlist Editor - Left Column */}
-            <div className="lg:col-span-2">
-              <PlaylistEditor />
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Preview and Widgets - Right Column */}
-            <div className="space-y-6">
-              <LivePreview />
-              <ContentLibrary />
-              <WidgetPanel />
+            {/* Main Grid Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Playlist Editor - Left Column */}
+              <div className="lg:col-span-2">
+                <PlaylistEditor />
+              </div>
+
+              {/* Preview and Widgets - Right Column */}
+              <div className="space-y-6">
+                <LivePreview />
+                <ContentLibrary />
+                <WidgetPanel />
+              </div>
             </div>
           </div>
-        </div>
-      </SidebarInset>
+        </SidebarInset>
+      </div>
     </SidebarProvider>
   );
 }

@@ -71,8 +71,8 @@ export default function AppSidebar() {
             <Tv className="w-4 h-4 text-white" />
           </div>
           <div className="ml-3 group-data-[collapsible=icon]:hidden">
-            <h1 className="text-lg font-bold text-slate-900">XcienTV</h1>
-            <p className="text-xs text-slate-500">Digital Signage</p>
+            <h1 className="text-lg font-bold text-sidebar-foreground">XcienTV</h1>
+            <p className="text-xs text-muted-foreground">Digital Signage</p>
           </div>
         </div>
       </SidebarHeader>
@@ -139,20 +139,20 @@ export default function AppSidebar() {
                 </div>
               )}
               <div className="ml-3 flex-1 group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-medium text-slate-900 truncate">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
                   {user?.firstName && user?.lastName 
                     ? `${user.firstName} ${user.lastName}`
                     : user?.email || "Usuario"
                   }
                 </p>
-                <p className="text-xs text-slate-500 truncate">
+                <p className="text-xs text-muted-foreground truncate">
                   {user?.email}
                 </p>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-slate-400 hover:text-slate-600 p-1 group-data-[collapsible=icon]:hidden"
+                className="text-muted-foreground hover:text-sidebar-foreground p-1 group-data-[collapsible=icon]:hidden"
                 onClick={handleLogout}
               >
                 <LogOut className="w-4 h-4" />
