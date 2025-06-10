@@ -339,15 +339,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/screens/heartbeat", isPlayerAuthenticated, async (req: any, res) => {
+    try {
+      const screenId = req.screen.id;
+      const userId = req.screen.userId;
+
+      await storage.updateScreen(screenId, {
+        isOnline: true,
+        lastSeen: new Date(),
+      }, userId);
+
+      // Opcional: podrías devolver aquí una nueva playlist si ha cambiado
+      res.status(200).json({ status: 'ok' });
+    } catch (error) {
+      console.error("Heartbeat error:", error);
+      res.status(500).json({ message: "Heartbeat failed" });
+    }
+  });
+
+  
   app.put("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id);
-      const updates = req.body;
-      
+      const id = parseInt(req.params.id, 10);
+      const updates = {
+        name: req.body.name,
+        location: req.body.location,
+        playlistId: req.body.playlistId ? parseInt(req.body.playlistId, 10) : null,
+      };
+
       const screen = await storage.updateScreen(id, updates, userId);
       if (!screen) {
-        return res.status(404).json({ message: "Screen not found" });
+        return res.status(404).json({ message: "Screen not found or access denied" });
       }
       res.json(screen);
     } catch (error) {
@@ -359,13 +382,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id);
-      
+      const id = parseInt(req.params.id, 10);
+
       const success = await storage.deleteScreen(id, userId);
       if (!success) {
-        return res.status(404).json({ message: "Screen not found" });
+        return res.status(404).json({ message: "Screen not found or access denied" });
       }
-      res.json({ message: "Screen deleted successfully" });
+      res.status(200).json({ message: "Screen deleted successfully" });
     } catch (error) {
       console.error("Error deleting screen:", error);
       res.status(500).json({ message: "Failed to delete screen" });

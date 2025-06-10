@@ -7,9 +7,8 @@ import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -25,112 +24,86 @@ import {
   Edit
 } from "lucide-react";
 
-// Estado inicial para el formulario del modal
-const initialFormState = {
-  pairingCode: "",
-  name: "",
-  location: "",
-  playlistId: ""
-};
+const initialPairFormState = { pairingCode: "", name: "", location: "", playlistId: "" };
 
 export default function Screens() {
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [formData, setFormData] = useState(initialFormState);
+  const [isPairModalOpen, setIsPairModalOpen] = useState(false);
+  const [editingScreen, setEditingScreen] = useState<Screen | null>(null);
+  const [pairFormData, setPairFormData] = useState(initialPairFormState);
   const { toast } = useToast();
 
-  const { data: screens = [], isLoading } = useQuery<Screen[]>({ queryKey: ["/api/screens"] });
-  const { data: playlists = [] } = useQuery<Playlist[]>({ queryKey: ["/api/playlists"] });
+  const { data: screens = [], isLoading } = useQuery<Screen[]>({ queryKey: ["/api/screens"], retry: false });
+  const { data: playlists = [] } = useQuery<Playlist[]>({ queryKey: ["/api/playlists"], retry: false });
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
-  };
-
-  const handlePlaylistSelect = (value: string) => {
-    setFormData(prev => ({ ...prev, playlistId: value }));
-  };
+  // --- MUTACIONES ---
 
   const completePairingMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      const payload = {
-        ...data,
-        playlistId: data.playlistId || null,
-      };
-      return apiRequest("/api/screens/complete-pairing", {
-        method: "POST",
-        body: JSON.stringify(payload)
-      }).then(res => res.json());
+    mutationFn: (data: typeof pairFormData) => {
+      const payload = { ...data, playlistId: data.playlistId && data.playlistId !== 'none' ? parseInt(data.playlistId, 10) : null };
+      return apiRequest("/api/screens/complete-pairing", { method: "POST", body: JSON.stringify(payload) }).then(res => res.json());
     },
     onSuccess: (data) => {
       toast({ title: "¡Éxito!", description: `La pantalla "${data.screen.name}" ha sido emparejada.` });
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
-      setCreateModalOpen(false);
-      setFormData(initialFormState); // Resetea el formulario
+      setIsPairModalOpen(false);
+      setPairFormData(initialPairFormState);
     },
-    onError: (error: any) => {
-      toast({ title: "Error de Emparejamiento", description: error.message, variant: "destructive" });
-    }
+    onError: (error: any) => toast({ title: "Error de Emparejamiento", description: error.message, variant: "destructive" })
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (screen: Screen) => apiRequest(`/api/screens/${screen.id}`, { method: 'PUT', body: JSON.stringify(screen) }),
+    onSuccess: () => {
+        toast({ title: 'Pantalla Actualizada', description: 'Los cambios se han guardado correctamente.' });
+        queryClient.invalidateQueries({ queryKey: ['/api/screens'] });
+        setEditingScreen(null);
+    },
+    onError: (error: any) => toast({ title: 'Error al Actualizar', description: error.message, variant: 'destructive' })
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest(`/api/screens/${id}`, {
-        method: "DELETE",
-      });
-    },
+    mutationFn: (id: number) => apiRequest(`/api/screens/${id}`, { method: "DELETE" }),
     onSuccess: () => {
-      toast({
-        title: "Pantalla eliminada",
-        description: "La pantalla ha sido eliminada exitosamente.",
-      });
+      toast({ title: "Pantalla eliminada" });
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo eliminar la pantalla.",
-        variant: "destructive",
-      });
-    },
+    onError: (error: any) => toast({ title: "Error", description: error.message || "No se pudo eliminar la pantalla.", variant: "destructive" })
   });
 
-  const handleSubmit = () => {
-    if (!formData.pairingCode.trim() || !formData.name.trim()) {
+  // --- MANEJADORES DE FORMULARIOS ---
+
+  const handlePairFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setPairFormData(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handlePairPlaylistSelect = (value: string) => {
+    setPairFormData(prev => ({ ...prev, playlistId: value }));
+  };
+
+  const handlePairSubmit = () => {
+    if (!pairFormData.pairingCode.trim() || !pairFormData.name.trim()) {
       toast({ title: "Error", description: "El código y el nombre son obligatorios.", variant: "destructive" });
       return;
     }
-    completePairingMutation.mutate(formData);
+    completePairingMutation.mutate(pairFormData);
   };
+
+  // --- FUNCIONES AUXILIARES ---
 
   const formatDate = (date: Date | null | string) => {
     if (!date) return "N/A";
-    return new Date(date).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
+    return new Date(date).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
-  const getStatusBadge = (isOnline: boolean | null, lastSeen?: string) => {
-    if (isOnline) {
-      return <Badge className="bg-green-100 text-green-800">En línea</Badge>;
-    }
-
-    if (lastSeen) {
-      const lastSeenDate = new Date(lastSeen);
-      const now = new Date();
-      const diffInHours = (now.getTime() - lastSeenDate.getTime()) / (1000 * 60 * 60);
-
-      if (diffInHours < 1) {
-        return <Badge className="bg-yellow-100 text-yellow-800">Desconectada</Badge>;
-      } else if (diffInHours < 24) {
-        return <Badge className="bg-orange-100 text-orange-800">Inactiva</Badge>;
+  const getStatusBadge = (isOnline: boolean | null, lastSeen?: string | Date) => {
+      if (isOnline) return <Badge className="bg-green-100 text-green-800 border-green-300">En línea</Badge>;
+      if (lastSeen) {
+        const diffInHours = (new Date().getTime() - new Date(lastSeen).getTime()) / 36e5;
+        if (diffInHours < 1) return <Badge variant="destructive">Desconectada</Badge>;
+        if (diffInHours < 24) return <Badge variant="secondary">Inactiva</Badge>;
       }
-    }
-
-    return <Badge className="bg-red-100 text-red-800">Sin conexión</Badge>;
+      return <Badge variant="secondary">Desconocido</Badge>;
   };
 
   if (isLoading) {
@@ -153,173 +126,115 @@ export default function Screens() {
         title="Pantallas"
         subtitle="Gestiona tus dispositivos de visualización"
         actions={
-          <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Nueva Pantalla
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Emparejar Nueva Pantalla</DialogTitle></DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="pairingCode">Código de Emparejamiento *</Label>
-                  <Input id="pairingCode" value={formData.pairingCode} onChange={handleFormChange} placeholder="123456" />
-                </div>
-                <div>
-                  <Label htmlFor="name">Nombre de la Pantalla *</Label>
-                  <Input id="name" value={formData.name} onChange={handleFormChange} placeholder="Ej: Pantalla Lobby" />
-                </div>
-                <div>
-                  <Label htmlFor="location">Ubicación</Label>
-                  <Input id="location" value={formData.location} onChange={handleFormChange} placeholder="Ej: Recepción" />
-                </div>
-                <div>
-                  <Label htmlFor="playlist">Playlist Asignada</Label>
-                  <Select value={formData.playlistId} onValueChange={handlePlaylistSelect}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar playlist (opcional)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin playlist</SelectItem>
-                      {playlists.map((playlist) => (
-                        <SelectItem key={playlist.id} value={playlist.id.toString()}>{playlist.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setCreateModalOpen(false)}>Cancelar</Button>
-                  <Button onClick={handleSubmit} disabled={completePairingMutation.isPending}>
-                    {completePairingMutation.isPending ? "Emparejando..." : "Emparejar Pantalla"}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setIsPairModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nueva Pantalla
+          </Button>
         }
       />
 
+      {/* MODAL PARA EMPAREJAR PANTALLA */}
+      <Dialog open={isPairModalOpen} onOpenChange={setIsPairModalOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Emparejar Nueva Pantalla</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="pairingCode">Código de Emparejamiento *</Label>
+              <Input id="pairingCode" value={pairFormData.pairingCode} onChange={handlePairFormChange} placeholder="123456" />
+            </div>
+            <div>
+              <Label htmlFor="name">Nombre de la Pantalla *</Label>
+              <Input id="name" value={pairFormData.name} onChange={handlePairFormChange} placeholder="Ej: Pantalla Lobby" />
+            </div>
+            <div>
+              <Label htmlFor="location">Ubicación</Label>
+              <Input id="location" value={pairFormData.location} onChange={handlePairFormChange} placeholder="Ej: Recepción" />
+            </div>
+            <div>
+              <Label htmlFor="playlist">Playlist Asignada</Label>
+              <Select value={pairFormData.playlistId} onValueChange={handlePairPlaylistSelect}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar playlist (opcional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin playlist</SelectItem>
+                  {playlists.map((playlist) => <SelectItem key={playlist.id} value={playlist.id.toString()}>{playlist.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPairModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handlePairSubmit} disabled={completePairingMutation.isPending}>
+              {completePairingMutation.isPending ? "Emparejando..." : "Emparejar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL PARA EDITAR PANTALLA */}
+      <Dialog open={!!editingScreen} onOpenChange={() => setEditingScreen(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar Pantalla</DialogTitle></DialogHeader>
+          {editingScreen && (
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="edit-name">Nombre</Label>
+                <Input id="edit-name" value={editingScreen.name} onChange={(e) => setEditingScreen({...editingScreen, name: e.target.value})} />
+              </div>
+              <div>
+                <Label htmlFor="edit-location">Ubicación</Label>
+                <Input id="edit-location" value={editingScreen.location || ''} onChange={(e) => setEditingScreen({...editingScreen, location: e.target.value})} />
+              </div>
+              <div>
+                <Label htmlFor="edit-playlist">Playlist Asignada</Label>
+                <Select value={editingScreen.playlistId?.toString() || 'none'} onValueChange={(value) => setEditingScreen({...editingScreen, playlistId: value === 'none' ? null : parseInt(value, 10)})}>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin playlist</SelectItem>
+                    {playlists.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingScreen(null)}>Cancelar</Button>
+            <Button onClick={() => editingScreen && updateMutation.mutate(editingScreen)} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* LISTA DE PANTALLAS */}
       <div className="flex-1 px-6 py-6 overflow-auto">
         {screens.length === 0 ? (
-          <Card className="border-dashed border-2 border-slate-300">
-            <CardContent className="p-12 text-center">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Monitor className="w-8 h-8 text-slate-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                No tienes pantallas registradas
-              </h3>
-              <p className="text-slate-600 mb-6">
-                Agrega tus dispositivos de visualización para poder gestionar el contenido que se muestra.
-              </p>
-              <Button 
-                onClick={() => setCreateModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Agregar Primera Pantalla
-              </Button>
-            </CardContent>
-          </Card>
+          <Card className="border-dashed"><CardContent className="p-12 text-center">...</CardContent></Card>
         ) : (
-          <div className="content-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {screens.map((screen) => (
-              <Card key={screen.id} className="border-slate-200 hover:shadow-lg transition-shadow">
-                <CardContent className="p-0">
-                  {/* Screen Header */}
-                  <div className="p-4 border-b border-slate-200">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
-                          <Tv className="w-6 h-6 text-slate-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-slate-900">
-                            {screen.name}
-                          </h4>
-                          {screen.location && (
-                            <div className="flex items-center text-sm text-slate-500 mt-1">
-                              <MapPin className="w-3 h-3 mr-1" />
-                              {screen.location}
-                            </div>
-                          )}
-                        </div>
+              <Card key={screen.id} className="flex flex-col">
+                <CardContent className="p-4 flex-grow flex flex-col">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center"><Tv className="w-5 h-5 text-slate-500"/></div>
+                      <div>
+                        <h4 className="font-semibold text-slate-900 leading-tight">{screen.name}</h4>
+                        {screen.location && <p className="text-sm text-slate-500">{screen.location}</p>}
                       </div>
-                      <div className="flex items-center space-x-2">
-                        {screen.isOnline ? (
-                          <Wifi className="w-5 h-5 text-green-600" />
-                        ) : (
-                          <WifiOff className="w-5 h-5 text-red-600" />
-                        )}
-                        {getStatusBadge(screen.isOnline, screen.lastSeen ? new Date(screen.lastSeen).toISOString() : undefined)}
-                      </div>
+                    </div>
+                    {getStatusBadge(screen.isOnline, screen.lastSeen)}
+                  </div>
+                  <div className="flex-grow mt-4 space-y-2">
+                    <div className="text-xs text-slate-500">
+                      <span className="font-medium">Playlist:</span> {playlists.find(p => p.id === screen.playlistId)?.name || <span className="italic">Ninguna</span>}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      <span className="font-medium">Última vez online:</span> {formatDate(screen.lastSeen)}
                     </div>
                   </div>
-
-                  {/* Screen Info */}
-                  <div className="p-4">
-                    {screen.description && (
-                      <p className="text-sm text-slate-600 mb-4">
-                        {screen.description}
-                      </p>
-                    )}
-
-                    {/* Assigned Playlist */}
-                    <div className="mb-4">
-                      <Label className="text-xs text-slate-500">PLAYLIST ASIGNADA</Label>
-                      {screen.playlistId ? (
-                        <div className="mt-1 flex items-center space-x-2">
-                          <Badge variant="outline">
-                            {playlists.find((p) => p.id === screen.playlistId)?.name || "Playlist no encontrada"}
-                          </Badge>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-400 mt-1">Sin playlist asignada</p>
-                      )}
-                    </div>
-
-                    {/* Status Info */}
-                    <div className="space-y-2 text-xs text-slate-500 mb-4">
-                      <div className="flex items-center justify-between">
-                        <span>Creada:</span>
-                        <span>{formatDate(screen.createdAt)}</span>
-                      </div>
-                      {screen.lastSeen && (
-                        <div className="flex items-center justify-between">
-                          <span>Última conexión:</span>
-                          <span>{formatDate(screen.lastSeen)}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex justify-between items-center">
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" className="h-8 px-2">
-                          <Settings className="w-3 h-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-8 px-2">
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="h-8 px-2 text-red-600 hover:text-red-700"
-                          onClick={() => deleteMutation.mutate(screen.id)}
-                          disabled={deleteMutation.isLoading}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        className="h-8 px-3 text-xs"
-                        disabled={!screen.isOnline}
-                      >
-                        <Monitor className="w-3 h-3 mr-1" />
-                        {screen.isOnline ? "Gestionar" : "Sin conexión"}
-                      </Button>
-                    </div>
+                  <div className="mt-4 pt-4 border-t flex justify-end space-x-2">
+                    <Button size="icon" variant="ghost" onClick={() => setEditingScreen(screen)}><Edit className="w-4 h-4" /></Button>
+                    <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => deleteMutation.mutate(screen.id)} disabled={deleteMutation.isPending}><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 </CardContent>
               </Card>
