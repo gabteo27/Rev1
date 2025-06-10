@@ -1,10 +1,9 @@
+
 import express, { type Request, Response, NextFunction } from "express";
 import routes from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -37,7 +36,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Use the new routes
+  // Use the routes app
   app.use('/', routes);
   
   const server = require('http').createServer(app);

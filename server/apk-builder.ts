@@ -1,34 +1,33 @@
-// @ts-nocheck
-import { Hono } from 'hono';
+import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { serveStatic } from 'hono/bun';
 import fs from 'fs/promises';
 import path from 'path';
 
 const execAsync = promisify(exec);
-
-// --- CORRECCIÓN: Exportamos la constante directamente ---
-// En lugar de 'const app = new Hono()' y 'export default app' al final,
-// exportamos la constante 'apkBuilder' desde el principio.
-export const apkBuilder = new Hono();
+export const apkBuilder = express.Router();
 
 const APK_DIR = path.join(process.cwd(), 'apks');
 const TEMPLATE_DIR = path.join(process.cwd(), 'android-template');
 
 // Helper function to ensure APK directory exists
-const ensureApkDir = async () => {
+async function ensureApkDir() {
   try {
     await fs.access(APK_DIR);
   } catch (error) {
-    await fs.mkdir(APK_DIR);
+    await fs.mkdir(APK_DIR, { recursive: true });
   }
-};
+}
 
-apkBuilder.post('/build', async (c) => {
-  const { serverUrl } = await c.req.json();
+// Basic endpoint for APK building
+apkBuilder.get('/status', (req, res) => {
+  res.json({ status: 'APK Builder ready' });
+});
+
+apkBuilder.post('/build', async (req, res) => {
+  const { serverUrl } = req.body;
   if (!serverUrl) {
-    return c.json({ error: 'serverUrl is required' }, 400);
+    return res.status(400).json({ error: 'serverUrl is required' });
   }
 
   const buildId = `build_${Date.now()}`;
@@ -82,7 +81,7 @@ apkBuilder.post('/build', async (c) => {
     console.log('Cleanup complete.');
 
     const downloadUrl = `/api/apk/download/${apkName}`;
-    return c.json({
+    res.json({
       success: true,
       message: 'APK built successfully!',
       downloadUrl: downloadUrl,
@@ -92,39 +91,39 @@ apkBuilder.post('/build', async (c) => {
     console.error('Build failed:', error);
     // Clean up on failure as well
     if (buildDir) {
-      await fs.rm(buildDir, { recursive: true, force: true }).catch(cleanupErr => 
+      await fs.rm(buildDir, { recursive: true, force: true }).catch(cleanupErr =>
         console.error('Failed to cleanup build directory after error:', cleanupErr)
       );
     }
-    return c.json({ error: 'APK build failed', details: error.message }, 500);
+    res.status(500).json({ error: 'APK build failed', details: error.message });
   }
 });
 
-apkBuilder.get('/download/:filename', async (c) => {
-    const { filename } = c.req.param();
-    const filePath = path.join(APK_DIR, filename);
+apkBuilder.get('/download/:filename', async (req, res) => {
+  const { filename } = req.params;
+  const filePath = path.join(APK_DIR, filename);
 
-    try {
-        await fs.access(filePath);
-        return serveStatic({ path: filePath })(c);
-    } catch (error) {
-        return c.text('File not found', 404);
-    }
+  try {
+    await fs.access(filePath);
+    res.sendFile(filePath);
+  } catch (error) {
+    res.status(404).send('File not found');
+  }
 });
 
-apkBuilder.get('/list', async (c) => {
-    try {
-        await ensureApkDir();
-        const files = await fs.readdir(APK_DIR);
-        const apkFiles = files
-            .filter(file => file.endsWith('.apk'))
-            .map(file => ({
-                filename: file,
-                downloadUrl: `/api/apk/download/${file}`
-            }));
-        return c.json(apkFiles);
-    } catch (error) {
-        console.error('Failed to list APKs:', error);
-        return c.json({ error: 'Failed to list APKs' }, 500);
-    }
+apkBuilder.get('/list', async (req, res) => {
+  try {
+    await ensureApkDir();
+    const files = await fs.readdir(APK_DIR);
+    const apkFiles = files
+      .filter(file => file.endsWith('.apk'))
+      .map(file => ({
+        filename: file,
+        downloadUrl: `/api/apk/download/${file}`
+      }));
+    res.json(apkFiles);
+  } catch (error) {
+    console.error('Failed to list APKs:', error);
+    res.status(500).json({ error: 'Failed to list APKs' });
+  }
 });

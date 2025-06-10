@@ -20,45 +20,85 @@ import {
   type Deployment,
 } from '../shared/schema';
 import { eq, and, isNull, or } from 'drizzle-orm';
-import { playerAuth } from './playerAuth';
+import { isAuthenticated } from './replitAuth';
 import { storage } from './storage';
-import { apkBuilder } from './apk-builder';
 
-const router = Router();
+const app = express();
 const playerConnections = new Map<string, WebSocket>();
 
-// --- Rutas existentes (sin cambios) ---
-router.use('/api/player', playerAuth);
-router.use('/api/storage', storage);
-router.use('/api/apk', apkBuilder);
+// Middleware para parsing de JSON
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // Middleware de autenticación para rutas protegidas
-router.use('/api/screens*', async (req: any, res, next) => {
+app.use('/api/screens*', async (req: any, res, next) => {
   const userId = req.headers['x-user-id'] || 'test-user-id';
   req.userId = userId;
   next();
 });
 
-router.use('/api/content*', async (req: any, res, next) => {
+app.use('/api/content*', async (req: any, res, next) => {
   const userId = req.headers['x-user-id'] || 'test-user-id';
   req.userId = userId;
   next();
 });
 
-router.use('/api/playlists*', async (req: any, res, next) => {
+app.use('/api/playlists*', async (req: any, res, next) => {
   const userId = req.headers['x-user-id'] || 'test-user-id';
   req.userId = userId;
   next();
 });
 
-router.use('/api/schedules*', async (req: any, res, next) => {
+app.use('/api/schedules*', async (req: any, res, next) => {
   const userId = req.headers['x-user-id'] || 'test-user-id';
   req.userId = userId;
   next();
+});
+
+// Player Auth routes
+app.post('/api/player/code', async (req: Request, res: Response) => {
+  try {
+    const deviceHardwareId = `device_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    const pairingCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const pairingCodeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const name = `Screen ${pairingCode}`;
+
+    await storage.upsertTemporaryScreen({
+      deviceHardwareId,
+      pairingCode,
+      pairingCodeExpiresAt,
+      name
+    });
+
+    res.json({
+      pairingCode,
+      deviceHardwareId,
+      expiresAt: pairingCodeExpiresAt
+    });
+  } catch (error) {
+    console.error('Error creating pairing code:', error);
+    res.status(500).json({ error: 'Failed to create pairing code' });
+  }
+});
+
+app.get('/api/player/status/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const screen = await storage.getScreenByDeviceHardwareId(id);
+    
+    if (!screen) {
+      return res.status(404).json({ error: 'Screen not found' });
+    }
+    
+    res.json(screen);
+  } catch (error) {
+    console.error(`Error fetching status for screen ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch screen status' });
+  }
 });
 
 // --- NUEVA lógica de WebSocket ---
-router.get('/api/ws/screen/:screenId', async (req: Request, res: Response) => {
+app.get('/api/ws/screen/:screenId', async (req: Request, res: Response) => {
   try {
     if (req.headers.upgrade !== 'websocket') {
       return res.status(400).json({ error: 'Expected websocket upgrade' });
@@ -80,7 +120,7 @@ router.get('/api/ws/screen/:screenId', async (req: Request, res: Response) => {
 // --- Rutas de API ---
 
 // Screens API
-router.get('/api/screens', async (req: any, res: Response) => {
+app.get('/api/screens', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const userScreens = await db
@@ -95,7 +135,7 @@ router.get('/api/screens', async (req: any, res: Response) => {
   }
 });
 
-router.post('/api/screens', async (req: any, res: Response) => {
+app.post('/api/screens', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const screenData = { ...req.body, userId };
@@ -112,7 +152,7 @@ router.post('/api/screens', async (req: any, res: Response) => {
   }
 });
 
-router.put('/api/screens/:id', async (req: any, res: Response) => {
+app.put('/api/screens/:id', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const screenId = parseInt(req.params.id);
@@ -134,7 +174,7 @@ router.put('/api/screens/:id', async (req: any, res: Response) => {
   }
 });
 
-router.delete('/api/screens/:id', async (req: any, res: Response) => {
+app.delete('/api/screens/:id', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const screenId = parseInt(req.params.id);
@@ -155,7 +195,7 @@ router.delete('/api/screens/:id', async (req: any, res: Response) => {
 });
 
 // Content API
-router.get('/api/content', async (req: any, res: Response) => {
+app.get('/api/content', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const content = await db
@@ -170,7 +210,7 @@ router.get('/api/content', async (req: any, res: Response) => {
   }
 });
 
-router.post('/api/content', async (req: any, res: Response) => {
+app.post('/api/content', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const contentData = { ...req.body, userId };
@@ -188,7 +228,7 @@ router.post('/api/content', async (req: any, res: Response) => {
 });
 
 // Playlists API
-router.get('/api/playlists', async (req: any, res: Response) => {
+app.get('/api/playlists', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const userPlaylists = await db
@@ -203,7 +243,7 @@ router.get('/api/playlists', async (req: any, res: Response) => {
   }
 });
 
-router.post('/api/playlists', async (req: any, res: Response) => {
+app.post('/api/playlists', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const playlistData = { ...req.body, userId };
@@ -221,7 +261,7 @@ router.post('/api/playlists', async (req: any, res: Response) => {
 });
 
 // Alerts API
-router.get('/api/alerts', async (req: any, res: Response) => {
+app.get('/api/alerts', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const userAlerts = await db
@@ -236,7 +276,7 @@ router.get('/api/alerts', async (req: any, res: Response) => {
   }
 });
 
-router.post('/api/alerts', async (req: any, res: Response) => {
+app.post('/api/alerts', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const alertData = { ...req.body, userId };
@@ -254,7 +294,7 @@ router.post('/api/alerts', async (req: any, res: Response) => {
 });
 
 // Widgets API
-router.get('/api/widgets', async (req: any, res: Response) => {
+app.get('/api/widgets', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const userWidgets = await db
@@ -269,7 +309,7 @@ router.get('/api/widgets', async (req: any, res: Response) => {
   }
 });
 
-router.post('/api/widgets', async (req: any, res: Response) => {
+app.post('/api/widgets', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const widgetData = { ...req.body, userId };
@@ -287,7 +327,7 @@ router.post('/api/widgets', async (req: any, res: Response) => {
 });
 
 // Schedules API
-router.get('/api/schedules', async (req: any, res: Response) => {
+app.get('/api/schedules', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const userSchedules = await db
@@ -302,7 +342,7 @@ router.get('/api/schedules', async (req: any, res: Response) => {
   }
 });
 
-router.post('/api/schedules', async (req: any, res: Response) => {
+app.post('/api/schedules', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const scheduleData = { ...req.body, userId };
@@ -320,7 +360,7 @@ router.post('/api/schedules', async (req: any, res: Response) => {
 });
 
 // Deployments API
-router.get('/api/deployments', async (req: any, res: Response) => {
+app.get('/api/deployments', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const userDeployments = await db
@@ -335,7 +375,7 @@ router.get('/api/deployments', async (req: any, res: Response) => {
   }
 });
 
-router.post('/api/deployments', async (req: any, res: Response) => {
+app.post('/api/deployments', async (req: any, res: Response) => {
   try {
     const userId = req.userId || 'test-user-id';
     const deploymentData = { ...req.body, userId };
@@ -353,7 +393,7 @@ router.post('/api/deployments', async (req: any, res: Response) => {
 });
 
 // Screen pairing endpoint
-router.post('/api/screens/pair', async (req: Request, res: Response) => {
+app.post('/api/screens/pair', async (req: Request, res: Response) => {
   try {
     const { pairingCode } = req.body;
     const userId = 'test-user-id'; // Simulated user
@@ -410,4 +450,4 @@ router.post('/api/screens/pair', async (req: Request, res: Response) => {
   }
 });
 
-export default router;
+export default app;
