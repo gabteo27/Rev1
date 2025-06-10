@@ -76,23 +76,22 @@ export default function PlayerPage() {
             if(!statusResponse.ok) return;
 
             const data = await statusResponse.json();
-          if (data.status === 'paired') {
-            console.log('¡Emparejamiento exitoso!', data);
-            localStorage.setItem('authToken', data.authToken);
-            localStorage.setItem('screenName', data.name);
+        if (data.status === 'paired') {
+          console.log('¡Emparejamiento exitoso!', data);
+          localStorage.setItem('authToken', data.authToken);
+          localStorage.setItem('screenName', data.name);
 
-            // Si el playlistId existe, lo guardamos. Si es nulo o undefined, lo eliminamos.
-            if (data.playlistId) {
-              localStorage.setItem('playlistId', data.playlistId.toString());
-            } else {
-              localStorage.removeItem('playlistId');
-            }
-
-            clearInterval(intervalId);
-            // Cambiar inmediatamente al reproductor
-            setStatus('paired');
+          // ----- CORRECCIÓN CLAVE AQUÍ -----
+          // Si el playlistId existe, lo guardamos. Si es nulo o undefined, nos aseguramos de que no haya nada en localStorage.
+          if (data.playlistId) {
+            localStorage.setItem('playlistId', data.playlistId.toString());
+          } else {
+            localStorage.removeItem('playlistId');
           }
-        } catch (err) {
+
+          clearInterval(intervalId);
+          setStatus('paired');
+        }} catch (err) {
             console.error("Error durante el polling:", err);
         }
     }, 2000); // Reducir el intervalo a 2 segundos para respuesta más rápida

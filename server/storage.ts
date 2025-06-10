@@ -146,6 +146,8 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  // En server/storage.ts, dentro de la clase DatabaseStorage
+
   async getScreenByAuthToken(token: string): Promise<Screen | undefined> {
     const [screen] = await db
       .select()

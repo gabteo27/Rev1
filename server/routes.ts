@@ -187,6 +187,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.screen.userId; 
       const id = parseInt(req.params.id);
 
+      if (!userId) {
+        return res.status(403).json({ message: "Screen is not associated with a user." });
+      }
+
       const playlist = await storage.getPlaylistWithItems(id, userId);
 
       if (!playlist) {
@@ -198,6 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch playlist" });
     }
   });
+
 
   app.post("/api/playlists", isAuthenticated, async (req: any, res) => {
     try {
@@ -351,6 +356,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const screenId = req.screen.id;
       const userId = req.screen.userId;
 
+      if (!userId) {
+        return res.status(400).json({ message: "Cannot update heartbeat for an unassigned screen." });
+      }
+
       await storage.updateScreen(screenId, {
         isOnline: true,
         lastSeen: new Date(),
@@ -363,6 +372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Heartbeat failed" });
     }
   });
+
 
 
   app.put("/api/screens/:id", isAuthenticated, async (req: any, res) => {
