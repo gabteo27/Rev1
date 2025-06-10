@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import ContentPlayer from "@/components/player/ContentPlayer";
 import { FunctionalWidget } from "@/components/widgets/functional-widget";
