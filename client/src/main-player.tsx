@@ -11,7 +11,7 @@ import "./index.css";
 // Renderiza únicamente la página del reproductor con todos los providers necesarios
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="system" storageKey="xcientv-ui-theme">
+    <ThemeProvider defaultTheme="light" storageKey="xcientv-ui-theme">
       <TooltipProvider>
         <Toaster />
         <PlayerPage />

@@ -79,7 +79,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system" storageKey="xcientv-ui-theme">
+      <ThemeProvider defaultTheme="light" storageKey="xcientv-ui-theme">
         <TooltipProvider>
           <Toaster />
           <Router />
