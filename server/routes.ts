@@ -823,3 +823,25 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
 }
+
+// Make WebSocket server available to routes
+export { wss };
+
+// Function to broadcast alerts to connected screens
+function broadcastAlert(alert: any) {
+  if (!wss) return;
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1 && client.screenId) { // WebSocket.OPEN = 1
+      try {
+        client.send(JSON.stringify({
+          type: 'alert',
+          screenId: client.screenId,
+          alert: alert
+        }));
+      } catch (error) {
+        console.error('Error broadcasting alert to client:', error);
+      }
+    }
+  });
+}

@@ -12,36 +12,70 @@ class WebSocketManager {
         return;
       }
 
+      // Close any existing connection first
+      if (this.ws) {
+        try {
+          this.ws.close();
+        } catch (error) {
+          console.error("Error closing existing WebSocket:", error);
+        }
+        this.ws = null;
+      }
+
       try {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        // --- CORRECCIÓN ---
-        // Usar window.location.host, que incluye el host y el puerto correctamente 
-        // en la mayoría de los entornos, incluido Replit.
-        const wsUrl = `<span class="math-inline">\{protocol\}//</span>{window.location.host}/ws`;
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
 
+        console.log("Attempting WebSocket connection to:", wsUrl);
         this.ws = new WebSocket(wsUrl);
-      
+
       this.ws.onopen = () => {
-        console.log("WebSocket connected");
+        console.log("WebSocket connected successfully");
         this.reconnectAttempts = 0;
+
+        // Send pong response to server ping
+        this.ws.addEventListener('message', (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'ping') {
+              this.send({ type: 'pong', timestamp: Date.now() });
+            }
+          } catch (error) {
+            // Ignore ping/pong parsing errors
+          }
+        });
       };
-      
+
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+
+          // Skip ping messages in main handler
+          if (message.type === 'ping') {
+            return;
+          }
+
           this.handleMessage(message);
         } catch (error) {
           console.error("Failed to parse WebSocket message:", error);
         }
       };
-      
+
       this.ws.onclose = (event) => {
-        console.log("WebSocket disconnected:", event.code, event.reason);
-        this.scheduleReconnect();
+        console.log(`WebSocket disconnected: ${event.code} - ${event.reason}`);
+        this.ws = null;
+
+        // Only reconnect if it wasn't a manual close
+        if (event.code !== 1000) {
+          this.scheduleReconnect();
+        }
       };
-      
+
       this.ws.onerror = (error) => {
         console.error("WebSocket error:", error);
+        if (this.ws) {
+          this.ws.close();
+        }
       };
     } catch (error) {
       console.error("Failed to create WebSocket connection:", error);
@@ -53,9 +87,9 @@ class WebSocketManager {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      
+
       console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
-      
+
       setTimeout(() => {
         this.connect();
       }, delay);
@@ -66,7 +100,7 @@ class WebSocketManager {
 
   private handleMessage(message: any) {
     const { type, data } = message;
-    
+
     switch (type) {
       case "alert":
         this.handleAlert(data);
@@ -100,7 +134,7 @@ class WebSocketManager {
   private handleAlert(alert: any) {
     // Invalidate alerts cache to refresh the UI
     queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-    
+
     // Show alert notification in UI if needed
     if (alert.isActive) {
       this.showAlertNotification(alert);

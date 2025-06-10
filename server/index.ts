@@ -45,14 +45,30 @@ const httpServer = createServer(app);
 await setupVite(app, httpServer);
 
 // Setup WebSocket server for real-time communication
-const wss = new WebSocketServer({ server: httpServer });
+const wss = new WebSocketServer({ 
+  server: httpServer,
+  path: '/ws',
+  verifyClient: (info) => {
+    // Accept all connections for now
+    return true;
+  }
+});
 
 wss.on('connection', (ws, req) => {
-  console.log('New WebSocket connection established');
+  console.log('New WebSocket connection established from:', req.socket.remoteAddress);
+
+  // Send initial ping to verify connection
+  ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message.toString());
+      
+      // Handle ping/pong for connection health
+      if (data.type === 'pong') {
+        return; // Just acknowledge the pong
+      }
+      
       console.log('WebSocket message received:', data);
 
       // Handle screen identification
@@ -62,16 +78,49 @@ wss.on('connection', (ws, req) => {
       }
     } catch (error) {
       console.error('Error parsing WebSocket message:', error);
+      // Don't close connection on parse error, just log it
     }
   });
 
-  ws.on('close', () => {
-    console.log('WebSocket connection closed');
+  ws.on('close', (code, reason) => {
+    console.log(`WebSocket connection closed: ${code} - ${reason}`);
   });
 
   ws.on('error', (error) => {
     console.error('WebSocket error:', error);
+    // Try to close the connection gracefully
+    try {
+      ws.terminate();
+    } catch (e) {
+      console.error('Error terminating WebSocket:', e);
+    }
   });
+
+  // Handle connection cleanup
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
+});
+
+// Ping all clients every 30 seconds to keep connections alive
+const interval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      return ws.terminate();
+    }
+    
+    ws.isAlive = false;
+    try {
+      ws.ping();
+    } catch (error) {
+      console.error('Error pinging client:', error);
+      ws.terminate();
+    }
+  });
+}, 30000);
+
+wss.on('close', () => {
+  clearInterval(interval);
 });
 
 // Make WebSocket server available to routes
