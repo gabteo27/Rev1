@@ -19,6 +19,24 @@ import {
   insertDeploymentSchema,
 } from "@shared/schema";
 import { buildApk } from "./apk-builder";
+import { Request, Response } from "express";
+import { db } from "./db.js";
+import {
+  users,
+  contentItems,
+  playlists,
+  playlistItems,
+  screens,
+  alerts,
+  widgets,
+  insertContentItemSchema,
+  insertPlaylistSchema,
+  insertPlaylistItemSchema,
+  insertScreenSchema,
+  insertAlertSchema,
+  insertWidgetSchema,
+} from "@shared/schema";
+import { eq, and, desc, asc } from "drizzle-orm";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -316,10 +334,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertPlaylistItemSchema.parse(itemData);
       const item = await storage.createPlaylistItem(validatedData);
-      
+
       // Recalculate total duration
       await storage.updatePlaylistDuration(playlistId);
-      
+
       res.json(item);
     } catch (error) {
       console.error("Error adding playlist item:", error);
@@ -795,7 +813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      /* Update deployment status to building
+      /* Update deployment status to building */
       const deployment = await storage.updateDeployment(id, { status: "building" }, userId);
       if (!deployment) {
         return res.status(404).json({ message: "Deployment not found" });
@@ -830,25 +848,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Deployment completed" });
     } catch (error) {
       console.error("Error deploying:", error);
-      res.status(500).json({ message: "Failed to deploy" });
-    }
-  }); */
+      res.status(500).json({ message: "Failed to deploy"
+});
 
- // Serve uploaded files and APKs
+  // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
-  app.use("/apks", express.static(path.resolve(process.cwd(), "dist/apks")));
 
+  // Create HTTP server
+  const server = createServer(app);
 
-  const httpServer = createServer(app);
+  // WebSocket setup for real-time updates
+  const wss = new WebSocketServer({ server });
+  const clients = new Set<WebSocket>();
 
-  // WebSocket server for real-time updates
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
-
-  wss.on("connection", (ws: WebSocket) => {
-    console.log("Client connected to WebSocket");
+  wss.on("connection", (ws) => {
+    clients.add(ws);
 
     ws.on("close", () => {
-      console.log("Client disconnected from WebSocket");
+      clients.delete(ws);
     });
   });
 
@@ -856,15 +873,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   function broadcastAlert(alert: any) {
     const message = JSON.stringify({
       type: "alert",
-      data: alert,
+      data: alert
     });
 
-    wss.clients.forEach((client) => {
+    clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
       }
     });
   }
 
-  return httpServer;
+  return server;
 }

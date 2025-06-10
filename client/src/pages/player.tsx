@@ -1,141 +1,239 @@
-import { useState, useEffect } from 'react';
-import ContentPlayer from '@/components/player/ContentPlayer';
+import { useEffect, useState, useRef } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import ContentPlayer from "@/components/player/ContentPlayer";
+import { FunctionalWidget } from "@/components/widgets/functional-widget";
+import type { Screen, Playlist, PlaylistItem, ContentItem, Alert, Widget } from "@shared/schema";
 
-// Estilos (sin cambios)
-const playerStyles: React.CSSProperties = {
-  position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-  backgroundColor: '#000', color: 'white', display: 'flex',
-  alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
-  fontFamily: 'sans-serif', textAlign: 'center', padding: '1rem',
-};
+interface AlertOverlay {
+  id: number;
+  message: string;
+  backgroundColor: string;
+  textColor: string;
+  duration: number;
+  isActive: boolean;
+}
 
-const codeStyles: React.CSSProperties = {
-  fontSize: '5vw', fontWeight: 'bold', letterSpacing: '1vw', padding: '2rem',
-  border: '2px solid #fff', borderRadius: '1rem', backgroundColor: '#333',
-  marginTop: '2rem'
-};
+export default function Player() {
+  const { screenId } = useParams();
+  const [searchParams] = useSearchParams();
+  const isFullscreen = searchParams.get("fullscreen") === "true";
 
-// --- FUNCIÓN PARA OBTENER ID DEL DISPOSITIVO (SIN CAMBIOS) ---
-const getDeviceHardwareId = (): string => {
-  let id = localStorage.getItem('deviceHardwareId');
-  if (!id) {
-    id = `device_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    localStorage.setItem('deviceHardwareId', id);
-  }
-  return id;
-};
+  const [currentItemIndex, setCurrentItemIndex] = useState(0);
+  const [currentAlert, setCurrentAlert] = useState<AlertOverlay | null>(null);
+  const [widgets, setWidgets] = useState<Widget[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
 
-// --- CORRECCIÓN: SE INTRODUCE UN ESTADO DE ERROR MEJORADO ---
-type PlayerStatus = 'initializing' | 'pairing' | 'paired' | 'error';
+  const { data: screen } = useQuery<Screen>({
+    queryKey: [`/api/screens/${screenId}`],
+    refetchInterval: 30000,
+  });
 
-export default function PlayerPage() {
-  const [status, setStatus] = useState<PlayerStatus>('initializing');
-  const [pairingCode, setPairingCode] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { data: playlist } = useQuery<Playlist & { playlistItems: (PlaylistItem & { contentItem: ContentItem })[] }>({
+    queryKey: [`/api/playlists/${screen?.playlistId}`],
+    enabled: !!screen?.playlistId,
+    refetchInterval: 30000,
+  });
 
+  const { data: initialWidgets } = useQuery<Widget[]>({
+    queryKey: ["/api/widgets"],
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+  });
+
+  // Setup WebSocket connection for real-time updates
   useEffect(() => {
-    // Si ya tenemos un token, pasamos directamente al estado 'paired'.
-    if (localStorage.getItem('authToken')) {
-      setStatus('paired');
-      return;
-    }
+    if (!screenId) return;
 
-    const deviceId = getDeviceHardwareId();
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
 
-    // Función para iniciar el proceso de emparejamiento
-    const initiatePairing = async () => {
+    wsRef.current = new WebSocket(wsUrl);
+
+    wsRef.current.onopen = () => {
+      console.log('WebSocket connected');
+      wsRef.current?.send(JSON.stringify({
+        type: 'identify_screen',
+        screenId: parseInt(screenId)
+      }));
+    };
+
+    wsRef.current.onmessage = (event) => {
       try {
-        const response = await fetch('/api/screens/initiate-pairing', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deviceHardwareId: deviceId }),
-        });
+        const data = JSON.parse(event.data);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'No se pudo obtener el código del servidor.');
+        if (data.type === 'alert' && data.screenId === parseInt(screenId)) {
+          setCurrentAlert(data.alert);
+
+          // Auto-hide alert after duration (if duration > 0)
+          if (data.alert.duration > 0) {
+            setTimeout(() => {
+              setCurrentAlert(null);
+            }, data.alert.duration * 1000);
+          }
+        } else if (data.type === 'alert_update' && data.screenId === parseInt(screenId)) {
+          if (!data.alert.isActive) {
+            setCurrentAlert(null);
+          }
+        } else if (data.type === 'widget_update' && data.screenId === parseInt(screenId)) {
+          setWidgets(prev => {
+            const updated = [...prev];
+            data.widgets.forEach((widget: Widget) => {
+              const index = updated.findIndex(w => w.id === widget.id);
+              if (index >= 0) {
+                updated[index] = widget;
+              } else {
+                updated.push(widget);
+              }
+            });
+            return updated;
+          });
+        } else if (data.type === 'widget_remove' && data.screenId === parseInt(screenId)) {
+          setWidgets(prev => prev.filter(w => w.id !== data.widgetId));
         }
-
-        const data = await response.json();
-        setPairingCode(data.pairingCode);
-        setStatus('pairing'); // Cambiamos a estado de emparejamiento
-      } catch (err: any) {
-        // --- CORRECCIÓN: MANEJO DE ERRORES AL INICIAR ---
-        setErrorMessage(err.message);
-        setStatus('error');
-        console.error("Error al iniciar emparejamiento:", err);
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
       }
     };
 
-    initiatePairing();
+    wsRef.current.onclose = () => {
+      console.log('WebSocket disconnected');
+    };
 
-    // Intervalo para verificar si el emparejamiento se ha completado
-    const intervalId = setInterval(async () => {
-      // --- CORRECCIÓN: SOLO VERIFICAR SI ESTAMOS EN MODO DE EMPAREJAMIENTO ---
-      if (status !== 'pairing' && document.visibilityState !== 'visible') return;
+    return () => {
+      wsRef.current?.close();
+    };
+  }, [screenId]);
 
-      try {
-        const encodedDeviceId = encodeURIComponent(deviceId);
-        const statusResponse = await fetch(`/api/screens/pairing-status/${encodedDeviceId}`);
+  // Initialize widgets
+  useEffect(() => {
+    if (initialWidgets) {
+      setWidgets(initialWidgets.filter(w => w.isEnabled));
+    }
+  }, [initialWidgets]);
 
-        if (!statusResponse.ok) return;
+  // Content rotation logic
+  const currentItem = playlist?.playlistItems[currentItemIndex];
 
-        const data = await statusResponse.json();
+  useEffect(() => {
+    if (!currentItem || !playlist) return;
 
-        if (data.status === 'paired') {
-          console.log('¡Emparejamiento exitoso!', data);
-          localStorage.setItem('authToken', data.authToken);
-          localStorage.setItem('screenName', data.name);
+    const timer = setTimeout(() => {
+      setCurrentItemIndex((prev) => 
+        prev + 1 >= playlist.playlistItems.length ? 0 : prev + 1
+      );
+    }, currentItem.duration * 1000);
 
-          // --- CORRECCIÓN CLAVE: MANEJO DE PLAYLIST ID NULO ---
-          if (data.playlistId) {
-            localStorage.setItem('playlistId', data.playlistId.toString());
-          } else {
-            // Si no hay playlist, nos aseguramos de que no quede uno antiguo.
-            localStorage.removeItem('playlistId');
-          }
+    return () => clearTimeout(timer);
+  }, [currentItemIndex, currentItem, playlist]);
 
-          clearInterval(intervalId); // Detenemos el polling
-          setStatus('paired'); // Cambiamos al estado final
-        }
-      } catch (err) {
-        console.error("Error durante el polling de estado:", err);
-      }
-    }, 3000); // Verificamos cada 3 segundos
+  const getWidgetPositionClass = (position: string) => {
+    switch (position) {
+      case 'top-left':
+        return 'top-4 left-4';
+      case 'top-right':
+        return 'top-4 right-4';
+      case 'bottom-left':
+        return 'bottom-4 left-4';
+      case 'bottom-right':
+        return 'bottom-4 right-4';
+      case 'center':
+        return 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2';
+      default:
+        return 'top-4 right-4';
+    }
+  };
 
-    // Limpieza al desmontar el componente
-    return () => clearInterval(intervalId);
-  }, [status]); // El useEffect se re-ejecuta si el 'status' cambia
-
-  // --- RENDERIZADO BASADO EN EL ESTADO ---
-
-  if (status === 'error') {
+  if (!screen) {
     return (
-      <div style={playerStyles}>
-        <h1 style={{ color: '#ef4444' }}>Error de Conexión</h1>
-        <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>{errorMessage}</p>
-        <p style={{ fontSize: '1vw', marginTop: '2rem', color: '#aaa' }}>Verifica la consola para más detalles. Reintentando...</p>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl">Cargando pantalla...</div>
       </div>
     );
   }
 
-  if (status === 'initializing') {
-    return <div style={playerStyles}><h1>Inicializando Dispositivo...</h1></div>;
-  }
-
-  if (status === 'pairing') {
+  if (!playlist || !currentItem) {
     return (
-      <div style={playerStyles}>
-        <h1 style={{ fontSize: '3vw' }}>Introduce este código en tu panel de administración:</h1>
-        {pairingCode ? <div style={codeStyles}>{pairingCode}</div> : <p>Obteniendo código...</p>}
+      <div className="min-h-screen bg-black flex items-center justify-center relative">
+        <div className="text-white text-xl">
+          {!playlist ? "Cargando contenido..." : "No hay contenido disponible"}
+        </div>
+
+        {/* Render widgets even when no content */}
+        {widgets.map((widget) => (
+          <div
+            key={widget.id}
+            className={`absolute z-20 ${getWidgetPositionClass(widget.position)}`}
+          >
+            <FunctionalWidget widget={widget} className="bg-white/90 backdrop-blur-sm" />
+          </div>
+        ))}
+
+        {/* Alert overlay */}
+        {currentAlert && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-8"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
+          >
+            <div 
+              className="max-w-4xl w-full p-8 rounded-lg text-center animate-pulse"
+              style={{ 
+                backgroundColor: currentAlert.backgroundColor,
+                color: currentAlert.textColor 
+              }}
+            >
+              <div className="text-3xl font-bold mb-4">⚠️ ALERTA URGENTE ⚠️</div>
+              <div className="text-2xl font-medium">{currentAlert.message}</div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  // Si el estado es 'paired', renderizamos el reproductor de contenido
-  if (status === 'paired') {
-    return <ContentPlayer />;
-  }
+  return (
+    <div className={`${isFullscreen ? 'fixed inset-0 z-50' : 'min-h-screen'} bg-black relative`}>
+      {/* Main content */}
+      <ContentPlayer
+        contentItem={currentItem.contentItem}
+        autoplay
+      />
 
-  return null; // No renderizar nada en otros casos
+      {/* Widgets overlay */}
+      {widgets.map((widget) => (
+        <div
+          key={widget.id}
+          className={`absolute z-20 ${getWidgetPositionClass(widget.position)}`}
+        >
+          <FunctionalWidget widget={widget} className="bg-white/90 backdrop-blur-sm" />
+        </div>
+      ))}
+
+      {/* Alert overlay */}
+      {currentAlert && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-8"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
+          onClick={() => {
+            if (currentAlert.duration === 0) {
+              setCurrentAlert(null);
+            }
+          }}
+        >
+          <div 
+            className="max-w-4xl w-full p-8 rounded-lg text-center animate-pulse cursor-pointer"
+            style={{ 
+              backgroundColor: currentAlert.backgroundColor,
+              color: currentAlert.textColor 
+            }}
+          >
+            <div className="text-3xl font-bold mb-4">⚠️ ALERTA URGENTE ⚠️</div>
+            <div className="text-2xl font-medium mb-4">{currentAlert.message}</div>
+            {currentAlert.duration === 0 && (
+              <div className="text-sm opacity-75">Haz clic para cerrar</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

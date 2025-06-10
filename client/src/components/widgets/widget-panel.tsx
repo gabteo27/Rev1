@@ -3,6 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQuery } from "@tanstack/react-query";
+import { FunctionalWidget } from "./functional-widget";
+import type { Widget } from "@shared/schema";
 import { 
   Clock, 
   CloudRain, 
@@ -16,84 +19,24 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-interface Widget {
-  id: string;
-  name: string;
-  type: string;
-  icon: any;
-  isActive: boolean;
-  data?: any;
-}
-
 export function WidgetPanel() {
-  const [widgets, setWidgets] = useState<Widget[]>([
-    {
-      id: "1",
-      name: "Reloj Digital",
-      type: "clock",
-      icon: Clock,
-      isActive: true,
-      data: { format: "24h", timezone: "America/Mexico_City" }
-    },
-    {
-      id: "2",
-      name: "Estado del Tiempo",
-      type: "weather",
-      icon: CloudRain,
-      isActive: true,
-      data: { location: "Ciudad de México", temp: "22°C" }
-    },
-    {
-      id: "3",
-      name: "Indicadores",
-      type: "metrics",
-      icon: TrendingUp,
-      isActive: false,
-      data: { value: "85%", label: "Satisfacción" }
-    },
-    {
-      id: "4",
-      name: "Calendario",
-      type: "calendar",
-      icon: Calendar,
-      isActive: true,
-      data: { events: 3 }
-    },
-    {
-      id: "5",
-      name: "Mensajes",
-      type: "messages",
-      icon: MessageSquare,
-      isActive: false,
-      data: { unread: 2 }
-    }
-  ]);
+  const { data: widgets = [], isLoading } = useQuery<Widget[]>({
+    queryKey: ["/api/widgets"],
+    refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes
+  });
 
-  const toggleWidget = (id: string) => {
-    setWidgets(widgets.map(widget =>
-      widget.id === id
-        ? { ...widget, isActive: !widget.isActive }
-        : widget
-    ));
-  };
-
-  const getWidgetValue = (widget: Widget) => {
-    switch (widget.type) {
+  const getWidgetIcon = (type: string) => {
+    switch (type) {
       case "clock":
-        return new Date().toLocaleTimeString('es-ES', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
+        return Clock;
       case "weather":
-        return widget.data?.temp || "22°C";
-      case "metrics":
-        return widget.data?.value || "0%";
-      case "calendar":
-        return `${widget.data?.events || 0} eventos`;
-      case "messages":
-        return `${widget.data?.unread || 0} mensajes`;
+        return CloudRain;
+      case "news":
+        return MessageSquare;
+      case "rss":
+        return TrendingUp;
       default:
-        return "N/A";
+        return Settings;
     }
   };
 
@@ -112,83 +55,41 @@ export function WidgetPanel() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <ScrollArea className="h-80">
-          <div className="space-y-3">
-            {widgets.map((widget) => {
-              const IconComponent = widget.icon;
-              return (
-                <div
-                  key={widget.id}
-                  className={`p-3 rounded-lg border transition-all ${
-                    widget.isActive
-                      ? "bg-blue-50 border-blue-200"
-                      : "bg-slate-50 border-slate-200"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-8 h-8 rounded-md flex items-center justify-center ${
-                        widget.isActive
-                          ? "bg-blue-100"
-                          : "bg-slate-200"
-                      }`}>
-                        <IconComponent className={`w-4 h-4 ${
-                          widget.isActive
-                            ? "text-blue-600"
-                            : "text-slate-500"
-                        }`} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">
-                          {widget.name}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {widget.type}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={widget.isActive ? "default" : "secondary"}>
-                        {getWidgetValue(widget)}
-                      </Badge>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => toggleWidget(widget.id)}
-                      >
-                        {widget.isActive ? (
-                          <Eye className="w-4 h-4" />
-                        ) : (
-                          <EyeOff className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {widget.isActive && (
-                    <div className="flex items-center justify-between text-xs text-slate-600">
-                      <span>Actualizado hace 1 min</span>
-                      <Button size="sm" variant="ghost" className="h-6 px-2">
-                        <Settings className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
           </div>
-        </ScrollArea>
+        ) : widgets.length === 0 ? (
+          <div className="text-center py-8">
+            <Settings className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+            <p className="text-sm text-slate-600">No hay widgets configurados</p>
+            <p className="text-xs text-slate-500 mt-1">Ve a la sección Widgets para agregar algunos</p>
+          </div>
+        ) : (
+          <>
+            <ScrollArea className="h-80">
+              <div className="space-y-3">
+                {widgets.slice(0, 3).map((widget) => (
+                  <FunctionalWidget 
+                    key={widget.id} 
+                    widget={widget}
+                    className="w-full"
+                  />
+                ))}
+              </div>
+            </ScrollArea>
 
-        {/* Quick Actions */}
-        <div className="flex items-center justify-between pt-2 border-t">
-          <span className="text-xs text-slate-500">
-            {widgets.filter(w => w.isActive).length} de {widgets.length} activos
-          </span>
-          <Button size="sm" variant="ghost" className="text-xs">
-            Configurar Todo
-          </Button>
-        </div>
+            {/* Quick Actions */}
+            <div className="flex items-center justify-between pt-2 border-t">
+              <span className="text-xs text-slate-500">
+                {widgets.filter(w => w.isEnabled).length} de {widgets.length} activos
+              </span>
+              <Button size="sm" variant="ghost" className="text-xs">
+                Ver Todos
+              </Button>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
