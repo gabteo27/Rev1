@@ -7,6 +7,11 @@ import UploadModal from "@/components/content/upload-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Plus, 
   Image, 
@@ -23,6 +28,8 @@ import {
 
 export default function Content() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingContent, setEditingContent] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -50,6 +57,35 @@ export default function Content() {
       toast({
         title: "Error",
         description: error.message || "No se pudo eliminar el contenido.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest(`/api/content/${data.id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Contenido actualizado",
+        description: "El contenido ha sido actualizado exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+      setEditModalOpen(false);
+      setEditingContent(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el contenido.",
         variant: "destructive",
       });
     },
@@ -111,6 +147,36 @@ export default function Content() {
   const filteredContent = selectedCategory 
     ? content?.filter((item: any) => item.category === selectedCategory)
     : content;
+
+  const handleEdit = (item: any) => {
+    setEditingContent({
+      id: item.id,
+      title: item.title,
+      description: item.description || "",
+      category: item.category || "",
+      duration: item.duration || 30,
+      tags: Array.isArray(item.tags) ? item.tags.join(", ") : (item.tags || ""),
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = () => {
+    if (!editingContent.title.trim()) {
+      toast({
+        title: "Error",
+        description: "El título es requerido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updateData = {
+      ...editingContent,
+      tags: editingContent.tags ? editingContent.tags.split(",").map((t: string) => t.trim()) : [],
+    };
+
+    updateMutation.mutate(updateData);
+  };
 
   if (isLoading) {
     return (
@@ -280,7 +346,12 @@ export default function Content() {
                     {/* Actions */}
                     <div className="mt-4 flex justify-between items-center">
                       <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" className="h-8 px-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-2"
+                          onClick={() => handleEdit(item)}
+                        >
                           <Edit className="w-3 h-3" />
                         </Button>
                         <Button 
@@ -304,6 +375,99 @@ export default function Content() {
           </div>
         )}
       </div>
+
+      {/* Edit Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Contenido</DialogTitle>
+          </DialogHeader>
+          
+          {editingContent && (
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="edit-title">Título *</Label>
+                <Input
+                  id="edit-title"
+                  value={editingContent.title}
+                  onChange={(e) => setEditingContent({...editingContent, title: e.target.value})}
+                  placeholder="Título del contenido"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-description">Descripción</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editingContent.description}
+                  onChange={(e) => setEditingContent({...editingContent, description: e.target.value})}
+                  placeholder="Descripción opcional"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-category">Categoría</Label>
+                  <Select 
+                    value={editingContent.category} 
+                    onValueChange={(value) => setEditingContent({...editingContent, category: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sin categoría</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-duration">Duración (segundos)</Label>
+                  <Input
+                    id="edit-duration"
+                    type="number"
+                    value={editingContent.duration}
+                    onChange={(e) => setEditingContent({...editingContent, duration: parseInt(e.target.value) || 30})}
+                    min="1"
+                    max="3600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-tags">Etiquetas</Label>
+                <Input
+                  id="edit-tags"
+                  value={editingContent.tags}
+                  onChange={(e) => setEditingContent({...editingContent, tags: e.target.value})}
+                  placeholder="promoción, verano, descuento"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Separa las etiquetas con comas
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleEditSubmit}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Guardando..." : "Guardar Cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <UploadModal 
         open={uploadModalOpen}
