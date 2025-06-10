@@ -1,7 +1,21 @@
-// Contenido de client/src/main-player.tsx
+
 import { createRoot } from "react-dom/client";
-import PlayerPage from "./pages/player"; // Crearemos esta página a continuación
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
+import { queryClient } from "@/lib/queryClient";
+import PlayerPage from "./pages/player";
 import "./index.css";
 
-// Renderiza únicamente la página del reproductor
-createRoot(document.getElementById("root")!).render(<PlayerPage />);
+// Renderiza únicamente la página del reproductor con todos los providers necesarios
+createRoot(document.getElementById("root")!).render(
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider defaultTheme="system" storageKey="xcientv-ui-theme">
+      <TooltipProvider>
+        <Toaster />
+        <PlayerPage />
+      </TooltipProvider>
+    </ThemeProvider>
+  </QueryClientProvider>
+);
