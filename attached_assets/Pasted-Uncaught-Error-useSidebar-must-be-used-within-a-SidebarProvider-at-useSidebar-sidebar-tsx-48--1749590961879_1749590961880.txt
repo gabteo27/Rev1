@@ -1,0 +1,425 @@
+Uncaught Error: useSidebar must be used within a SidebarProvider.
+    at useSidebar (sidebar.tsx:48:11)
+    at sidebar.tsx:182:60
+    at renderWithHooks (chunk-RPCDYKBN.js?v=53f8c9fe:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=53f8c9fe:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=53f8c9fe:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=53f8c9fe:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=53f8c9fe:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=53f8c9fe:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=53f8c9fe:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=53f8c9fe:19198:20)
+useSidebar @ sidebar.tsx:48
+(anonymous) @ sidebar.tsx:182
+renderWithHooks @ chunk-RPCDYKBN.js?v=53f8c9fe:11548
+updateForwardRef @ chunk-RPCDYKBN.js?v=53f8c9fe:14325
+beginWork @ chunk-RPCDYKBN.js?v=53f8c9fe:15946
+callCallback2 @ chunk-RPCDYKBN.js?v=53f8c9fe:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=53f8c9fe:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=53f8c9fe:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=53f8c9fe:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=53f8c9fe:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=53f8c9fe:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=53f8c9fe:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=53f8c9fe:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=53f8c9fe:555
+flush @ @tanstack_react-query.js?v=53f8c9fe:569
+batch @ @tanstack_react-query.js?v=53f8c9fe:587
+dispatch_fn @ @tanstack_react-query.js?v=53f8c9fe:996
+setData @ @tanstack_react-query.js?v=53f8c9fe:696
+onSuccess @ @tanstack_react-query.js?v=53f8c9fe:897
+resolve @ @tanstack_react-query.js?v=53f8c9fe:456
+Promise.then
+run @ @tanstack_react-query.js?v=53f8c9fe:498
+start @ @tanstack_react-query.js?v=53f8c9fe:536
+fetch @ @tanstack_react-query.js?v=53f8c9fe:926
+executeFetch_fn @ @tanstack_react-query.js?v=53f8c9fe:2211
+onSubscribe @ @tanstack_react-query.js?v=53f8c9fe:1898
+subscribe @ @tanstack_react-query.js?v=53f8c9fe:24
+(anonymous) @ @tanstack_react-query.js?v=53f8c9fe:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=53f8c9fe:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=53f8c9fe:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=53f8c9fe:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=53f8c9fe:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=53f8c9fe:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19432
+commitRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=53f8c9fe:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18718
+workLoop @ chunk-RPCDYKBN.js?v=53f8c9fe:197
+flushWork @ chunk-RPCDYKBN.js?v=53f8c9fe:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=53f8c9fe:384Understand this error
+sidebar.tsx:48 Uncaught Error: useSidebar must be used within a SidebarProvider.
+    at useSidebar (sidebar.tsx:48:11)
+    at sidebar.tsx:274:29
+    at renderWithHooks (chunk-RPCDYKBN.js?v=53f8c9fe:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=53f8c9fe:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=53f8c9fe:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=53f8c9fe:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=53f8c9fe:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=53f8c9fe:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=53f8c9fe:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=53f8c9fe:19198:20)
+useSidebar @ sidebar.tsx:48
+(anonymous) @ sidebar.tsx:274
+renderWithHooks @ chunk-RPCDYKBN.js?v=53f8c9fe:11548
+updateForwardRef @ chunk-RPCDYKBN.js?v=53f8c9fe:14325
+beginWork @ chunk-RPCDYKBN.js?v=53f8c9fe:15946
+callCallback2 @ chunk-RPCDYKBN.js?v=53f8c9fe:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=53f8c9fe:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=53f8c9fe:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=53f8c9fe:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=53f8c9fe:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=53f8c9fe:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=53f8c9fe:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=53f8c9fe:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=53f8c9fe:555
+flush @ @tanstack_react-query.js?v=53f8c9fe:569
+batch @ @tanstack_react-query.js?v=53f8c9fe:587
+dispatch_fn @ @tanstack_react-query.js?v=53f8c9fe:996
+setData @ @tanstack_react-query.js?v=53f8c9fe:696
+onSuccess @ @tanstack_react-query.js?v=53f8c9fe:897
+resolve @ @tanstack_react-query.js?v=53f8c9fe:456
+Promise.then
+run @ @tanstack_react-query.js?v=53f8c9fe:498
+start @ @tanstack_react-query.js?v=53f8c9fe:536
+fetch @ @tanstack_react-query.js?v=53f8c9fe:926
+executeFetch_fn @ @tanstack_react-query.js?v=53f8c9fe:2211
+onSubscribe @ @tanstack_react-query.js?v=53f8c9fe:1898
+subscribe @ @tanstack_react-query.js?v=53f8c9fe:24
+(anonymous) @ @tanstack_react-query.js?v=53f8c9fe:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=53f8c9fe:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=53f8c9fe:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=53f8c9fe:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=53f8c9fe:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=53f8c9fe:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19432
+commitRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=53f8c9fe:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18718
+workLoop @ chunk-RPCDYKBN.js?v=53f8c9fe:197
+flushWork @ chunk-RPCDYKBN.js?v=53f8c9fe:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=53f8c9fe:384Understand this error
+sidebar.tsx:48 Uncaught Error: useSidebar must be used within a SidebarProvider.
+    at useSidebar (sidebar.tsx:48:11)
+    at sidebar.tsx:182:60
+    at renderWithHooks (chunk-RPCDYKBN.js?v=53f8c9fe:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=53f8c9fe:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=53f8c9fe:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=53f8c9fe:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=53f8c9fe:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=53f8c9fe:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=53f8c9fe:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=53f8c9fe:19198:20)
+useSidebar @ sidebar.tsx:48
+(anonymous) @ sidebar.tsx:182
+renderWithHooks @ chunk-RPCDYKBN.js?v=53f8c9fe:11548
+updateForwardRef @ chunk-RPCDYKBN.js?v=53f8c9fe:14325
+beginWork @ chunk-RPCDYKBN.js?v=53f8c9fe:15946
+callCallback2 @ chunk-RPCDYKBN.js?v=53f8c9fe:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=53f8c9fe:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=53f8c9fe:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=53f8c9fe:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=53f8c9fe:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=53f8c9fe:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=53f8c9fe:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=53f8c9fe:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=53f8c9fe:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=53f8c9fe:555
+flush @ @tanstack_react-query.js?v=53f8c9fe:569
+batch @ @tanstack_react-query.js?v=53f8c9fe:587
+dispatch_fn @ @tanstack_react-query.js?v=53f8c9fe:996
+setData @ @tanstack_react-query.js?v=53f8c9fe:696
+onSuccess @ @tanstack_react-query.js?v=53f8c9fe:897
+resolve @ @tanstack_react-query.js?v=53f8c9fe:456
+Promise.then
+run @ @tanstack_react-query.js?v=53f8c9fe:498
+start @ @tanstack_react-query.js?v=53f8c9fe:536
+fetch @ @tanstack_react-query.js?v=53f8c9fe:926
+executeFetch_fn @ @tanstack_react-query.js?v=53f8c9fe:2211
+onSubscribe @ @tanstack_react-query.js?v=53f8c9fe:1898
+subscribe @ @tanstack_react-query.js?v=53f8c9fe:24
+(anonymous) @ @tanstack_react-query.js?v=53f8c9fe:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=53f8c9fe:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=53f8c9fe:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=53f8c9fe:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=53f8c9fe:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=53f8c9fe:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19432
+commitRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=53f8c9fe:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18718
+workLoop @ chunk-RPCDYKBN.js?v=53f8c9fe:197
+flushWork @ chunk-RPCDYKBN.js?v=53f8c9fe:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=53f8c9fe:384Understand this error
+sidebar.tsx:48 Uncaught Error: useSidebar must be used within a SidebarProvider.
+    at useSidebar (sidebar.tsx:48:11)
+    at sidebar.tsx:274:29
+    at renderWithHooks (chunk-RPCDYKBN.js?v=53f8c9fe:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=53f8c9fe:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=53f8c9fe:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=53f8c9fe:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=53f8c9fe:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=53f8c9fe:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=53f8c9fe:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=53f8c9fe:19198:20)
+useSidebar @ sidebar.tsx:48
+(anonymous) @ sidebar.tsx:274
+renderWithHooks @ chunk-RPCDYKBN.js?v=53f8c9fe:11548
+updateForwardRef @ chunk-RPCDYKBN.js?v=53f8c9fe:14325
+beginWork @ chunk-RPCDYKBN.js?v=53f8c9fe:15946
+callCallback2 @ chunk-RPCDYKBN.js?v=53f8c9fe:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=53f8c9fe:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=53f8c9fe:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=53f8c9fe:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=53f8c9fe:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=53f8c9fe:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=53f8c9fe:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=53f8c9fe:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=53f8c9fe:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=53f8c9fe:555
+flush @ @tanstack_react-query.js?v=53f8c9fe:569
+batch @ @tanstack_react-query.js?v=53f8c9fe:587
+dispatch_fn @ @tanstack_react-query.js?v=53f8c9fe:996
+setData @ @tanstack_react-query.js?v=53f8c9fe:696
+onSuccess @ @tanstack_react-query.js?v=53f8c9fe:897
+resolve @ @tanstack_react-query.js?v=53f8c9fe:456
+Promise.then
+run @ @tanstack_react-query.js?v=53f8c9fe:498
+start @ @tanstack_react-query.js?v=53f8c9fe:536
+fetch @ @tanstack_react-query.js?v=53f8c9fe:926
+executeFetch_fn @ @tanstack_react-query.js?v=53f8c9fe:2211
+onSubscribe @ @tanstack_react-query.js?v=53f8c9fe:1898
+subscribe @ @tanstack_react-query.js?v=53f8c9fe:24
+(anonymous) @ @tanstack_react-query.js?v=53f8c9fe:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=53f8c9fe:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=53f8c9fe:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=53f8c9fe:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=53f8c9fe:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=53f8c9fe:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19432
+commitRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=53f8c9fe:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18718
+workLoop @ chunk-RPCDYKBN.js?v=53f8c9fe:197
+flushWork @ chunk-RPCDYKBN.js?v=53f8c9fe:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=53f8c9fe:384Understand this error
+chunk-RPCDYKBN.js?v=53f8c9fe:14032 The above error occurred in the <Sidebar> component:
+
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/sidebar.tsx:161:7
+    at AppSidebar (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/layout/sidebar.tsx:63:22)
+    at div
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=53f8c9fe:379:17)
+    at Router (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx?t=1749590929808:66:42)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=53f8c9fe:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=53f8c9fe:63:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=53f8c9fe:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=53f8c9fe:14032
+update.callback @ chunk-RPCDYKBN.js?v=53f8c9fe:14052
+callCallback @ chunk-RPCDYKBN.js?v=53f8c9fe:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=53f8c9fe:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=53f8c9fe:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=53f8c9fe:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=53f8c9fe:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19353
+commitRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=53f8c9fe:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=53f8c9fe:555
+flush @ @tanstack_react-query.js?v=53f8c9fe:569
+batch @ @tanstack_react-query.js?v=53f8c9fe:587
+dispatch_fn @ @tanstack_react-query.js?v=53f8c9fe:996
+setData @ @tanstack_react-query.js?v=53f8c9fe:696
+onSuccess @ @tanstack_react-query.js?v=53f8c9fe:897
+resolve @ @tanstack_react-query.js?v=53f8c9fe:456
+Promise.then
+run @ @tanstack_react-query.js?v=53f8c9fe:498
+start @ @tanstack_react-query.js?v=53f8c9fe:536
+fetch @ @tanstack_react-query.js?v=53f8c9fe:926
+executeFetch_fn @ @tanstack_react-query.js?v=53f8c9fe:2211
+onSubscribe @ @tanstack_react-query.js?v=53f8c9fe:1898
+subscribe @ @tanstack_react-query.js?v=53f8c9fe:24
+(anonymous) @ @tanstack_react-query.js?v=53f8c9fe:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=53f8c9fe:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=53f8c9fe:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=53f8c9fe:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=53f8c9fe:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=53f8c9fe:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19432
+commitRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=53f8c9fe:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18718
+workLoop @ chunk-RPCDYKBN.js?v=53f8c9fe:197
+flushWork @ chunk-RPCDYKBN.js?v=53f8c9fe:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=53f8c9fe:384Understand this error
+chunk-RPCDYKBN.js?v=53f8c9fe:14032 The above error occurred in the <SidebarTrigger> component:
+
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/sidebar.tsx:343:6
+    at div
+    at header
+    at main
+    at _c9 (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/sidebar.tsx:440:48)
+    at Dashboard (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/dashboard.tsx?t=1749590929808:30:45)
+    at Route (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=53f8c9fe:323:16)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=53f8c9fe:379:17)
+    at Suspense
+    at div
+    at div
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=53f8c9fe:379:17)
+    at Router (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx?t=1749590929808:66:42)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=53f8c9fe:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=53f8c9fe:63:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=53f8c9fe:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=53f8c9fe:14032
+update.callback @ chunk-RPCDYKBN.js?v=53f8c9fe:14052
+callCallback @ chunk-RPCDYKBN.js?v=53f8c9fe:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=53f8c9fe:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=53f8c9fe:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=53f8c9fe:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=53f8c9fe:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19353
+commitRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=53f8c9fe:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=53f8c9fe:555
+flush @ @tanstack_react-query.js?v=53f8c9fe:569
+batch @ @tanstack_react-query.js?v=53f8c9fe:587
+dispatch_fn @ @tanstack_react-query.js?v=53f8c9fe:996
+setData @ @tanstack_react-query.js?v=53f8c9fe:696
+onSuccess @ @tanstack_react-query.js?v=53f8c9fe:897
+resolve @ @tanstack_react-query.js?v=53f8c9fe:456
+Promise.then
+run @ @tanstack_react-query.js?v=53f8c9fe:498
+start @ @tanstack_react-query.js?v=53f8c9fe:536
+fetch @ @tanstack_react-query.js?v=53f8c9fe:926
+executeFetch_fn @ @tanstack_react-query.js?v=53f8c9fe:2211
+onSubscribe @ @tanstack_react-query.js?v=53f8c9fe:1898
+subscribe @ @tanstack_react-query.js?v=53f8c9fe:24
+(anonymous) @ @tanstack_react-query.js?v=53f8c9fe:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=53f8c9fe:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=53f8c9fe:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=53f8c9fe:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=53f8c9fe:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=53f8c9fe:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19432
+commitRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=53f8c9fe:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18718
+workLoop @ chunk-RPCDYKBN.js?v=53f8c9fe:197
+flushWork @ chunk-RPCDYKBN.js?v=53f8c9fe:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=53f8c9fe:384Understand this error
+chunk-RPCDYKBN.js?v=53f8c9fe:9129 Uncaught Error: useSidebar must be used within a SidebarProvider.
+    at useSidebar (sidebar.tsx:48:11)
+    at sidebar.tsx:182:60
+    at renderWithHooks (chunk-RPCDYKBN.js?v=53f8c9fe:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=53f8c9fe:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=53f8c9fe:15946:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=53f8c9fe:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=53f8c9fe:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=53f8c9fe:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=53f8c9fe:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=53f8c9fe:18736:28)
+useSidebar @ sidebar.tsx:48
+(anonymous) @ sidebar.tsx:182
+renderWithHooks @ chunk-RPCDYKBN.js?v=53f8c9fe:11548
+updateForwardRef @ chunk-RPCDYKBN.js?v=53f8c9fe:14325
+beginWork @ chunk-RPCDYKBN.js?v=53f8c9fe:15946
+beginWork$1 @ chunk-RPCDYKBN.js?v=53f8c9fe:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=53f8c9fe:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=53f8c9fe:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=53f8c9fe:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=53f8c9fe:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=53f8c9fe:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=53f8c9fe:555
+flush @ @tanstack_react-query.js?v=53f8c9fe:569
+batch @ @tanstack_react-query.js?v=53f8c9fe:587
+dispatch_fn @ @tanstack_react-query.js?v=53f8c9fe:996
+setData @ @tanstack_react-query.js?v=53f8c9fe:696
+onSuccess @ @tanstack_react-query.js?v=53f8c9fe:897
+resolve @ @tanstack_react-query.js?v=53f8c9fe:456
+Promise.then
+run @ @tanstack_react-query.js?v=53f8c9fe:498
+start @ @tanstack_react-query.js?v=53f8c9fe:536
+fetch @ @tanstack_react-query.js?v=53f8c9fe:926
+executeFetch_fn @ @tanstack_react-query.js?v=53f8c9fe:2211
+onSubscribe @ @tanstack_react-query.js?v=53f8c9fe:1898
+subscribe @ @tanstack_react-query.js?v=53f8c9fe:24
+(anonymous) @ @tanstack_react-query.js?v=53f8c9fe:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=53f8c9fe:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=53f8c9fe:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=53f8c9fe:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=53f8c9fe:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=53f8c9fe:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=53f8c9fe:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=53f8c9fe:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=53f8c9fe:19432
+commitRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=53f8c9fe:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=53f8c9fe:18718
+workLoop @ chunk-RPCDYKBN.js?v=53f8c9fe:197
+flushWork @ chunk-RPCDYKBN.js?v=53f8c9fe:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=53f8c9fe:384Understand this error

@@ -8,12 +8,12 @@ interface HeaderProps {
 
 export default function Header({ title, subtitle, actions }: HeaderProps) {
   return (
-    <div className="bg-white border-b border-slate-200 px-6 py-4">
+    <div className="bg-background border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
+          <h2 className="text-2xl font-bold text-foreground">{title}</h2>
           {subtitle && (
-            <p className="text-sm text-slate-600 mt-1">{subtitle}</p>
+            <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
           )}
         </div>
         {actions && (
