@@ -86,6 +86,10 @@ export const screens = pgTable("screens", {
   isOnline: boolean("is_online").default(false),
   lastSeen: timestamp("last_seen"),
   settings: jsonb("settings"), // Screen-specific settings
+  deviceHardwareId: varchar("device_hardware_id").unique(),
+  pairingCode: varchar("pairing_code"),
+  pairingCodeExpiresAt: timestamp("pairing_code_expires_at"),
+  authToken: varchar("auth_token").unique(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

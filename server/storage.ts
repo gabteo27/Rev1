@@ -34,6 +34,12 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Screen authentication methods
+  getScreenByAuthToken(token: string): Promise<Screen | undefined>;
+  getScreenByDeviceHardwareId(deviceId: string): Promise<Screen | undefined>;
+  findScreenByPairingCode(code: string): Promise<Screen | undefined>;
+  upsertTemporaryScreen(data: { deviceHardwareId: string, pairingCode: string, pairingCodeExpiresAt: Date, name: string }): Promise<void>;
 
   // Content operations
   getContentItems(userId: string): Promise<ContentItem[]>;
@@ -148,14 +154,11 @@ export class DatabaseStorage implements IStorage {
     return screen;
   }
   
-  async findScreenByPairingCode(
-    code: string,
-    userId: string,
-  ): Promise<Screen | undefined> {
+  async findScreenByPairingCode(code: string): Promise<Screen | undefined> {
     const [screen] = await db
       .select()
       .from(screens)
-      .where(and(eq(screens.pairingCode, code), eq(screens.userId, userId)));
+      .where(eq(screens.pairingCode, code));
     return screen;
   }
 
@@ -163,32 +166,36 @@ export class DatabaseStorage implements IStorage {
     const [screen] = await db
       .select()
       .from(screens)
-      // El error está aquí. Drizzle espera un operador de comparación como eq()
-      .where(screens.deviceHardwareId, deviceId); 
+      .where(eq(screens.deviceHardwareId, deviceId));
     return screen;
   }
 
   async upsertTemporaryScreen(data: { deviceHardwareId: string, pairingCode: string, pairingCodeExpiresAt: Date, name: string }): Promise<void> {
-    await db.insert(screens)
-      .values({
-        deviceHardwareId: data.deviceHardwareId,
-        pairingCode: data.pairingCode,
-        pairingCodeExpiresAt: data.pairingCodeExpiresAt,
-        name: data.name
-      })
-      .onConflictDoUpdate({
-        // ----- CORRECCIÓN AQUÍ -----
-        // Cambiamos el string "deviceHardwareId" por el objeto de la columna `screens.deviceHardwareId`
-        target: screens.deviceHardwareId,
-        set: {
+    const existing = await this.getScreenByDeviceHardwareId(data.deviceHardwareId);
+    
+    if (existing) {
+      // Update existing screen
+      await db.update(screens)
+        .set({
           pairingCode: data.pairingCode,
           pairingCodeExpiresAt: data.pairingCodeExpiresAt,
           name: data.name,
           authToken: null,
           userId: null,
           playlistId: null,
-        }
-      });
+          updatedAt: new Date()
+        })
+        .where(eq(screens.deviceHardwareId, data.deviceHardwareId));
+    } else {
+      // Insert new screen
+      await db.insert(screens)
+        .values({
+          deviceHardwareId: data.deviceHardwareId,
+          pairingCode: data.pairingCode,
+          pairingCodeExpiresAt: data.pairingCodeExpiresAt,
+          name: data.name
+        });
+    }
   }
   
   async upsertUser(userData: UpsertUser): Promise<User> {
@@ -434,6 +441,18 @@ export class DatabaseStorage implements IStorage {
       .update(screens)
       .set({ ...screen, updatedAt: new Date() })
       .where(and(eq(screens.id, id), eq(screens.userId, userId)))
+      .returning();
+    return item;
+  }
+
+  async updateScreenById(
+    id: number,
+    screen: Partial<InsertScreen>,
+  ): Promise<Screen | undefined> {
+    const [item] = await db
+      .update(screens)
+      .set({ ...screen, updatedAt: new Date() })
+      .where(eq(screens.id, id))
       .returning();
     return item;
   }
