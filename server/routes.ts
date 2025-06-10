@@ -597,7 +597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Busca la pantalla temporal por su código. No necesita userId.
       const screen = await storage.findScreenByPairingCode(pairingCode);
 
-      if (!screen || new Date() > new Date(screen.pairingCodeExpiresAt!)) {
+      if (!screen || !screen.pairingCodeExpiresAt || new Date() > new Date(screen.pairingCodeExpiresAt)) {
         return res.status(404).json({ message: "Código de emparejamiento inválido o expirado." });
       }
 
@@ -606,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const screenId = screen.id;
 
       // Actualizamos el registro existente con los datos del admin
-      const updatedScreen = await storage.updateScreen(screenId, {
+      const updatedScreen = await storage.updateScreenById(screenId, {
         userId,
         name,
         location,
@@ -614,7 +614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authToken,
         pairingCode: null,
         pairingCodeExpiresAt: null,
-      }, userId);
+      });
 
       res.json({ message: "Pantalla emparejada exitosamente.", screen: updatedScreen });
     } catch (error) {
