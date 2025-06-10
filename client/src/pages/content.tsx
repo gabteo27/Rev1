@@ -172,6 +172,7 @@ export default function Content() {
 
     const updateData = {
       ...editingContent,
+      category: editingContent.category === "none" ? "" : editingContent.category,
       tags: editingContent.tags ? editingContent.tags.split(",").map((t: string) => t.trim()) : [],
     };
 
@@ -417,7 +418,7 @@ export default function Content() {
                       <SelectValue placeholder="Seleccionar categoría" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sin categoría</SelectItem>
+                      <SelectItem value="none">Sin categoría</SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat} value={cat}>
                           {cat}

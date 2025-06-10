@@ -78,6 +78,7 @@ export default function Scheduling() {
     mutationFn: async (data: ScheduleFormData) => {
       const payload = {
         ...data,
+        playlistId: data.playlistId && data.playlistId.toString() !== 'none' ? data.playlistId : null,
         startDate: new Date(data.startDate),
         endDate: data.endDate ? new Date(data.endDate) : null,
       };
@@ -292,7 +293,7 @@ export default function Scheduling() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Sin playlist</SelectItem>
+                          <SelectItem value="none">Sin playlist</SelectItem>
                           {playlists.map((playlist) => (
                             <SelectItem key={playlist.id} value={playlist.id.toString()}>
                               {playlist.name}

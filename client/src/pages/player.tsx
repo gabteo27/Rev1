@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import ContentPlayer from '@/components/player/ContentPlayer';
 
-// Estilos
+// Estilos (sin cambios)
 const playerStyles: React.CSSProperties = {
   position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
   backgroundColor: '#000', color: 'white', display: 'flex',
@@ -15,17 +15,17 @@ const codeStyles: React.CSSProperties = {
   marginTop: '2rem'
 };
 
+// --- FUNCIÓN PARA OBTENER ID DEL DISPOSITIVO (SIN CAMBIOS) ---
 const getDeviceHardwareId = (): string => {
   let id = localStorage.getItem('deviceHardwareId');
   if (!id) {
-    // Generar un ID más simple sin caracteres especiales
     id = `device_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
     localStorage.setItem('deviceHardwareId', id);
   }
   return id;
 };
 
-// --- CORRECCIÓN: Añadimos un estado para el error ---
+// --- CORRECCIÓN: SE INTRODUCE UN ESTADO DE ERROR MEJORADO ---
 type PlayerStatus = 'initializing' | 'pairing' | 'paired' | 'error';
 
 export default function PlayerPage() {
@@ -34,6 +34,7 @@ export default function PlayerPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    // Si ya tenemos un token, pasamos directamente al estado 'paired'.
     if (localStorage.getItem('authToken')) {
       setStatus('paired');
       return;
@@ -41,6 +42,7 @@ export default function PlayerPage() {
 
     const deviceId = getDeviceHardwareId();
 
+    // Función para iniciar el proceso de emparejamiento
     const initiatePairing = async () => {
       try {
         const response = await fetch('/api/screens/initiate-pairing', {
@@ -56,9 +58,9 @@ export default function PlayerPage() {
 
         const data = await response.json();
         setPairingCode(data.pairingCode);
-        setStatus('pairing');
+        setStatus('pairing'); // Cambiamos a estado de emparejamiento
       } catch (err: any) {
-        // --- CORRECCIÓN: Actualizamos ambos estados en caso de error ---
+        // --- CORRECCIÓN: MANEJO DE ERRORES AL INICIAR ---
         setErrorMessage(err.message);
         setStatus('error');
         console.error("Error al iniciar emparejamiento:", err);
@@ -67,51 +69,58 @@ export default function PlayerPage() {
 
     initiatePairing();
 
+    // Intervalo para verificar si el emparejamiento se ha completado
     const intervalId = setInterval(async () => {
-        if(status !== 'pairing') return; // Solo hacer polling si estamos en modo pairing
-        try {
-            // Codificar correctamente el deviceId para la URL
-            const encodedDeviceId = encodeURIComponent(deviceId);
-            const statusResponse = await fetch(`/api/screens/pairing-status/${encodedDeviceId}`);
-            if(!statusResponse.ok) return;
+      // --- CORRECCIÓN: SOLO VERIFICAR SI ESTAMOS EN MODO DE EMPAREJAMIENTO ---
+      if (status !== 'pairing' && document.visibilityState !== 'visible') return;
 
-            const data = await statusResponse.json();
+      try {
+        const encodedDeviceId = encodeURIComponent(deviceId);
+        const statusResponse = await fetch(`/api/screens/pairing-status/${encodedDeviceId}`);
+
+        if (!statusResponse.ok) return;
+
+        const data = await statusResponse.json();
+
         if (data.status === 'paired') {
           console.log('¡Emparejamiento exitoso!', data);
           localStorage.setItem('authToken', data.authToken);
           localStorage.setItem('screenName', data.name);
 
-          // ----- CORRECCIÓN CLAVE AQUÍ -----
-          // Si el playlistId existe, lo guardamos. Si es nulo o undefined, nos aseguramos de que no haya nada en localStorage.
+          // --- CORRECCIÓN CLAVE: MANEJO DE PLAYLIST ID NULO ---
           if (data.playlistId) {
             localStorage.setItem('playlistId', data.playlistId.toString());
           } else {
+            // Si no hay playlist, nos aseguramos de que no quede uno antiguo.
             localStorage.removeItem('playlistId');
           }
 
-          clearInterval(intervalId);
-          setStatus('paired');
-        }} catch (err) {
-            console.error("Error durante el polling:", err);
+          clearInterval(intervalId); // Detenemos el polling
+          setStatus('paired'); // Cambiamos al estado final
         }
-    }, 2000); // Reducir el intervalo a 2 segundos para respuesta más rápida
+      } catch (err) {
+        console.error("Error durante el polling de estado:", err);
+      }
+    }, 3000); // Verificamos cada 3 segundos
 
+    // Limpieza al desmontar el componente
     return () => clearInterval(intervalId);
-  }, [status]); // El useEffect ahora depende del status para detener el polling
+  }, [status]); // El useEffect se re-ejecuta si el 'status' cambia
 
-  // --- CORRECCIÓN: Añadimos un render para el estado de error ---
+  // --- RENDERIZADO BASADO EN EL ESTADO ---
+
   if (status === 'error') {
     return (
       <div style={playerStyles}>
         <h1 style={{ color: '#ef4444' }}>Error de Conexión</h1>
         <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>{errorMessage}</p>
-        <p style={{ fontSize: '1vw', marginTop: '2rem', color: '#aaa' }}>Verifica la consola del servidor para más detalles. La página se reintentará en 15 segundos.</p>
+        <p style={{ fontSize: '1vw', marginTop: '2rem', color: '#aaa' }}>Verifica la consola para más detalles. Reintentando...</p>
       </div>
     );
   }
 
   if (status === 'initializing') {
-    return <div style={playerStyles}><h1>Inicializando...</h1></div>;
+    return <div style={playerStyles}><h1>Inicializando Dispositivo...</h1></div>;
   }
 
   if (status === 'pairing') {
@@ -123,9 +132,10 @@ export default function PlayerPage() {
     );
   }
 
+  // Si el estado es 'paired', renderizamos el reproductor de contenido
   if (status === 'paired') {
     return <ContentPlayer />;
   }
 
-  return null;
+  return null; // No renderizar nada en otros casos
 }

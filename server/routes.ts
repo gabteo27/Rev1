@@ -110,19 +110,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         title,
         description,
-        type,
         duration: duration ? parseInt(duration) : 30,
-        category,
+        category: category || null,
         tags: tags ? (Array.isArray(tags) ? tags : tags.split(",").map((t: string) => t.trim())) : [],
       };
 
       if (req.file) {
-        // File upload
+        // File upload - determine type from file
+        const mimeType = req.file.mimetype;
+        if (mimeType.startsWith('image/')) {
+          contentData.type = 'image';
+        } else if (mimeType.startsWith('video/')) {
+          contentData.type = 'video';
+        } else if (mimeType === 'application/pdf') {
+          contentData.type = 'pdf';
+        } else {
+          contentData.type = 'file';
+        }
         contentData.url = `/uploads/${req.file.filename}`;
         contentData.fileSize = req.file.size;
       } else if (url) {
-        // URL content
+        // URL content - set type as webpage
+        contentData.type = 'webpage';
         contentData.url = url;
+        // Validate URL format
+        try {
+          new URL(url);
+        } catch (error) {
+          return res.status(400).json({ message: "Invalid URL format" });
+        }
       } else {
         return res.status(400).json({ message: "Either file or URL is required" });
       }
@@ -132,7 +148,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(item);
     } catch (error) {
       console.error("Error creating content:", error);
-      res.status(500).json({ message: "Failed to create content" });
+      if (error.name === 'ZodError') {
+        res.status(400).json({ message: "Invalid data provided", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create content" });
+      }
     }
   });
 
@@ -181,15 +201,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/playlists/:id", isPlayerAuthenticated, async (req: any, res) => {
+  // For authenticated users (admin panel)
+  app.get("/api/playlists/:id", isAuthenticated, async (req: any, res) => {
     try {
-      // Ya no usamos el userId de la sesión, sino el de la pantalla autenticada
-      const userId = req.screen.userId; 
+      const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-
-      if (!userId) {
-        return res.status(403).json({ message: "Screen is not associated with a user." });
-      }
 
       const playlist = await storage.getPlaylistWithItems(id, userId);
 
@@ -199,6 +215,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(playlist);
     } catch (error) {
       console.error("Error fetching playlist:", error);
+      res.status(500).json({ message: "Failed to fetch playlist" });
+    }
+  });
+
+  // For player authentication (screens)
+  app.get("/api/player/playlists/:id", isPlayerAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.screen.userId; 
+      const id = parseInt(req.params.id);
+
+      console.log(`Player requesting playlist ${id} for user ${userId}`);
+
+      if (!userId) {
+        return res.status(403).json({ message: "Screen is not associated with a user." });
+      }
+
+      const playlist = await storage.getPlaylistWithItems(id, userId);
+
+      if (!playlist) {
+        console.log(`Playlist ${id} not found for user ${userId}`);
+        return res.status(404).json({ message: "Playlist not found" });
+      }
+
+      console.log(`Playlist ${id} found with ${playlist.items?.length || 0} items`);
+      res.json(playlist);
+    } catch (error) {
+      console.error("Error fetching playlist for player:", error);
       res.status(500).json({ message: "Failed to fetch playlist" });
     }
   });

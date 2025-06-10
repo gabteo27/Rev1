@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -40,7 +41,10 @@ export default function Playlists() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/playlists", data);
+      const response = await apiRequest("/api/playlists", {
+        method: "POST",
+        body: JSON.stringify(data)
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -52,10 +56,10 @@ export default function Playlists() {
       setCreateModalOpen(false);
       setNewPlaylist({ name: "", description: "", isActive: false });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "No se pudo crear la playlist.",
+        description: error.message || "No se pudo crear la playlist.",
         variant: "destructive",
       });
     },
@@ -63,7 +67,7 @@ export default function Playlists() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/playlists/${id}`);
+      await apiRequest(`/api/playlists/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       toast({
@@ -72,10 +76,10 @@ export default function Playlists() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "No se pudo eliminar la playlist.",
+        description: error.message || "No se pudo eliminar la playlist.",
         variant: "destructive",
       });
     },
@@ -83,16 +87,47 @@ export default function Playlists() {
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const response = await apiRequest("PUT", `/api/playlists/${id}`, { isActive });
+      const response = await apiRequest(`/api/playlists/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ isActive })
+      });
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "No se pudo actualizar el estado de la playlist.",
+        description: error.message || "No se pudo actualizar el estado de la playlist.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const copyMutation = useMutation({
+    mutationFn: async (playlist: any) => {
+      const response = await apiRequest("/api/playlists", {
+        method: "POST",
+        body: JSON.stringify({
+          name: `${playlist.name} (Copia)`,
+          description: playlist.description,
+          isActive: false
+        })
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Playlist copiada",
+        description: "La playlist ha sido copiada exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo copiar la playlist.",
         variant: "destructive",
       });
     },
@@ -108,6 +143,10 @@ export default function Playlists() {
       return;
     }
     createMutation.mutate(newPlaylist);
+  };
+
+  const handleCopyPlaylist = (playlist: any) => {
+    copyMutation.mutate(playlist);
   };
 
   const formatDuration = (seconds: number) => {
@@ -225,11 +264,10 @@ export default function Playlists() {
             </CardContent>
           </Card>
         ) : (
-          <div className="content-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {playlists.map((playlist: any) => (
               <Card key={playlist.id} className="border-slate-200 hover:shadow-lg transition-shadow">
                 <CardContent className="p-0">
-                  {/* Playlist Header */}
                   <div className="p-4 border-b border-slate-200">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -261,7 +299,6 @@ export default function Playlists() {
                     </div>
                   </div>
 
-                  {/* Playlist Stats */}
                   <div className="p-4">
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div className="text-center">
@@ -278,7 +315,6 @@ export default function Playlists() {
                       </div>
                     </div>
 
-                    {/* Meta Info */}
                     <div className="space-y-2 text-xs text-slate-500 mb-4">
                       <div className="flex items-center justify-between">
                         <span>Creada:</span>
@@ -290,13 +326,15 @@ export default function Playlists() {
                       </div>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex justify-between items-center">
                       <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" className="h-8 px-2">
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-8 px-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-2"
+                          onClick={() => handleCopyPlaylist(playlist)}
+                          disabled={copyMutation.isPending}
+                        >
                           <Copy className="w-3 h-3" />
                         </Button>
                         <Button 
@@ -309,7 +347,7 @@ export default function Playlists() {
                           <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
-                      <Link href={`/playlists/${playlist.id}`}>
+                      <Link href={`/playlist/${playlist.id}`}>
                         <Button size="sm" className="h-8 px-3 text-xs">
                           <Edit className="w-3 h-3 mr-1" />
                           Editar

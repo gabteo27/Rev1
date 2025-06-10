@@ -34,7 +34,7 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  
+
   // Screen authentication methods
   getScreenByAuthToken(token: string): Promise<Screen | undefined>;
   getScreenByDeviceHardwareId(deviceId: string): Promise<Screen | undefined>;
@@ -155,7 +155,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(screens.authToken, token));
     return screen;
   }
-  
+
   async findScreenByPairingCode(code: string): Promise<Screen | undefined> {
     const [screen] = await db
       .select()
@@ -174,7 +174,7 @@ export class DatabaseStorage implements IStorage {
 
   async upsertTemporaryScreen(data: { deviceHardwareId: string, pairingCode: string, pairingCodeExpiresAt: Date, name: string }): Promise<void> {
     const existing = await this.getScreenByDeviceHardwareId(data.deviceHardwareId);
-    
+
     if (existing) {
       // Update existing screen
       await db.update(screens)
@@ -199,7 +199,7 @@ export class DatabaseStorage implements IStorage {
         });
     }
   }
-  
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -265,13 +265,42 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
-  // Playlist operations
-  async getPlaylists(userId: string): Promise<Playlist[]> {
-    return await db
+  // Playlist operations  
+  async getPlaylists(userId: string): Promise<any[]> {
+    const playlistsData = await db
       .select()
       .from(playlists)
       .where(eq(playlists.userId, userId))
       .orderBy(desc(playlists.createdAt));
+
+    // Get items count and total duration for each playlist
+    const enrichedPlaylists = await Promise.all(
+      playlistsData.map(async (playlist) => {
+        const items = await db
+          .select({
+            id: playlistItems.id,
+            customDuration: playlistItems.customDuration,
+            contentItem: {
+              duration: contentItems.duration,
+            },
+          })
+          .from(playlistItems)
+          .innerJoin(contentItems, eq(playlistItems.contentItemId, contentItems.id))
+          .where(eq(playlistItems.playlistId, playlist.id));
+
+        const totalDuration = items.reduce((total, item) => {
+          return total + (item.customDuration || item.contentItem.duration || 0);
+        }, 0);
+
+        return {
+          ...playlist,
+          totalItems: items.length,
+          totalDuration,
+        };
+      })
+    );
+
+    return enrichedPlaylists;
   }
 
   async getPlaylist(id: number, userId: string): Promise<Playlist | undefined> {
@@ -457,12 +486,17 @@ export class DatabaseStorage implements IStorage {
     id: number,
     screen: Partial<InsertScreen>,
   ): Promise<Screen | undefined> {
-    const [item] = await db
-      .update(screens)
-      .set({ ...screen, updatedAt: new Date() })
-      .where(eq(screens.id, id))
-      .returning();
-    return item;
+    try {
+      const [item] = await db
+        .update(screens)
+        .set({ ...screen, updatedAt: new Date() })
+        .where(eq(screens.id, id))
+        .returning();
+      return item;
+    } catch (error) {
+      console.error('Error updating screen by ID:', error);
+      throw error;
+    }
   }
 
   async deleteScreen(id: number, userId: string): Promise<boolean> {
