@@ -5,10 +5,10 @@ import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Tv, List, Folder, Clock } from "lucide-react";
-import PlaylistEditor from "@/components/playlist/playlist-editor";
-import LivePreview from "@/components/preview/live-preview";
-import ContentLibrary from "@/components/content/content-library";
-import WidgetPanel from "@/components/widgets/widget-panel";
+import { PlaylistEditor } from "@/components/playlist/playlist-editor";
+import  LivePreview from "@/components/preview/live-preview";
+import  ContentLibrary  from "@/components/content/content-library";
+import { WidgetPanel } from "@/components/widgets/widget-panel";
 
 export default function Dashboard() {
   const [activeScreens, setActiveScreens] = useState(0);
