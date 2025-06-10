@@ -17,11 +17,6 @@ import {
   insertWidgetSchema,
   insertScheduleSchema,
   insertDeploymentSchema,
-} from "@shared/schema";
-import { buildApk } from "./apk-builder";
-import { Request, Response } from "express";
-import { db } from "./db.js";
-import {
   users,
   contentItems,
   playlists,
@@ -29,13 +24,10 @@ import {
   screens,
   alerts,
   widgets,
-  insertContentItemSchema,
-  insertPlaylistSchema,
-  insertPlaylistItemSchema,
-  insertScreenSchema,
-  insertAlertSchema,
-  insertWidgetSchema,
 } from "@shared/schema";
+import { buildApk } from "./apk-builder";
+import { Request, Response } from "express";
+import { db } from "./db.js";
 import { eq, and, desc, asc } from "drizzle-orm";
 
 // Configure multer for file uploads

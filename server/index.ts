@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic } from "./vite.js";
-import { setupReplitAuth } from "./replitAuth.js";
+import { setupAuth } from "./replitAuth.js";
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 
@@ -10,7 +10,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false }));
 
 // Use Replit Auth
-setupReplitAuth(app);
+setupAuth(app);
 
 app.use((req, res, next) => {
   const start = Date.now();
