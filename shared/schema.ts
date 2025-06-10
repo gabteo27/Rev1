@@ -78,7 +78,7 @@ export const playlistItems = pgTable("playlist_items", {
 // Screens/displays
 export const screens = pgTable("screens", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: varchar("user_id").references(() => users.id),
   name: varchar("name").notNull(),
   description: text("description"),
   location: varchar("location"),

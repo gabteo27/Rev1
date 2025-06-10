@@ -12,12 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Plus, 
-  Tv, 
-  Monitor, 
-  Wifi, 
-  WifiOff, 
+import {
+  Plus,
+  Tv,
+  Monitor,
+  Wifi,
+  WifiOff,
   Clock,
   MapPin,
   Settings,
@@ -25,62 +25,51 @@ import {
   Edit
 } from "lucide-react";
 
+// Estado inicial para el formulario del modal
+const initialFormState = {
+  pairingCode: "",
+  name: "",
+  location: "",
+  playlistId: ""
+};
+
 export default function Screens() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [newScreen, setNewScreen] = useState({
-    name: "",
-    description: "",
-    location: "",
-    playlistId: ""
-  });
+  const [formData, setFormData] = useState(initialFormState);
   const { toast } = useToast();
 
-  const { data: screens = [], isLoading } = useQuery<Screen[]>({
-    queryKey: ["/api/screens"],
-    retry: false,
-  });
+  const { data: screens = [], isLoading } = useQuery<Screen[]>({ queryKey: ["/api/screens"] });
+  const { data: playlists = [] } = useQuery<Playlist[]>({ queryKey: ["/api/playlists"] });
 
-  const { data: playlists = [] } = useQuery<Playlist[]>({
-    queryKey: ["/api/playlists"],
-    retry: false,
-  });
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
 
-  const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      console.log("Creating screen with data:", data);
-      const response = await apiRequest("/api/screens", {
+  const handlePlaylistSelect = (value: string) => {
+    setFormData(prev => ({ ...prev, playlistId: value }));
+  };
+
+  const completePairingMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const payload = {
+        ...data,
+        playlistId: data.playlistId || null,
+      };
+      return apiRequest("/api/screens/complete-pairing", {
         method: "POST",
-        body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(errorData || `HTTP ${response.status}`);
-      }
-      
-      return await response.json();
+        body: JSON.stringify(payload)
+      }).then(res => res.json());
     },
     onSuccess: (data) => {
-      console.log("Screen created successfully:", data);
-      toast({
-        title: "Pantalla creada",
-        description: "La pantalla ha sido creada exitosamente.",
-      });
+      toast({ title: "¡Éxito!", description: `La pantalla "${data.screen.name}" ha sido emparejada.` });
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
       setCreateModalOpen(false);
-      setNewScreen({ name: "", description: "", location: "", playlistId: "" });
+      setFormData(initialFormState); // Resetea el formulario
     },
     onError: (error: any) => {
-      console.error("Error creating screen:", error);
-      toast({
-        title: "Error",
-        description: error?.message || "No se pudo crear la pantalla.",
-        variant: "destructive",
-      });
-    },
+      toast({ title: "Error de Emparejamiento", description: error.message, variant: "destructive" });
+    }
   });
 
   const deleteMutation = useMutation({
@@ -96,43 +85,21 @@ export default function Screens() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "No se pudo eliminar la pantalla.",
+        description: error.message || "No se pudo eliminar la pantalla.",
         variant: "destructive",
       });
     },
   });
 
-  const handleCreateScreen = async () => {
-    if (!newScreen.name.trim()) {
-      toast({
-        title: "Error",
-        description: "El nombre de la pantalla es requerido.",
-        variant: "destructive",
-      });
+  const handleSubmit = () => {
+    if (!formData.pairingCode.trim() || !formData.name.trim()) {
+      toast({ title: "Error", description: "El código y el nombre son obligatorios.", variant: "destructive" });
       return;
     }
-    
-    try {
-      const screenData = {
-        name: newScreen.name.trim(),
-        description: newScreen.description.trim() || null,
-        location: newScreen.location.trim() || null,
-        playlistId: newScreen.playlistId && newScreen.playlistId !== "none" ? parseInt(newScreen.playlistId) : null
-      };
-      
-      console.log("Submitting screen data:", screenData);
-      createMutation.mutate(screenData);
-    } catch (error) {
-      console.error("Error in handleCreateScreen:", error);
-      toast({
-        title: "Error",
-        description: "Error al procesar los datos del formulario.",
-        variant: "destructive",
-      });
-    }
+    completePairingMutation.mutate(formData);
   };
 
   const formatDate = (date: Date | null | string) => {
@@ -150,19 +117,19 @@ export default function Screens() {
     if (isOnline) {
       return <Badge className="bg-green-100 text-green-800">En línea</Badge>;
     }
-    
+
     if (lastSeen) {
       const lastSeenDate = new Date(lastSeen);
       const now = new Date();
       const diffInHours = (now.getTime() - lastSeenDate.getTime()) / (1000 * 60 * 60);
-      
+
       if (diffInHours < 1) {
         return <Badge className="bg-yellow-100 text-yellow-800">Desconectada</Badge>;
       } else if (diffInHours < 24) {
         return <Badge className="bg-orange-100 text-orange-800">Inactiva</Badge>;
       }
     }
-    
+
     return <Badge className="bg-red-100 text-red-800">Sin conexión</Badge>;
   };
 
@@ -194,66 +161,36 @@ export default function Screens() {
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Agregar Nueva Pantalla</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Emparejar Nueva Pantalla</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="name">Nombre</Label>
-                  <Input
-                    id="name"
-                    value={newScreen.name}
-                    onChange={(e) => setNewScreen({ ...newScreen, name: e.target.value })}
-                    placeholder="Ej: Pantalla Principal Recepción"
-                  />
+                  <Label htmlFor="pairingCode">Código de Emparejamiento *</Label>
+                  <Input id="pairingCode" value={formData.pairingCode} onChange={handleFormChange} placeholder="123456" />
+                </div>
+                <div>
+                  <Label htmlFor="name">Nombre de la Pantalla *</Label>
+                  <Input id="name" value={formData.name} onChange={handleFormChange} placeholder="Ej: Pantalla Lobby" />
                 </div>
                 <div>
                   <Label htmlFor="location">Ubicación</Label>
-                  <Input
-                    id="location"
-                    value={newScreen.location}
-                    onChange={(e) => setNewScreen({ ...newScreen, location: e.target.value })}
-                    placeholder="Ej: Recepción - Planta Baja"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Descripción</Label>
-                  <Textarea
-                    id="description"
-                    value={newScreen.description}
-                    onChange={(e) => setNewScreen({ ...newScreen, description: e.target.value })}
-                    placeholder="Descripción opcional"
-                  />
+                  <Input id="location" value={formData.location} onChange={handleFormChange} placeholder="Ej: Recepción" />
                 </div>
                 <div>
                   <Label htmlFor="playlist">Playlist Asignada</Label>
-                  <Select value={newScreen.playlistId} onValueChange={(value) => setNewScreen({ ...newScreen, playlistId: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar playlist (opcional)" />
-                    </SelectTrigger>
+                  <Select value={formData.playlistId} onValueChange={handlePlaylistSelect}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar playlist (opcional)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Sin playlist</SelectItem>
                       {playlists.map((playlist) => (
-                        <SelectItem key={playlist.id} value={playlist.id.toString()}>
-                          {playlist.name}
-                        </SelectItem>
+                        <SelectItem key={playlist.id} value={playlist.id.toString()}>{playlist.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleCreateScreen();
-                    }}
-                    disabled={createMutation.isPending || !newScreen.name.trim()}
-                    type="button"
-                  >
-                    {createMutation.isPending ? "Creando..." : "Crear Pantalla"}
+                  <Button variant="outline" onClick={() => setCreateModalOpen(false)}>Cancelar</Button>
+                  <Button onClick={handleSubmit} disabled={completePairingMutation.isPending}>
+                    {completePairingMutation.isPending ? "Emparejando..." : "Emparejar Pantalla"}
                   </Button>
                 </div>
               </div>
@@ -369,7 +306,7 @@ export default function Screens() {
                           variant="outline" 
                           className="h-8 px-2 text-red-600 hover:text-red-700"
                           onClick={() => deleteMutation.mutate(screen.id)}
-                          disabled={deleteMutation.isPending}
+                          disabled={deleteMutation.isLoading}
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>
