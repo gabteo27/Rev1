@@ -1,107 +1,122 @@
-// @ts-nocheck
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { PlaylistItem, ContentItem } from '@shared/schema';
 
-// Función para obtener los detalles de la pantalla y su playlist
-const fetchScreenDetails = async (screenId) => {
-  const res = await fetch(`/api/screens/${screenId}`);
-  if (!res.ok) throw new Error('Failed to fetch screen details');
-  const screen = await res.json();
+// --- Estilos y Componentes de Renderizado ---
 
-  if (!screen.playlistId) return { screen, playlist: null };
+const styles = {
+  container: {
+    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+    backgroundColor: '#000', color: 'white', overflow: 'hidden',
+  } as React.CSSProperties,
 
-  const playlistRes = await fetch(`/api/playlists/${screen.playlistId}`);
-  if (!playlistRes.ok) throw new Error('Failed to fetch playlist');
-  const playlist = await playlistRes.json();
+  message: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
+    fontSize: '3vw', textAlign: 'center', padding: '2rem'
+  } as React.CSSProperties,
 
-  return { screen, playlist };
+  media: {
+    width: '100%', height: '100%', objectFit: 'contain'
+  } as React.CSSProperties,
 };
 
-const ContentItem = ({ item }) => {
-    switch(item.content.type) {
-        case 'image':
-            return <img src={item.content.url} alt={item.content.name} className="w-full h-full object-contain" />;
-        case 'video':
-            return <video src={item.content.url} autoPlay muted loop className="w-full h-full object-contain" />;
-        case 'url':
-            return <iframe src={item.content.url} title={item.content.name} className="w-full h-full border-0" />;
-        default:
-            return <div>Unsupported content type</div>;
-    }
-};
+// Componentes específicos para cada tipo de contenido
+const ImagePlayer = ({ src }: { src: string }) => <img key={src} src={src} style={styles.media} alt="Contenido Digital" />;
+const VideoPlayer = ({ src }: { src: string }) => <video key={src} src={src} style={styles.media} autoPlay muted loop />;
+const WebpagePlayer = ({ src }: { src:string }) => <iframe key={src} src={src} style={{...styles.media, border: 'none'}} title="Contenido Web" />;
 
-const ContentPlayer = ({ screenId, initialPlaylistId, onPlaylistUpdate }) => {
-  const [currentPlaylistId, setCurrentPlaylistId] = useState(initialPlaylistId);
-  const [currentItemIndex, setCurrentItemIndex] = useState(0);
+// --- Lógica Principal del Reproductor ---
 
-  // Cuando el padre nos notifica de un cambio, actualizamos el ID
-  useEffect(() => {
-    if (onPlaylistUpdate) {
-      setCurrentPlaylistId(onPlaylistUpdate);
-      setCurrentItemIndex(0); // Reiniciar el índice
-    }
-  }, [onPlaylistUpdate]);
+interface PlaylistData {
+  items: (PlaylistItem & { contentItem: ContentItem })[];
+}
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['screenDetails', screenId, currentPlaylistId],
-    queryFn: async () => {
-        if (!currentPlaylistId) { // Si no hay playlist, obtenemos datos de la pantalla
-            const res = await fetch(`/api/player/status/${screenId}`);
-            if (!res.ok) throw new Error('Failed to fetch player status');
-            const screen = await res.json();
-            if (screen.playlistId && screen.playlistId !== currentPlaylistId) {
-                setCurrentPlaylistId(screen.playlistId); // Actualizamos si hay nueva playlist
-            }
-            return { screen, playlist: null };
-        }
-        // Si ya tenemos playlistId, obtenemos todo
-        const playlistRes = await fetch(`/api/playlists/${currentPlaylistId}`);
-        if (!playlistRes.ok) throw new Error('Failed to fetch playlist');
-        const playlist = await playlistRes.json();
-        return { playlist };
-    },
-    enabled: !!screenId, // Solo ejecutar si hay screenId
-    refetchOnWindowFocus: false,
+// Función para buscar la playlist con autenticación de token
+const fetchPlaylist = async (playlistId: string): Promise<PlaylistData> => {
+  const token = localStorage.getItem('authToken');
+  if (!token) throw new Error("No hay token de autenticación.");
+
+  const response = await fetch(`/api/playlists/${playlistId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
   });
 
-  useEffect(() => {
-    if (!data?.playlist?.items || data.playlist.items.length === 0) return;
-
-    const currentItem = data.playlist.items[currentItemIndex];
-    const duration = (currentItem.duration || 10) * 1000; // Duración en milisegundos
-
-    const timer = setTimeout(() => {
-      setCurrentItemIndex((prevIndex) => (prevIndex + 1) % data.playlist.items.length);
-    }, duration);
-
-    return () => clearTimeout(timer);
-  }, [currentItemIndex, data]);
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-screen bg-black text-white">Cargando contenido...</div>;
-  }
-
-  if (error) {
-    return <div className="flex items-center justify-center h-screen bg-black text-white">Error: {error.message}</div>;
-  }
-
-  if (!data?.playlist?.items || data.playlist.items.length === 0) {
-    return (
-        <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
-            <h1 className="text-4xl font-bold mb-4">Pantalla Vinculada</h1>
-            <p className="text-lg">ID: <span className="font-mono">{screenId}</span></p>
-            <p className="text-lg mt-4">Esperando asignación de contenido desde el panel de administración.</p>
-        </div>
-    );
-  }
-
-  const currentItem = data.playlist.items[currentItemIndex];
-
-  return (
-    <div className="w-screen h-screen bg-black">
-      <ContentItem item={currentItem} />
-    </div>
-  );
+  if (!response.ok) throw new Error("No se pudo cargar la playlist.");
+  return response.json();
 };
 
-export default ContentPlayer;
+
+export default function ContentPlayer() {
+  const [playlistId] = useState<string | null>(localStorage.getItem('playlistId'));
+  const [currentItemIndex, setCurrentItemIndex] = useState(0);
+
+  // Clave única para forzar el re-renderizado de videos e iframes
+  const [renderKey, setRenderKey] = useState(Date.now()); 
+
+  const { data: playlist, isLoading, isError, error } = useQuery({
+    queryKey: ['playlist', playlistId],
+    queryFn: () => fetchPlaylist(playlistId!),
+    enabled: !!playlistId, // Solo ejecuta la query si hay un playlistId
+    refetchOnWindowFocus: false,
+    retry: 3,
+  });
+
+  // El motor de reproducción (el bucle)
+  useEffect(() => {
+    // No hacer nada si no hay items en la playlist
+    if (!playlist || playlist.items.length === 0) return;
+
+    // Obtiene la duración del item actual, o un valor por defecto
+    const currentItem = playlist.items[currentItemIndex];
+    const durationInSeconds = currentItem?.customDuration || currentItem?.contentItem.duration || 10;
+
+    const timer = setTimeout(() => {
+      // Avanza al siguiente item, volviendo al inicio si es el último
+      setCurrentItemIndex((prevIndex) => (prevIndex + 1) % playlist.items.length);
+      // Cambia la clave para forzar la recreación del componente de medios
+      setRenderKey(Date.now());
+    }, durationInSeconds * 1000);
+
+    // Limpia el temporizador si el componente se desmonta o el índice cambia
+    return () => clearTimeout(timer);
+  }, [currentItemIndex, playlist]);
+
+  // --- Renderizado del Componente ---
+
+  if (!playlistId) {
+    return <div style={styles.message}>Esta pantalla no tiene ninguna playlist asignada.</div>;
+  }
+
+  if (isLoading) {
+    return <div style={styles.message}>Cargando contenido...</div>;
+  }
+
+  if (isError) {
+    return <div style={styles.message}>Error: {error.message}</div>;
+  }
+
+  if (!playlist || playlist.items.length === 0) {
+    return <div style={styles.message}>La playlist asignada está vacía.</div>;
+  }
+
+  const currentItem = playlist.items[currentItemIndex].contentItem;
+
+  const renderContent = () => {
+    switch (currentItem.type) {
+      case 'image':
+        return <ImagePlayer src={currentItem.url!} />;
+      case 'video':
+        return <VideoPlayer src={currentItem.url!} />;
+      case 'webpage':
+      case 'pdf': // Los PDF se pueden mostrar en un iframe
+        return <WebpagePlayer src={currentItem.url!} />;
+      default:
+        return <div style={styles.message}>Tipo de contenido no soportado: {currentItem.type}</div>;
+    }
+  };
+
+  return (
+    <div style={styles.container} key={renderKey}>
+      {renderContent()}
+    </div>
+  );
+}
