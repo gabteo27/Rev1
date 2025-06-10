@@ -609,50 +609,7 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async getPlaylistWithItems(id: number, userId: string): Promise<any> {
-    const [playlist] = await db
-      .select()
-      .from(playlists)
-      .where(and(eq(playlists.id, id), eq(playlists.userId, userId)))
-      .limit(1);
-
-    if (playlist.length === 0) {
-      return null;
-    }
-
-    const items = await db
-      .select({
-        id: playlistItems.id,
-        order: playlistItems.order,
-        customDuration: playlistItems.customDuration,
-        contentItem: {
-          id: contentItems.id,
-          title: contentItems.title,
-          description: contentItems.description,
-          type: contentItems.type,
-          url: contentItems.url,
-          duration: contentItems.duration,
-          category: contentItems.category,
-          tags: contentItems.tags,
-        },
-      })
-      .from(playlistItems)
-      .innerJoin(contentItems, eq(playlistItems.contentItemId, contentItems.id))
-      .where(eq(playlistItems.playlistId, id))
-      .orderBy(playlistItems.order);
-
-    // Calculate total duration
-    const totalDuration = items.reduce((total, item) => {
-      return total + (item.customDuration || item.contentItem.duration || 0);
-    }, 0);
-
-    return {
-      ...playlist[0],
-      items,
-      totalDuration,
-      totalItems: items.length,
-    };
-  }
+  // This method was duplicated, removing the duplicate
 
   async getPlaylists(userId: string): Promise<any[]> {
     const playlistsData = await db

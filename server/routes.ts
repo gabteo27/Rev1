@@ -225,6 +225,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.screen.userId; 
       const id = parseInt(req.params.id);
 
+      console.log(`Player requesting playlist ${id} for user ${userId}`);
+
       if (!userId) {
         return res.status(403).json({ message: "Screen is not associated with a user." });
       }
@@ -232,11 +234,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const playlist = await storage.getPlaylistWithItems(id, userId);
 
       if (!playlist) {
+        console.log(`Playlist ${id} not found for user ${userId}`);
         return res.status(404).json({ message: "Playlist not found" });
       }
+
+      console.log(`Playlist ${id} found with ${playlist.items?.length || 0} items`);
       res.json(playlist);
     } catch (error) {
-      console.error("Error fetching playlist:", error);
+      console.error("Error fetching playlist for player:", error);
       res.status(500).json({ message: "Failed to fetch playlist" });
     }
   });

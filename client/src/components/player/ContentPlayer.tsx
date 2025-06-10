@@ -12,7 +12,54 @@ const styles = {
 // Componentes específicos para cada tipo de contenido
 const ImagePlayer = ({ src }: { src: string }) => <img key={src} src={src} style={styles.media} alt="Contenido Digital" />;
 const VideoPlayer = ({ src }: { src: string }) => <video key={src} src={src} style={styles.media} autoPlay muted loop playsInline />;
-const WebpagePlayer = ({ src }: { src: string }) => <iframe key={src} src={src} style={{ ...styles.media, border: 'none' }} title="Contenido Web" sandbox="allow-scripts allow-same-origin"></iframe>;
+const WebpagePlayer = ({ src }: { src: string }) => {
+  // Validate and format URL
+  const formatUrl = (url: string): string => {
+    if (!url) return '';
+
+    // Clean the URL first
+    let cleanUrl = url.trim();
+
+    // If it doesn't start with http:// or https://, add https://
+    if (!cleanUrl.match(/^https?:\/\//)) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+
+    try {
+      // Validate URL
+      new URL(cleanUrl);
+      return cleanUrl;
+    } catch (error) {
+      console.error('Invalid URL:', url);
+      return '';
+    }
+  };
+
+  const formattedUrl = formatUrl(src);
+
+  if (!formattedUrl) {
+    return (
+      <div style={styles.message}>
+        <h2>Error en la URL</h2>
+        <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
+          La URL proporcionada no es válida: {src}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <iframe 
+      key={formattedUrl} 
+      src={formattedUrl} 
+      style={{ ...styles.media, border: 'none' }} 
+      title="Contenido Web" 
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+      allow="autoplay; fullscreen; geolocation; microphone; camera"
+      onError={() => console.error('Error loading iframe:', formattedUrl)}
+    />
+  );
+};
 
 // --- Lógica Principal del Reproductor ---
 interface PlaylistData {
@@ -82,27 +129,145 @@ export default function ContentPlayer() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // --- Renderizado del Componente ---
-  if (!playlistId) return <div style={styles.message}>Esta pantalla no tiene ninguna playlist asignada.</div>;
-  if (isLoading) return <div style={styles.message}>Cargando contenido...</div>;
-  if (isError) return <div style={styles.message}><h1>Error al cargar la playlist</h1><p style={{fontSize: '1.5vw'}}>{error.message}</p></div>;
-  if (!playlist?.items || playlist.items.length === 0) return <div style={styles.message}>La playlist asignada está vacía.</div>;
-
-  const currentItem = playlist.items[currentItemIndex]?.contentItem;
-  if (!currentItem) return <div style={styles.message}>Cargando item...</div>; // Estado intermedio
-
   const renderContent = () => {
     const url = currentItem.url;
-    if (!url) return <div style={styles.message}>Error: El contenido no tiene una URL válida.</div>;
+    console.log('Rendering content:', {
+      type: currentItem.type,
+      title: currentItem.title,
+      url: url,
+      playlistId: playlistId
+    });
 
-    switch (currentItem.type) {
-      case 'image': return <ImagePlayer src={url} />;
-      case 'video': return <VideoPlayer src={url} />;
-      case 'webpage':
-      case 'pdf': return <WebpagePlayer src={url} />;
-      default: return <div style={styles.message}>Tipo de contenido no soportado: {currentItem.type}</div>;
+    if (!url) {
+      return (
+        <div style={styles.message}>
+          <h2>Error: Sin URL</h2>
+          <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
+            El contenido "{currentItem.title}" no tiene una URL válida.
+          </p>
+        </div>
+      );
+    }
+
+    try {
+      switch (currentItem.type) {
+        case 'image': 
+          return <ImagePlayer src={url} />;
+        case 'video': 
+          return <VideoPlayer src={url} />;
+        case 'webpage':
+          return <WebpagePlayer src={url} />;
+        case 'pdf': 
+          return <WebpagePlayer src={url} />;
+        case 'text':
+          return (
+            <div style={{ ...styles.media, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+              <div style={{ fontSize: '2vw', textAlign: 'center', maxWidth: '80%', lineHeight: '1.6', color: 'white' }}>
+                {currentItem.description || currentItem.title}
+              </div>
+            </div>
+          );
+        default: 
+          console.warn('Unsupported content type:', currentItem.type);
+          return (
+            <div style={styles.message}>
+              <h2>Tipo no soportado</h2>
+              <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
+                Tipo de contenido: {currentItem.type}
+              </p>
+              <p style={{ fontSize: '1vw', marginTop: '1rem', opacity: 0.7 }}>
+                Título: {currentItem.title}
+              </p>
+            </div>
+          );
+      }
+    } catch (error) {
+      console.error('Error rendering content:', error);
+      return (
+        <div style={styles.message}>
+          <h2>Error al cargar contenido</h2>
+          <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
+            No se pudo mostrar: {currentItem.title}
+          </p>
+          <p style={{ fontSize: '1vw', marginTop: '1rem', opacity: 0.7 }}>
+            URL: {url}
+          </p>
+          <p style={{ fontSize: '1vw', marginTop: '0.5rem', opacity: 0.7 }}>
+            Tipo: {currentItem.type}
+          </p>
+        </div>
+      );
     }
   };
+
+// --- Renderizado del Componente ---
+  if (!playlistId) {
+    return (
+      <div style={styles.message}>
+        <h1>Sin Playlist</h1>
+        <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
+          Esta pantalla no tiene ninguna playlist asignada.
+        </p>
+        <p style={{ fontSize: '1vw', marginTop: '1rem', opacity: 0.7 }}>
+          Token: {localStorage.getItem('authToken') ? 'Presente' : 'Ausente'}
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div style={styles.message}>
+        <h1>Cargando contenido...</h1>
+        <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
+          Playlist ID: {playlistId}
+        </p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div style={styles.message}>
+        <h1>Error al cargar la playlist</h1>
+        <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
+          {error?.message || 'Error desconocido'}
+        </p>
+        <p style={{ fontSize: '1vw', marginTop: '1rem', opacity: 0.7 }}>
+          Playlist ID: {playlistId}
+        </p>
+        <p style={{ fontSize: '1vw', marginTop: '0.5rem', opacity: 0.7 }}>
+          Token: {localStorage.getItem('authToken') ? 'Presente' : 'Ausente'}
+        </p>
+      </div>
+    );
+  }
+
+  if (!playlist?.items || playlist.items.length === 0) {
+    return (
+      <div style={styles.message}>
+        <h1>Playlist Vacía</h1>
+        <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
+          La playlist asignada no tiene contenido.
+        </p>
+        <p style={{ fontSize: '1vw', marginTop: '1rem', opacity: 0.7 }}>
+          Playlist: {playlist?.name || 'Sin nombre'} (ID: {playlistId})
+        </p>
+      </div>
+    );
+  }
+
+  const currentItem = playlist.items[currentItemIndex]?.contentItem;
+  if (!currentItem) {
+    return (
+      <div style={styles.message}>
+        <h1>Cargando item...</h1>
+        <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
+          Ítem {currentItemIndex + 1} de {playlist.items.length}
+        </p>
+      </div>
+    );
+  }
 
   return <div style={styles.container} key={renderKey}>{renderContent()}</div>;
 }
