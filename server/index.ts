@@ -42,7 +42,7 @@ app.use((req, res, next) => {
 const httpServer = createServer(app);
 
 // Setup Vite with the HTTP server
-setupVite(app, httpServer);
+await setupVite(app, httpServer);
 
 // Setup WebSocket server for real-time communication
 const wss = new WebSocketServer({ server: httpServer });
@@ -77,10 +77,14 @@ wss.on('connection', (ws, req) => {
 // Make WebSocket server available to routes
 export { wss };
 
-registerRoutes(app);
+async function startServer() {
+  await registerRoutes(app);
 
-const PORT = 5000;
-httpServer.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`WebSocket server running on port ${PORT}`);
-});
+  const PORT = 5000;
+  httpServer.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`WebSocket server running on port ${PORT}`);
+  });
+}
+
+startServer().catch(console.error);

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useSearchParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import ContentPlayer from "@/components/player/ContentPlayer";
 import { FunctionalWidget } from "@/components/widgets/functional-widget";
@@ -16,7 +16,10 @@ interface AlertOverlay {
 
 export default function Player() {
   const { screenId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [location] = useLocation();
+  
+  // Parse search params manually
+  const searchParams = new URLSearchParams(location.split('?')[1] || '');
   const isFullscreen = searchParams.get("fullscreen") === "true";
 
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
