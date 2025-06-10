@@ -18,6 +18,7 @@ import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import Settings from "@/pages/settings";
 import Analytics from "@/pages/analytics";
+import { lazy } from "react";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -45,6 +46,7 @@ function Router() {
               <Route path="/" component={Dashboard} />
               <Route path="/content" component={Content} />
               <Route path="/playlists" component={Playlists} />
+              <Route path="/playlist/:id" component={lazy(() => import("./pages/playlist-detail"))} />
               <Route path="/screens" component={Screens} />
               <Route path="/alerts" component={Alerts} />
               <Route path="/scheduling" component={Scheduling} />

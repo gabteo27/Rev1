@@ -34,7 +34,7 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  
+
   // Screen authentication methods
   getScreenByAuthToken(token: string): Promise<Screen | undefined>;
   getScreenByDeviceHardwareId(deviceId: string): Promise<Screen | undefined>;
@@ -155,7 +155,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(screens.authToken, token));
     return screen;
   }
-  
+
   async findScreenByPairingCode(code: string): Promise<Screen | undefined> {
     const [screen] = await db
       .select()
@@ -174,7 +174,7 @@ export class DatabaseStorage implements IStorage {
 
   async upsertTemporaryScreen(data: { deviceHardwareId: string, pairingCode: string, pairingCodeExpiresAt: Date, name: string }): Promise<void> {
     const existing = await this.getScreenByDeviceHardwareId(data.deviceHardwareId);
-    
+
     if (existing) {
       // Update existing screen
       await db.update(screens)
@@ -199,7 +199,7 @@ export class DatabaseStorage implements IStorage {
         });
     }
   }
-  
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -607,6 +607,188 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(deployments.id, id), eq(deployments.userId, userId)))
       .returning();
     return item;
+  }
+
+  async getPlaylistWithItems(id: number, userId: string): Promise<any> {
+    const [playlist] = await db
+      .select()
+      .from(playlists)
+      .where(and(eq(playlists.id, id), eq(playlists.userId, userId)))
+      .limit(1);
+
+    if (playlist.length === 0) {
+      return null;
+    }
+
+    const items = await db
+      .select({
+        id: playlistItems.id,
+        order: playlistItems.order,
+        customDuration: playlistItems.customDuration,
+        contentItem: {
+          id: contentItems.id,
+          title: contentItems.title,
+          description: contentItems.description,
+          type: contentItems.type,
+          url: contentItems.url,
+          duration: contentItems.duration,
+          category: contentItems.category,
+          tags: contentItems.tags,
+        },
+      })
+      .from(playlistItems)
+      .innerJoin(contentItems, eq(playlistItems.contentItemId, contentItems.id))
+      .where(eq(playlistItems.playlistId, id))
+      .orderBy(playlistItems.order);
+
+    // Calculate total duration
+    const totalDuration = items.reduce((total, item) => {
+      return total + (item.customDuration || item.contentItem.duration || 0);
+    }, 0);
+
+    return {
+      ...playlist[0],
+      items,
+      totalDuration,
+      totalItems: items.length,
+    };
+  }
+
+  async getPlaylists(userId: string): Promise<any[]> {
+    const playlistsData = await db
+      .select()
+      .from(playlists)
+      .where(eq(playlists.userId, userId))
+      .orderBy(desc(playlists.updatedAt));
+
+    // Get items count and total duration for each playlist
+    const enrichedPlaylists = await Promise.all(
+      playlistsData.map(async (playlist) => {
+        const items = await db
+          .select({
+            id: playlistItems.id,
+            customDuration: playlistItems.customDuration,
+            contentItem: {
+              duration: contentItems.duration,
+            },
+          })
+          .from(playlistItems)
+          .innerJoin(contentItems, eq(playlistItems.contentItemId, contentItems.id))
+          .where(eq(playlistItems.playlistId, playlist.id));
+
+        const totalDuration = items.reduce((total, item) => {
+          return total + (item.customDuration || item.contentItem.duration || 0);
+        }, 0);
+
+        return {
+          ...playlist,
+          totalItems: items.length,
+          totalDuration,
+        };
+      })
+    );
+
+    return enrichedPlaylists;
+  }
+
+  async addPlaylistItem(data: InsertPlaylistItem, userId: string): Promise<any> {
+    // Verify playlist belongs to user
+    const playlist = await db
+      .select()
+      .from(playlists)
+      .where(and(eq(playlists.id, data.playlistId), eq(playlists.userId, userId)))
+      .limit(1);
+
+    if (playlist.length === 0) {
+      throw new Error("Playlist not found or access denied");
+    }
+
+    // Verify content item belongs to user
+    const contentItem = await db
+      .select()
+      .from(contentItems)
+      .where(and(eq(contentItems.id, data.contentItemId), eq(contentItems.userId, userId)))
+      .limit(1);
+
+    if (contentItem.length === 0) {
+      throw new Error("Content item not found or access denied");
+    }
+
+    const result = await db
+      .insert(playlistItems)
+      .values(data)
+      .returning();
+
+    return result[0];
+  }
+
+  async updatePlaylistItem(id: number, updates: Partial<InsertPlaylistItem>, userId: string): Promise<any> {
+    // Verify playlist item belongs to user through playlist
+    const item = await db
+      .select({
+        playlistItem: playlistItems,
+        playlist: playlists,
+      })
+      .from(playlistItems)
+      .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)))
+      .limit(1);
+
+    if (item.length === 0) {
+      return null;
+    }
+
+    const result = await db
+      .update(playlistItems)
+      .set({ ...updates, order: updates.order })
+      .where(eq(playlistItems.id, id))
+      .returning();
+
+    return result[0];
+  }
+
+  async deletePlaylistItem(id: number, userId: string): Promise<boolean> {
+    // Verify playlist item belongs to user through playlist
+    const item = await db
+      .select({
+        playlistItem: playlistItems,
+        playlist: playlists,
+      })
+      .from(playlistItems)
+      .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)))
+      .limit(1);
+
+    if (item.length === 0) {
+      return false;
+    }
+
+    await db
+      .delete(playlistItems)
+      .where(eq(playlistItems.id, id));
+
+    return true;
+  }
+
+  async reorderPlaylistItems(playlistId: number, itemOrders: { id: number; order: number }[], userId: string): Promise<void> {
+    // Verify playlist belongs to user
+    const playlist = await db
+      .select()
+      .from(playlists)
+      .where(and(eq(playlists.id, playlistId), eq(playlists.userId, userId)))
+      .limit(1);
+
+    if (playlist.length === 0) {
+      throw new Error("Playlist not found or access denied");
+    }
+
+    // Update each item's order
+    for (const itemOrder of itemOrders) {
+      await db
+        .update(playlistItems)
+        .set({ order: itemOrder.order })
+        .where(eq(playlistItems.id, itemOrder.id));
+    }
   }
 }
 

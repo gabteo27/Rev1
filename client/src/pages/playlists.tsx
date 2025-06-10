@@ -309,7 +309,7 @@ export default function Playlists() {
                           <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
-                      <Link href={`/playlists/${playlist.id}`}>
+                      <Link href={`/playlist/${playlist.id}`}>
                         <Button size="sm" className="h-8 px-3 text-xs">
                           <Edit className="w-3 h-3 mr-1" />
                           Editar

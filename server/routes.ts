@@ -201,9 +201,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/playlists/:id", isPlayerAuthenticated, async (req: any, res) => {
+  // For authenticated users (admin panel)
+  app.get("/api/playlists/:id", isAuthenticated, async (req: any, res) => {
     try {
-      // Ya no usamos el userId de la sesión, sino el de la pantalla autenticada
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+
+      const playlist = await storage.getPlaylistWithItems(id, userId);
+
+      if (!playlist) {
+        return res.status(404).json({ message: "Playlist not found" });
+      }
+      res.json(playlist);
+    } catch (error) {
+      console.error("Error fetching playlist:", error);
+      res.status(500).json({ message: "Failed to fetch playlist" });
+    }
+  });
+
+  // For player authentication (screens)
+  app.get("/api/player/playlists/:id", isPlayerAuthenticated, async (req: any, res) => {
+    try {
       const userId = req.screen.userId; 
       const id = parseInt(req.params.id);
 
