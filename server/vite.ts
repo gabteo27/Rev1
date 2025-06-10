@@ -19,7 +19,7 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-export async function setupVite(app: Express, server: Server) {
+export function setupVite(app: Express, server?: any): void {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
