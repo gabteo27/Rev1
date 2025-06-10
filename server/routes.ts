@@ -57,14 +57,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/screens/pairing-status/:deviceHardwareId", async (req, res) => {
     try {
       const { deviceHardwareId } = req.params;
-      const screen = await storage.getScreenByDeviceHardwareId(deviceHardwareId);
+      console.log(`Checking pairing status for device: ${deviceHardwareId}`);
+      
+      // Decodificar el deviceHardwareId en caso de que venga codificado
+      const decodedDeviceId = decodeURIComponent(deviceHardwareId);
+      const screen = await storage.getScreenByDeviceHardwareId(decodedDeviceId);
 
       if (!screen) {
+        console.log(`Screen not found for device: ${decodedDeviceId}`);
         return res.status(404).json({ status: 'not_found' });
       }
 
       // Si la pantalla tiene un authToken, significa que ya fue emparejada.
       if (screen.authToken) {
+        console.log(`Screen paired successfully for device: ${decodedDeviceId}`);
         return res.json({
           status: 'paired',
           authToken: screen.authToken,
@@ -74,11 +80,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Si no, sigue pendiente.
+      console.log(`Screen still pending for device: ${decodedDeviceId}`);
       return res.json({ status: 'pending' });
 
     } catch (error) {
       console.error("Error checking pairing status:", error);
-      res.status(500).json({ message: "Failed to check pairing status" });
+      res.status(500).json({ message: "Failed to check pairing status", error: error.message });
     }
   });
   

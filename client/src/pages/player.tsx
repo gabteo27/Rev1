@@ -18,7 +18,8 @@ const codeStyles: React.CSSProperties = {
 const getDeviceHardwareId = (): string => {
   let id = localStorage.getItem('deviceHardwareId');
   if (!id) {
-    id = `device-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+    // Generar un ID más simple sin caracteres especiales
+    id = `device_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
     localStorage.setItem('deviceHardwareId', id);
   }
   return id;
@@ -69,7 +70,9 @@ export default function PlayerPage() {
     const intervalId = setInterval(async () => {
         if(status !== 'pairing') return; // Solo hacer polling si estamos en modo pairing
         try {
-            const statusResponse = await fetch(`/api/screens/pairing-status/${deviceId}`);
+            // Codificar correctamente el deviceId para la URL
+            const encodedDeviceId = encodeURIComponent(deviceId);
+            const statusResponse = await fetch(`/api/screens/pairing-status/${encodedDeviceId}`);
             if(!statusResponse.ok) return;
 
             const data = await statusResponse.json();
@@ -78,7 +81,6 @@ export default function PlayerPage() {
             localStorage.setItem('authToken', data.authToken);
             localStorage.setItem('screenName', data.name);
 
-            // ----- CORRECCIÓN CLAVE AQUÍ -----
             // Si el playlistId existe, lo guardamos. Si es nulo o undefined, lo eliminamos.
             if (data.playlistId) {
               localStorage.setItem('playlistId', data.playlistId.toString());
@@ -87,12 +89,13 @@ export default function PlayerPage() {
             }
 
             clearInterval(intervalId);
+            // Cambiar inmediatamente al reproductor
             setStatus('paired');
           }
         } catch (err) {
             console.error("Error durante el polling:", err);
         }
-    }, 5000);
+    }, 2000); // Reducir el intervalo a 2 segundos para respuesta más rápida
 
     return () => clearInterval(intervalId);
   }, [status]); // El useEffect ahora depende del status para detener el polling

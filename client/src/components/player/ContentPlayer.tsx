@@ -41,14 +41,85 @@ export default function ContentPlayer() {
   const [playlistId] = useState<string | null>(localStorage.getItem('playlistId'));
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [renderKey, setRenderKey] = useState(Date.now());
+  const [playlist, setPlaylist] = useState<PlaylistData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: playlist, isLoading, isError, error } = useQuery({
+  const { data: initialPlaylist, isLoading: initialLoading, isError: initialError, error: initialQueryError } = useQuery({
     queryKey: ['playlist', playlistId],
     queryFn: () => playerApiRequest(`/api/playlists/${playlistId}`),
     enabled: !!playlistId,
     refetchOnWindowFocus: false,
     refetchInterval: 5 * 60 * 1000, // Refresca la playlist cada 5 minutos
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    const playlistId = localStorage.getItem('playlistId');
+
+    if (!token) {
+      console.error('No auth token found');
+      setError('Token de autenticación no encontrado');
+      setLoading(false);
+      return;
+    }
+
+    if (!playlistId) {
+      setError('No se ha asignado una playlist a esta pantalla');
+      setLoading(false);
+      return;
+    }
+
+    const fetchPlaylist = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/playlists/${playlistId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Error HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        setPlaylist(data);
+        if (data.items && data.items.length > 0) {
+          setCurrentItemIndex(0);
+          setError(null);
+        } else {
+          setError('La playlist está vacía. Agrega contenido desde el panel de administración.');
+        }
+      } catch (error) {
+        console.error('Error fetching playlist:', error);
+        setError(`Error al cargar la playlist: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlaylist();
+
+    // Configurar heartbeat para mantener la conexión
+    const heartbeatInterval = setInterval(async () => {
+      try {
+        await fetch('/api/screens/heartbeat', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      } catch (error) {
+        console.error('Heartbeat failed:', error);
+      }
+    }, 30000); // Cada 30 segundos
+
+    return () => clearInterval(heartbeatInterval);
+  }, []);
 
   // Efecto para el bucle de reproducción
   useEffect(() => {
@@ -65,20 +136,10 @@ export default function ContentPlayer() {
     return () => clearTimeout(timer);
   }, [currentItemIndex, playlist]);
 
-  // Efecto para el "Heartbeat" que reporta que la pantalla está en línea
-  useEffect(() => {
-    const sendHeartbeat = () => playerApiRequest('/api/screens/heartbeat', { method: 'POST' });
-
-    sendHeartbeat(); // Envía uno al cargar
-    const intervalId = setInterval(sendHeartbeat, 60 * 1000); // Y luego cada minuto
-
-    return () => clearInterval(intervalId);
-  }, []);
-
   // --- Renderizado del Componente ---
   if (!playlistId) return <div style={styles.message}>Esta pantalla no tiene ninguna playlist asignada.</div>;
-  if (isLoading) return <div style={styles.message}>Cargando contenido...</div>;
-  if (isError) return <div style={styles.message}>Error: {error.message}</div>;
+  if (loading) return <div style={styles.message}>Cargando contenido...</div>;
+  if (error) return <div style={styles.message}>Error: {error}</div>;
   if (!playlist?.items || playlist.items.length === 0) return <div style={styles.message}>La playlist asignada está vacía.</div>;
 
   const currentItem = playlist.items[currentItemIndex].contentItem;

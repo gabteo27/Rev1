@@ -37,7 +37,19 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  const port = parseInt(process.env.PORT ?? "5000", 10);
+
   const server = await registerRoutes(app);
+  server.listen(port, "0.0.0.0", () => {
+    const formattedTime = new Date().toLocaleTimeString("en-US", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+
+    console.log(`${formattedTime} [express] serving on port ${port}`);
+  });
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -59,7 +71,6 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = 5000;
   server.listen({
     port,
     host: "0.0.0.0",
