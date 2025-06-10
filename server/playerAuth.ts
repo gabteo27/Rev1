@@ -1,7 +1,7 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { storage } from "./storage";
 
-export const playerAuth: RequestHandler = async (req, res, next) => {
+export const isPlayerAuthenticated = async (req: any, res: any, next: any) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
