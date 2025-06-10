@@ -333,7 +333,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const validatedData = insertPlaylistItemSchema.parse(itemData);
-      const item = await storage.createPlaylistItem(validatedData);
+      const item = await storage.addPlaylistItem(validatedData, req.user.claims.sub);
+
 
       // Recalculate total duration
       await storage.updatePlaylistDuration(playlistId);
@@ -813,28 +814,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      /* Update deployment status to building */
-      const deployment = await storage.updateDeployment(id, { status: "building" }, userId);
-      if (!deployment) {
-        return res.status(404).json({ message: "Deployment not found" });
-      }
-
-      // In a real implementation, this would trigger the APK build process
-      // For now, we'll simulate it by updating to ready status after a delay
-      setTimeout(async () => {
-        await storage.updateDeployment(id, { 
-          status: "ready",
-          buildUrl: `https://example.com/builds/app-v${deployment.version}.apk`
-        }, userId);
-      }, 5000);
-
-      res.json({ message: "Build started" });
-    } catch (error) {
-      console.error("Error starting build:", error);
-      res.status(500).json({ message: "Failed to start build" });
-    }
-  });
-
   app.post("/api/deployments/:id/deploy", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -848,9 +827,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Deployment completed" });
     } catch (error) {
       console.error("Error deploying:", error);
-      res.status(500).json({ message: "Failed to deploy"
-});
-
+      res.status(500).json({ message: "Failed to deploy"});
+    }
+    });
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
 
