@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
+
+
+
 export default defineConfig({
   plugins: [
     react(),
@@ -30,9 +33,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         // La app principal (Panel de Admin) se compila desde index.html
-        main: path.resolve((import.meta.dirname, "client", "index.html"),
+        main: path.resolve(import.meta.dirname, "client", "index.html"),
         // La app secundaria (Reproductor) se compila desde player.html
-        player: path.resolve((import.meta.dirname, "client", "player.html")
+        player: path.resolve(import.meta.dirname, "client", "player.html")
       },
     },
   },

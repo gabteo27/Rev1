@@ -5,6 +5,8 @@ import { WebSocketServer, WebSocket } from "ws";
 import multer from "multer";
 import path from "path";
 import { storage } from "./storage";
+import { randomBytes } from 'crypto';
+import { isPlayerAuthenticated } from "./playerAuth";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertContentItemSchema,
@@ -52,6 +54,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/screens/pairing-status/:deviceHardwareId", async (req, res) => {
+    try {
+      const { deviceHardwareId } = req.params;
+      const screen = await storage.getScreenByDeviceHardwareId(deviceHardwareId);
+
+      if (!screen) {
+        return res.status(404).json({ status: 'not_found' });
+      }
+
+      // Si la pantalla tiene un authToken, significa que ya fue emparejada.
+      if (screen.authToken) {
+        return res.json({
+          status: 'paired',
+          authToken: screen.authToken,
+          playlistId: screen.playlistId,
+          name: screen.name
+        });
+      }
+
+      // Si no, sigue pendiente.
+      return res.json({ status: 'pending' });
+
+    } catch (error) {
+      console.error("Error checking pairing status:", error);
+      res.status(500).json({ message: "Failed to check pairing status" });
+    }
+  });
+  
   // Content routes
   app.get("/api/content", isAuthenticated, async (req: any, res) => {
     try {
@@ -144,12 +174,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/playlists/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/playlists/:id", isPlayerAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Ya no usamos el userId de la sesión, sino el de la pantalla autenticada
+      const userId = req.screen.userId; 
       const id = parseInt(req.params.id);
+
       const playlist = await storage.getPlaylistWithItems(id, userId);
-      
+
       if (!playlist) {
         return res.status(404).json({ message: "Playlist not found" });
       }
@@ -206,7 +238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete playlist" });
     }
   });
-
+  
   // Playlist item routes
   app.post("/api/playlists/:id/items", isAuthenticated, async (req: any, res) => {
     try {
@@ -522,6 +554,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para que el Fire TV pida un código
+  app.post("/api/screens/initiate-pairing", async (req, res) => {
+    try {
+      const { deviceHardwareId } = req.body;
+      if (!deviceHardwareId) {
+        return res.status(400).json({ message: "Device Hardware ID is required." });
+      }
+
+      const pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const pairingCodeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min de validez
+
+      // Creamos un registro de pantalla "huérfano" sin userId.
+      const screenData = {
+        name: `Nueva Pantalla (${deviceHardwareId.slice(0, 6)})`,
+        deviceHardwareId,
+        pairingCode,
+        pairingCodeExpiresAt,
+        // userId se omite intencionadamente para que sea NULL
+      };
+
+      // Usaremos una función "upsert" para crear o actualizar el registro temporal
+      await storage.upsertTemporaryScreen(screenData);
+
+      res.json({ pairingCode });
+    } catch (error) {
+      console.error("Error initiating pairing:", error);
+      res.status(500).json({ message: "Failed to initiate pairing." });
+    }
+  });
+
+  // Endpoint para que el admin confirme el emparejamiento
+  app.post("/api/screens/complete-pairing", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { pairingCode, name, location, playlistId } = req.body;
+
+      if (!pairingCode || !name) {
+        return res.status(400).json({ message: "El código y el nombre son requeridos." });
+      }
+
+      // Busca la pantalla temporal por su código. No necesita userId.
+      const screen = await storage.findScreenByPairingCode(pairingCode);
+
+      if (!screen || new Date() > new Date(screen.pairingCodeExpiresAt!)) {
+        return res.status(404).json({ message: "Código de emparejamiento inválido o expirado." });
+      }
+
+      // El código es válido. Ahora la "reclamamos" para el usuario actual.
+      const authToken = randomBytes(32).toString('hex');
+      const screenId = screen.id;
+
+      // Actualizamos el registro existente con los datos del admin
+      const updatedScreen = await storage.updateScreen(screenId, {
+        userId,
+        name,
+        location,
+        playlistId: playlistId ? parseInt(playlistId, 10) : null,
+        authToken,
+        pairingCode: null,
+        pairingCodeExpiresAt: null,
+      }, userId);
+
+      res.json({ message: "Pantalla emparejada exitosamente.", screen: updatedScreen });
+    } catch (error) {
+      console.error("Error completing pairing:", error);
+      res.status(500).json({ message: "Failed to complete pairing" });
+    }
+  });
+
+  
   app.delete("/api/schedules/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -563,7 +665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.status(500).json({ message: "Failed to create deployment" });
         }
       });
-
+      
       app.post("/api/deployments/:id/build", isAuthenticated, async (req: any, res) => {
         try {
           const userId = req.user.claims.sub;

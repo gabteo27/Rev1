@@ -39,53 +39,98 @@ export interface IStorage {
   getContentItems(userId: string): Promise<ContentItem[]>;
   getContentItem(id: number, userId: string): Promise<ContentItem | undefined>;
   createContentItem(contentItem: InsertContentItem): Promise<ContentItem>;
-  updateContentItem(id: number, contentItem: Partial<InsertContentItem>, userId: string): Promise<ContentItem | undefined>;
+  updateContentItem(
+    id: number,
+    contentItem: Partial<InsertContentItem>,
+    userId: string,
+  ): Promise<ContentItem | undefined>;
   deleteContentItem(id: number, userId: string): Promise<boolean>;
 
   // Playlist operations
   getPlaylists(userId: string): Promise<Playlist[]>;
   getPlaylist(id: number, userId: string): Promise<Playlist | undefined>;
-  getPlaylistWithItems(id: number, userId: string): Promise<(Playlist & { items: (PlaylistItem & { contentItem: ContentItem })[] }) | undefined>;
+  getPlaylistWithItems(
+    id: number,
+    userId: string,
+  ): Promise<
+    | (Playlist & { items: (PlaylistItem & { contentItem: ContentItem })[] })
+    | undefined
+  >;
   createPlaylist(playlist: InsertPlaylist): Promise<Playlist>;
-  updatePlaylist(id: number, playlist: Partial<InsertPlaylist>, userId: string): Promise<Playlist | undefined>;
+  updatePlaylist(
+    id: number,
+    playlist: Partial<InsertPlaylist>,
+    userId: string,
+  ): Promise<Playlist | undefined>;
   deletePlaylist(id: number, userId: string): Promise<boolean>;
 
   // Playlist item operations
-  addPlaylistItem(playlistItem: InsertPlaylistItem, userId: string): Promise<PlaylistItem>;
-  updatePlaylistItem(id: number, playlistItem: Partial<InsertPlaylistItem>, userId: string): Promise<PlaylistItem | undefined>;
+  addPlaylistItem(
+    playlistItem: InsertPlaylistItem,
+    userId: string,
+  ): Promise<PlaylistItem>;
+  updatePlaylistItem(
+    id: number,
+    playlistItem: Partial<InsertPlaylistItem>,
+    userId: string,
+  ): Promise<PlaylistItem | undefined>;
   deletePlaylistItem(id: number, userId: string): Promise<boolean>;
-  reorderPlaylistItems(playlistId: number, itemOrders: { id: number; order: number }[], userId: string): Promise<void>;
+  reorderPlaylistItems(
+    playlistId: number,
+    itemOrders: { id: number; order: number }[],
+    userId: string,
+  ): Promise<void>;
 
   // Screen operations
   getScreens(userId: string): Promise<Screen[]>;
   getScreen(id: number, userId: string): Promise<Screen | undefined>;
   createScreen(screen: InsertScreen): Promise<Screen>;
-  updateScreen(id: number, screen: Partial<InsertScreen>, userId: string): Promise<Screen | undefined>;
+  updateScreen(
+    id: number,
+    screen: Partial<InsertScreen>,
+    userId: string,
+  ): Promise<Screen | undefined>;
   deleteScreen(id: number, userId: string): Promise<boolean>;
 
   // Alert operations
   getAlerts(userId: string): Promise<Alert[]>;
   getActiveAlerts(userId: string): Promise<Alert[]>;
   createAlert(alert: InsertAlert): Promise<Alert>;
-  updateAlert(id: number, alert: Partial<InsertAlert>, userId: string): Promise<Alert | undefined>;
+  updateAlert(
+    id: number,
+    alert: Partial<InsertAlert>,
+    userId: string,
+  ): Promise<Alert | undefined>;
   deleteAlert(id: number, userId: string): Promise<boolean>;
 
   // Widget operations
   getWidgets(userId: string): Promise<Widget[]>;
   createWidget(widget: InsertWidget): Promise<Widget>;
-  updateWidget(id: number, widget: Partial<InsertWidget>, userId: string): Promise<Widget | undefined>;
+  updateWidget(
+    id: number,
+    widget: Partial<InsertWidget>,
+    userId: string,
+  ): Promise<Widget | undefined>;
   deleteWidget(id: number, userId: string): Promise<boolean>;
 
   // Schedule operations
   getSchedules(userId: string): Promise<Schedule[]>;
   createSchedule(schedule: InsertSchedule): Promise<Schedule>;
-  updateSchedule(id: number, schedule: Partial<InsertSchedule>, userId: string): Promise<Schedule | undefined>;
+  updateSchedule(
+    id: number,
+    schedule: Partial<InsertSchedule>,
+    userId: string,
+  ): Promise<Schedule | undefined>;
   deleteSchedule(id: number, userId: string): Promise<boolean>;
 
   // Deployment operations
   getDeployments(userId: string): Promise<Deployment[]>;
   createDeployment(deployment: InsertDeployment): Promise<Deployment>;
-  updateDeployment(id: number, deployment: Partial<InsertDeployment>, userId: string): Promise<Deployment | undefined>;
+  updateDeployment(
+    id: number,
+    deployment: Partial<InsertDeployment>,
+    userId: string,
+  ): Promise<Deployment | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -95,6 +140,57 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getScreenByAuthToken(token: string): Promise<Screen | undefined> {
+    const [screen] = await db
+      .select()
+      .from(screens)
+      .where(eq(screens.authToken, token));
+    return screen;
+  }
+  
+  async findScreenByPairingCode(
+    code: string,
+    userId: string,
+  ): Promise<Screen | undefined> {
+    const [screen] = await db
+      .select()
+      .from(screens)
+      .where(and(eq(screens.pairingCode, code), eq(screens.userId, userId)));
+    return screen;
+  }
+
+  async getScreenByDeviceHardwareId(deviceId: string): Promise<Screen | undefined> {
+    const [screen] = await db
+      .select()
+      .from(screens)
+      // El error está aquí. Drizzle espera un operador de comparación como eq()
+      .where(screens.deviceHardwareId, deviceId); 
+    return screen;
+  }
+
+  async upsertTemporaryScreen(data: { deviceHardwareId: string, pairingCode: string, pairingCodeExpiresAt: Date, name: string }): Promise<void> {
+    await db.insert(screens)
+      .values({
+        deviceHardwareId: data.deviceHardwareId,
+        pairingCode: data.pairingCode,
+        pairingCodeExpiresAt: data.pairingCodeExpiresAt,
+        name: data.name
+      })
+      .onConflictDoUpdate({
+        // ----- CORRECCIÓN AQUÍ -----
+        // Cambiamos el string "deviceHardwareId" por el objeto de la columna `screens.deviceHardwareId`
+        target: screens.deviceHardwareId,
+        set: {
+          pairingCode: data.pairingCode,
+          pairingCodeExpiresAt: data.pairingCodeExpiresAt,
+          name: data.name,
+          authToken: null,
+          userId: null,
+          playlistId: null,
+        }
+      });
+  }
+  
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -119,7 +215,10 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(contentItems.createdAt));
   }
 
-  async getContentItem(id: number, userId: string): Promise<ContentItem | undefined> {
+  async getContentItem(
+    id: number,
+    userId: string,
+  ): Promise<ContentItem | undefined> {
     const [item] = await db
       .select()
       .from(contentItems)
@@ -127,12 +226,21 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async createContentItem(contentItem: InsertContentItem): Promise<ContentItem> {
-    const [item] = await db.insert(contentItems).values(contentItem).returning();
+  async createContentItem(
+    contentItem: InsertContentItem,
+  ): Promise<ContentItem> {
+    const [item] = await db
+      .insert(contentItems)
+      .values(contentItem)
+      .returning();
     return item;
   }
 
-  async updateContentItem(id: number, contentItem: Partial<InsertContentItem>, userId: string): Promise<ContentItem | undefined> {
+  async updateContentItem(
+    id: number,
+    contentItem: Partial<InsertContentItem>,
+    userId: string,
+  ): Promise<ContentItem | undefined> {
     const [item] = await db
       .update(contentItems)
       .set({ ...contentItem, updatedAt: new Date() })
@@ -165,7 +273,13 @@ export class DatabaseStorage implements IStorage {
     return playlist;
   }
 
-  async getPlaylistWithItems(id: number, userId: string): Promise<(Playlist & { items: (PlaylistItem & { contentItem: ContentItem })[] }) | undefined> {
+  async getPlaylistWithItems(
+    id: number,
+    userId: string,
+  ): Promise<
+    | (Playlist & { items: (PlaylistItem & { contentItem: ContentItem })[] })
+    | undefined
+  > {
     const playlist = await this.getPlaylist(id, userId);
     if (!playlist) return undefined;
 
@@ -193,7 +307,11 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updatePlaylist(id: number, playlist: Partial<InsertPlaylist>, userId: string): Promise<Playlist | undefined> {
+  async updatePlaylist(
+    id: number,
+    playlist: Partial<InsertPlaylist>,
+    userId: string,
+  ): Promise<Playlist | undefined> {
     const [item] = await db
       .update(playlists)
       .set({ ...playlist, updatedAt: new Date() })
@@ -210,18 +328,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Playlist item operations
-  async addPlaylistItem(playlistItem: InsertPlaylistItem, userId: string): Promise<PlaylistItem> {
+  async addPlaylistItem(
+    playlistItem: InsertPlaylistItem,
+    userId: string,
+  ): Promise<PlaylistItem> {
     // Verify playlist belongs to user
     const playlist = await this.getPlaylist(playlistItem.playlistId, userId);
     if (!playlist) {
       throw new Error("Playlist not found or access denied");
     }
 
-    const [item] = await db.insert(playlistItems).values(playlistItem).returning();
+    const [item] = await db
+      .insert(playlistItems)
+      .values(playlistItem)
+      .returning();
     return item;
   }
 
-  async updatePlaylistItem(id: number, playlistItem: Partial<InsertPlaylistItem>, userId: string): Promise<PlaylistItem | undefined> {
+  async updatePlaylistItem(
+    id: number,
+    playlistItem: Partial<InsertPlaylistItem>,
+    userId: string,
+  ): Promise<PlaylistItem | undefined> {
     // First get the playlist item to verify ownership
     const [existing] = await db
       .select({ playlistItem: playlistItems, playlist: playlists })
@@ -249,11 +377,17 @@ export class DatabaseStorage implements IStorage {
 
     if (!existing) return false;
 
-    const result = await db.delete(playlistItems).where(eq(playlistItems.id, id));
+    const result = await db
+      .delete(playlistItems)
+      .where(eq(playlistItems.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 
-  async reorderPlaylistItems(playlistId: number, itemOrders: { id: number; order: number }[], userId: string): Promise<void> {
+  async reorderPlaylistItems(
+    playlistId: number,
+    itemOrders: { id: number; order: number }[],
+    userId: string,
+  ): Promise<void> {
     // Verify playlist belongs to user
     const playlist = await this.getPlaylist(playlistId, userId);
     if (!playlist) {
@@ -291,7 +425,11 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updateScreen(id: number, screen: Partial<InsertScreen>, userId: string): Promise<Screen | undefined> {
+  async updateScreen(
+    id: number,
+    screen: Partial<InsertScreen>,
+    userId: string,
+  ): Promise<Screen | undefined> {
     const [item] = await db
       .update(screens)
       .set({ ...screen, updatedAt: new Date() })
@@ -329,7 +467,11 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updateAlert(id: number, alert: Partial<InsertAlert>, userId: string): Promise<Alert | undefined> {
+  async updateAlert(
+    id: number,
+    alert: Partial<InsertAlert>,
+    userId: string,
+  ): Promise<Alert | undefined> {
     const [item] = await db
       .update(alerts)
       .set({ ...alert, updatedAt: new Date() })
@@ -359,7 +501,11 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updateWidget(id: number, widget: Partial<InsertWidget>, userId: string): Promise<Widget | undefined> {
+  async updateWidget(
+    id: number,
+    widget: Partial<InsertWidget>,
+    userId: string,
+  ): Promise<Widget | undefined> {
     const [item] = await db
       .update(widgets)
       .set({ ...widget, updatedAt: new Date() })
@@ -389,7 +535,11 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updateSchedule(id: number, schedule: Partial<InsertSchedule>, userId: string): Promise<Schedule | undefined> {
+  async updateSchedule(
+    id: number,
+    schedule: Partial<InsertSchedule>,
+    userId: string,
+  ): Promise<Schedule | undefined> {
     const [item] = await db
       .update(schedules)
       .set({ ...schedule, updatedAt: new Date() })
@@ -419,7 +569,11 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updateDeployment(id: number, deployment: Partial<InsertDeployment>, userId: string): Promise<Deployment | undefined> {
+  async updateDeployment(
+    id: number,
+    deployment: Partial<InsertDeployment>,
+    userId: string,
+  ): Promise<Deployment | undefined> {
     const [item] = await db
       .update(deployments)
       .set({ ...deployment, updatedAt: new Date() })

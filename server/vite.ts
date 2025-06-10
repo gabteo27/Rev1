@@ -52,7 +52,7 @@ export async function setupVite(app: Express, server: Server) {
       // Determinamos qué archivo HTML servir basado en la URL
       if (url === '/player.html') {
         templatePath = path.resolve(
-          __dirname,
+          import.meta.dirname,
           "..",
           "client",
           "player.html"
@@ -60,7 +60,7 @@ export async function setupVite(app: Express, server: Server) {
       } else {
         // Por defecto, para cualquier otra ruta, servimos el index.html principal
         templatePath = path.resolve(
-          __dirname,
+          import.meta.dirname,
           "..",
           "client",
           "index.html"
@@ -87,7 +87,7 @@ export async function setupVite(app: Express, server: Server) {
 
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  const distPath = path.resolve(import.meta.dirname, "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
