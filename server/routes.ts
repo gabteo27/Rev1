@@ -113,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type,
         duration: duration ? parseInt(duration) : 30,
         category,
-        tags: tags ? tags.split(",").map((t: string) => t.trim()) : [],
+        tags: tags ? (Array.isArray(tags) ? tags : tags.split(",").map((t: string) => t.trim())) : [],
       };
 
       if (req.file) {

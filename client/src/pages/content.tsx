@@ -33,7 +33,11 @@ export default function Content() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/content/${id}`);
+      const response = await apiRequest(`/api/content/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -42,10 +46,10 @@ export default function Content() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/content"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "No se pudo eliminar el contenido.",
+        description: error.message || "No se pudo eliminar el contenido.",
         variant: "destructive",
       });
     },
