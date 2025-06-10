@@ -52,7 +52,9 @@ export default function PlaylistDetail() {
 
   useEffect(() => {
     if (playlist) {
-      setPlaylistData(playlist);
+      startTransition(() => {
+        setPlaylistData(playlist);
+      });
     }
   }, [playlist]);
 
@@ -174,23 +176,23 @@ export default function PlaylistDetail() {
   const handleDragEnd = (result: any) => {
     if (!result.destination || !playlistData?.items) return;
 
-    const items = Array.from(playlistData.items);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    const itemOrders = items.map((item: any, index: number) => ({
-      id: item.id,
-      order: index,
-    }));
-
     startTransition(() => {
+      const items = Array.from(playlistData.items);
+      const [reorderedItem] = items.splice(result.source.index, 1);
+      items.splice(result.destination.index, 0, reorderedItem);
+
+      const itemOrders = items.map((item: any, index: number) => ({
+        id: item.id,
+        order: index,
+      }));
+
       setPlaylistData({
         ...playlistData,
         items: items
       });
-    });
 
-    reorderMutation.mutate(itemOrders);
+      reorderMutation.mutate(itemOrders);
+    });
   };
 
   const handleDurationChange = (itemId: number, duration: string) => {

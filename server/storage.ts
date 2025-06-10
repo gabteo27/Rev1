@@ -486,12 +486,17 @@ export class DatabaseStorage implements IStorage {
     id: number,
     screen: Partial<InsertScreen>,
   ): Promise<Screen | undefined> {
-    const [item] = await db
-      .update(screens)
-      .set({ ...screen, updatedAt: new Date() })
-      .where(eq(screens.id, id))
-      .returning();
-    return item;
+    try {
+      const [item] = await db
+        .update(screens)
+        .set({ ...screen, updatedAt: new Date() })
+        .where(eq(screens.id, id))
+        .returning();
+      return item;
+    } catch (error) {
+      console.error('Error updating screen by ID:', error);
+      throw error;
+    }
   }
 
   async deleteScreen(id: number, userId: string): Promise<boolean> {

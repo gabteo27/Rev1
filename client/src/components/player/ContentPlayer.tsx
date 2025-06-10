@@ -63,26 +63,62 @@ const WebpagePlayer = ({ src }: { src: string }) => {
 
 // --- Lógica Principal del Reproductor ---
 interface PlaylistData {
-  items: (PlaylistItem & { contentItem: ContentItem })[];
+  id: number;
+  name: string;
+  items: Array<{
+    id: number;
+    order: number;
+    customDuration: number | null;
+    contentItem: {
+      id: number;
+      title: string;
+      type: string;
+      url: string;
+      duration: number;
+    };
+  }>;
 }
 
-// Función auxiliar para hacer peticiones a la API con el token del reproductor
+// Helper para hacer peticiones API específicas del reproductor
 const playerApiRequest = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('authToken');
   if (!token) throw new Error("No hay token de autenticación.");
 
   const response = await fetch(endpoint, {
     ...options,
-    headers: { ...options.headers, 'Authorization': `Bearer ${token}` }
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...options.headers 
+    }
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || "Error en la petición de la API del reproductor.");
+    if (response.status === 401) {
+      // Token expirado o inválido, redirigir a login
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('playlistId');
+      window.location.href = '/';
+      return;
+    }
+    const errorData = await response.text();
+    try {
+      const jsonError = JSON.parse(errorData);
+      throw new Error(jsonError.message || "Error en la petición de la API del reproductor.");
+    } catch {
+      throw new Error(errorData || "Error en la petición de la API del reproductor.");
+    }
   }
+
   // Si la respuesta no tiene cuerpo (ej. en el heartbeat), no intentes parsear JSON
-  if (response.status === 200 && response.headers.get('content-length') === '0') return null;
-  return response.json();
+  const contentLength = response.headers.get('content-length');
+  if (response.status === 204 || contentLength === '0') return null;
+
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
 };
 
 export default function ContentPlayer() {
