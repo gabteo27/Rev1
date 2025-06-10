@@ -8,15 +8,18 @@ class WebSocketManager {
   private listeners: Map<string, Set<(data: any) => void>> = new Map();
 
   connect() {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      return;
-    }
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        return;
+      }
 
-    try {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
-      
-      this.ws = new WebSocket(wsUrl);
+      try {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        // --- CORRECCIÓN ---
+        // Usar window.location.host, que incluye el host y el puerto correctamente 
+        // en la mayoría de los entornos, incluido Replit.
+        const wsUrl = `<span class="math-inline">\{protocol\}//</span>{window.location.host}/ws`;
+
+        this.ws = new WebSocket(wsUrl);
       
       this.ws.onopen = () => {
         console.log("WebSocket connected");
