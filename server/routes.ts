@@ -813,7 +813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      /* Update deployment status to building
+      /* Update deployment status to building */
       const deployment = await storage.updateDeployment(id, { status: "building" }, userId);
       if (!deployment) {
         return res.status(404).json({ message: "Deployment not found" });
