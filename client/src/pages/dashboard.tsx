@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Header from "@/components/layout/header";
+import AppSidebar from "@/components/layout/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,13 +54,15 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <Header
-        title="Dashboard"
-        subtitle="Gestiona tu contenido digital y playlists"
-      />
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <Header
+          title="Dashboard"
+          subtitle="Gestiona tu contenido digital y playlists"
+        />
 
-      <div className="flex-1 px-6 py-6 overflow-auto">
+        <div className="flex-1 px-6 py-6 overflow-auto">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="border-slate-200">
@@ -132,7 +136,7 @@ export default function Dashboard() {
             <WidgetPanel />
           </div>
         </div>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
