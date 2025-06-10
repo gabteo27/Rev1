@@ -1,11 +1,10 @@
-// @ts-nocheck
 import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
 import { upgradeWebSocket } from 'hono/ws';
 import { db } from './db';
 import {
   screens,
-  content,
+  contentItems,
   playlists,
   playlistItems,
   schedules,
@@ -45,7 +44,7 @@ app.get(
         try {
           await db
             .update(screens)
-            .set({ status: 'online' })
+            .set({ isOnline: true, lastSeen: new Date() })
             .where(eq(screens.id, screenId));
           console.log(`Screen ${screenId} status updated to online.`);
         } catch (error) {
@@ -62,7 +61,7 @@ app.get(
         try {
           await db
             .update(screens)
-            .set({ status: 'offline' })
+            .set({ isOnline: false, lastSeen: new Date() })
             .where(eq(screens.id, screenId));
           console.log(`Screen ${screenId} status updated to offline.`);
         } catch (error) {
@@ -135,18 +134,18 @@ app.post('/api/player/pair', async (c) => {
         .set({
             name: name,
             userId: userId,
-            // El estado se establece en 'online' a través del WS, aquí lo ponemos como 'paired'
-            // para reflejar que el emparejamiento está completo. El siguiente latido del WS lo pondrá online.
-            status: 'paired',
+            isOnline: true,
+            lastSeen: new Date(),
             pairingCode: null,
+            pairingCodeExpiresAt: null,
         })
         .where(eq(screens.id, screenId))
         .returning();
 
     // Forzamos el estado a online si hay una conexión activa
     if (playerConnections.has(screenId)) {
-        await db.update(screens).set({ status: 'online' }).where(eq(screens.id, screenId));
-        updatedScreen[0].status = 'online';
+        await db.update(screens).set({ isOnline: true, lastSeen: new Date() }).where(eq(screens.id, screenId));
+        updatedScreen[0].isOnline = true;
     }
 
 
@@ -169,8 +168,8 @@ app.get('/api/content', async (c) => {
   }
   const userContent = await db
     .select()
-    .from(content)
-    .where(eq(content.userId, userId));
+    .from(contentItems)
+    .where(eq(contentItems.userId, userId));
   return c.json(userContent);
 });
 
@@ -181,13 +180,13 @@ app.delete('/api/content/:id', async (c) => {
         return c.json({ error: 'User not authenticated' }, 401);
     }
 
-    const contentItem = await db.select().from(content).where(and(eq(content.id, id), eq(content.userId, userId)));
+    const contentItem = await db.select().from(contentItems).where(and(eq(contentItems.id, id), eq(contentItems.userId, userId)));
     if (contentItem.length === 0) {
         return c.json({ error: 'Content not found or you do not have permission to delete it' }, 404);
     }
 
-    await db.delete(content).where(eq(content.id, id));
-    await db.delete(playlistItems).where(eq(playlistItems.contentId, id));
+    await db.delete(contentItems).where(eq(contentItems.id, id));
+    await db.delete(playlistItems).where(eq(playlistItems.contentItemId, id));
 
     return c.json({ success: true });
 });
@@ -243,14 +242,14 @@ app.get('/api/playlists/:id', async (c) => {
       order: playlistItems.order,
       duration: playlistItems.duration,
       content: {
-        id: content.id,
-        name: content.name,
-        type: content.type,
-        url: content.url,
+        id: contentItems.id,
+        title: contentItems.title,
+        type: contentItems.type,
+        url: contentItems.url,
       },
     })
     .from(playlistItems)
-    .leftJoin(content, eq(playlistItems.contentId, content.id))
+    .leftJoin(contentItems, eq(playlistItems.contentItemId, contentItems.id))
     .where(eq(playlistItems.playlistId, id))
     .orderBy(playlistItems.order);
 
@@ -274,10 +273,9 @@ app.put('/api/playlists/:id', async (c) => {
   if (items && items.length > 0) {
     const newItems = items.map((item) => ({
       playlistId: id,
-      contentId: item.content.id,
+      contentItemId: item.content.id,
       order: item.order,
-      duration: item.duration,
-      id: `pli_${Math.random().toString(36).slice(2)}`,
+      customDuration: item.duration,
     }));
     await db.insert(playlistItems).values(newItems);
   }
