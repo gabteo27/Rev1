@@ -849,3 +849,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deploying:", error);
       res.status(500).json({ message: "Failed to deploy"
+});
+
+  // Serve uploaded files
+  app.use("/uploads", express.static("uploads"));
+
+  // Create HTTP server
+  const server = createServer(app);
+
+  // WebSocket setup for real-time updates
+  const wss = new WebSocketServer({ server });
+  const clients = new Set<WebSocket>();
+
+  wss.on("connection", (ws) => {
+    clients.add(ws);
+
+    ws.on("close", () => {
+      clients.delete(ws);
+    });
+  });
+
+  // Function to broadcast alerts to all connected clients
+  function broadcastAlert(alert: any) {
+    const message = JSON.stringify({
+      type: "alert",
+      data: alert
+    });
+
+    clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  }
+
+  return server;
+}
