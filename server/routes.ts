@@ -58,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { deviceHardwareId } = req.params;
       console.log(`Checking pairing status for device: ${deviceHardwareId}`);
-      
+
       // Decodificar el deviceHardwareId en caso de que venga codificado
       const decodedDeviceId = decodeURIComponent(deviceHardwareId);
       const screen = await storage.getScreenByDeviceHardwareId(decodedDeviceId);
@@ -88,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to check pairing status", error: error.message });
     }
   });
-  
+
   // Content routes
   app.get("/api/content", isAuthenticated, async (req: any, res) => {
     try {
@@ -105,7 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { title, description, type, url, duration, category, tags } = req.body;
-      
+
       let contentData: any = {
         userId,
         title,
@@ -141,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const updates = req.body;
-      
+
       const item = await storage.updateContentItem(id, updates, userId);
       if (!item) {
         return res.status(404).json({ message: "Content not found" });
@@ -157,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      
+
       const success = await storage.deleteContentItem(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Content not found" });
@@ -203,7 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const playlistData = { ...req.body, userId };
-      
+
       const validatedData = insertPlaylistSchema.parse(playlistData);
       const playlist = await storage.createPlaylist(validatedData);
       res.json(playlist);
@@ -218,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const updates = req.body;
-      
+
       const playlist = await storage.updatePlaylist(id, updates, userId);
       if (!playlist) {
         return res.status(404).json({ message: "Playlist not found" });
@@ -234,7 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      
+
       const success = await storage.deletePlaylist(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Playlist not found" });
@@ -245,14 +245,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete playlist" });
     }
   });
-  
+
   // Playlist item routes
   app.post("/api/playlists/:id/items", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const playlistId = parseInt(req.params.id);
       const itemData = { ...req.body, playlistId };
-      
+
       const validatedData = insertPlaylistItemSchema.parse(itemData);
       const item = await storage.addPlaylistItem(validatedData, userId);
       res.json(item);
@@ -267,7 +267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const updates = req.body;
-      
+
       const item = await storage.updatePlaylistItem(id, updates, userId);
       if (!item) {
         return res.status(404).json({ message: "Playlist item not found" });
@@ -283,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      
+
       const success = await storage.deletePlaylistItem(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Playlist item not found" });
@@ -300,7 +300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const playlistId = parseInt(req.params.id);
       const { itemOrders } = req.body;
-      
+
       await storage.reorderPlaylistItems(playlistId, itemOrders, userId);
       res.json({ message: "Playlist items reordered successfully" });
     } catch (error) {
@@ -326,15 +326,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       console.log("Creating screen for user:", userId);
       console.log("Screen data received:", req.body);
-      
+
       const screenData = { ...req.body, userId };
-      
+
       const validatedData = insertScreenSchema.parse(screenData);
       console.log("Validated screen data:", validatedData);
-      
+
       const screen = await storage.createScreen(validatedData);
       console.log("Screen created successfully:", screen);
-      
+
       res.json(screen);
     } catch (error) {
       console.error("Error creating screen:", error);
@@ -364,7 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  
+
   app.put("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -429,13 +429,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const alertData = { ...req.body, userId };
-      
+
       const validatedData = insertAlertSchema.parse(alertData);
       const alert = await storage.createAlert(validatedData);
-      
+
       // Broadcast alert via WebSocket
       broadcastAlert(alert);
-      
+
       res.json(alert);
     } catch (error) {
       console.error("Error creating alert:", error);
@@ -448,17 +448,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const updates = req.body;
-      
+
       const alert = await storage.updateAlert(id, updates, userId);
       if (!alert) {
         return res.status(404).json({ message: "Alert not found" });
       }
-      
+
       // Broadcast alert update via WebSocket
       if (alert.isActive) {
         broadcastAlert(alert);
       }
-      
+
       res.json(alert);
     } catch (error) {
       console.error("Error updating alert:", error);
@@ -470,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      
+
       const success = await storage.deleteAlert(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Alert not found" });
@@ -498,7 +498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const widgetData = { ...req.body, userId };
-      
+
       const validatedData = insertWidgetSchema.parse(widgetData);
       const widget = await storage.createWidget(validatedData);
       res.json(widget);
@@ -513,7 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const updates = req.body;
-      
+
       const widget = await storage.updateWidget(id, updates, userId);
       if (!widget) {
         return res.status(404).json({ message: "Widget not found" });
@@ -529,7 +529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      
+
       const success = await storage.deleteWidget(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Widget not found" });
@@ -557,7 +557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const scheduleData = { ...req.body, userId };
-      
+
       const validatedData = insertScheduleSchema.parse(scheduleData);
       const schedule = await storage.createSchedule(validatedData);
       res.json(schedule);
@@ -572,7 +572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const updates = req.body;
-      
+
       const schedule = await storage.updateSchedule(id, updates, userId);
       if (!schedule) {
         return res.status(404).json({ message: "Schedule not found" });
@@ -646,19 +646,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pairingCodeExpiresAt: null,
       });
 
-      res.json({ message: "Pantalla emparejada exitosamente.", screen: updatedScreen });
+      return res.json({ message: "Pantalla emparejada exitosamente.", screen: updatedScreen });
     } catch (error) {
       console.error("Error completing pairing:", error);
       res.status(500).json({ message: "Failed to complete pairing" });
     }
   });
 
-  
+
   app.delete("/api/schedules/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      
+
       const success = await storage.deleteSchedule(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Schedule not found" });
@@ -695,7 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.status(500).json({ message: "Failed to create deployment" });
         }
       });
-      
+
       app.post("/api/deployments/:id/build", isAuthenticated, async (req: any, res) => {
         try {
           const userId = req.user.claims.sub;
@@ -724,13 +724,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.status(500).json({ message: "Failed to start build" });
         }
       });
-      
+
       /* Update deployment status to building
       const deployment = await storage.updateDeployment(id, { status: "building" }, userId);
       if (!deployment) {
         return res.status(404).json({ message: "Deployment not found" });
       }
-      
+
       // In a real implementation, this would trigger the APK build process
       // For now, we'll simulate it by updating to ready status after a delay
       setTimeout(async () => {
@@ -739,7 +739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           buildUrl: `https://example.com/builds/app-v${deployment.version}.apk`
         }, userId);
       }, 5000);
-      
+
       res.json({ message: "Build started" });
     } catch (error) {
       console.error("Error starting build:", error);
@@ -751,12 +751,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      
+
       const deployment = await storage.updateDeployment(id, { status: "deployed" }, userId);
       if (!deployment) {
         return res.status(404).json({ message: "Deployment not found" });
       }
-      
+
       res.json({ message: "Deployment completed" });
     } catch (error) {
       console.error("Error deploying:", error);
