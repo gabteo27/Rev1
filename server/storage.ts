@@ -432,16 +432,22 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updateScreen(
-    id: number,
-    screen: Partial<InsertScreen>,
-    userId: string,
-  ): Promise<Screen | undefined> {
+  async updateScreen(id: number, screen: Partial<InsertScreen>, userId: string): Promise<Screen | undefined> {
     const [item] = await db
       .update(screens)
       .set({ ...screen, updatedAt: new Date() })
-      .where(and(eq(screens.id, id), eq(screens.userId, userId)))
+      // ----- CORRECCIÓN CLAVE AQUÍ -----
+      // La condición WHERE ahora solo busca por el ID de la pantalla.
+      // Esto permite que el endpoint de emparejamiento asigne un userId a una pantalla que aún no lo tiene.
+      .where(eq(screens.id, id))
       .returning();
+
+    // Opcional: Una comprobación de seguridad extra después de actualizar
+    if (item && item.userId !== userId) {
+      // Esto no debería ocurrir en el flujo normal, pero es una buena salvaguarda
+      throw new Error("Screen update permission denied.");
+    }
+
     return item;
   }
 

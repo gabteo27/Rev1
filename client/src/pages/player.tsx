@@ -1,115 +1,129 @@
-// @ts-nocheck
-import { useEffect, useState } from 'react';
-import { initializeWebSocket, closeWebSocket } from '../lib/websocket';
-import ContentPlayer from '../components/player/ContentPlayer';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from '../lib/queryClient';
+import { useState, useEffect } from 'react';
+import ContentPlayer from '@/components/player/ContentPlayer';
 
-const PairingCodeDisplay = ({ code }: { code: string | null }) => (
-  <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
-    <h1 className="text-4xl font-bold mb-4">Vincular esta pantalla</h1>
-    <p className="text-lg mb-8">
-      Ingresa el siguiente código en tu panel de administración para vincular esta pantalla.
-    </p>
-    <div className="bg-gray-800 p-8 rounded-lg">
-      <p className="text-6xl font-mono tracking-widest">{code || 'Cargando...'}</p>
-    </div>
-  </div>
-);
+// Estilos
+const playerStyles: React.CSSProperties = {
+  position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+  backgroundColor: '#000', color: 'white', display: 'flex',
+  alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
+  fontFamily: 'sans-serif', textAlign: 'center', padding: '1rem',
+};
 
-const PlayerPage = () => {
+const codeStyles: React.CSSProperties = {
+  fontSize: '5vw', fontWeight: 'bold', letterSpacing: '1vw', padding: '2rem',
+  border: '2px solid #fff', borderRadius: '1rem', backgroundColor: '#333',
+  marginTop: '2rem'
+};
+
+const getDeviceHardwareId = (): string => {
+  let id = localStorage.getItem('deviceHardwareId');
+  if (!id) {
+    id = `device-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+    localStorage.setItem('deviceHardwareId', id);
+  }
+  return id;
+};
+
+// --- CORRECCIÓN: Añadimos un estado para el error ---
+type PlayerStatus = 'initializing' | 'pairing' | 'paired' | 'error';
+
+export default function PlayerPage() {
+  const [status, setStatus] = useState<PlayerStatus>('initializing');
   const [pairingCode, setPairingCode] = useState<string | null>(null);
-  const [screenId, setScreenId] = useState<string | null>(null);
-  const [isPaired, setIsPaired] = useState(false);
-  const [playlistId, setPlaylistId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 1. Obtener código de vinculación al cargar
   useEffect(() => {
-    const fetchInitialState = async () => {
-      try {
-        // Podríamos revisar en localStorage si ya tenemos un screenId
-        let storedScreenId = localStorage.getItem('screenId');
+    if (localStorage.getItem('authToken')) {
+      setStatus('paired');
+      return;
+    }
 
-        if (storedScreenId) {
-            const response = await fetch(`/api/player/status/${storedScreenId}`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.userId) { // Si tiene userId, ya está emparejada
-                    setScreenId(data.id);
-                    setIsPaired(true);
-                    setPlaylistId(data.playlistId);
-                    return;
-                }
-            }
+    const deviceId = getDeviceHardwareId();
+
+    const initiatePairing = async () => {
+      try {
+        const response = await fetch('/api/screens/initiate-pairing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceHardwareId: deviceId }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'No se pudo obtener el código del servidor.');
         }
 
-        // Si no, obtenemos un nuevo código
-        const response = await fetch('/api/player/code', { method: 'POST' });
-        if (!response.ok) throw new Error('Failed to fetch pairing code');
         const data = await response.json();
         setPairingCode(data.pairingCode);
-        setScreenId(data.id);
-        localStorage.setItem('screenId', data.id); // Guardamos el nuevo ID
-
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        localStorage.removeItem('screenId'); // Limpiar en caso de error
-      }
-    };
-    fetchInitialState();
-  }, []);
-
-  // 2. Conectar WebSocket cuando tengamos un screenId
-  useEffect(() => {
-    if (!screenId) return;
-
-    const handleWebSocketMessage = (event: MessageEvent) => {
-      try {
-        const message = JSON.parse(event.data);
-
-        // Evento de emparejamiento exitoso
-        if (message.type === 'paired') {
-          console.log('Screen has been paired!', message.screen);
-          setIsPaired(true);
-          setPlaylistId(message.screen.playlistId);
-        }
-
-        // Evento de actualización de contenido
-        if (message.type === 'playlist-update') {
-          console.log('Playlist has been updated!', message.playlistId);
-          // Actualizamos el ID de la playlist para que ContentPlayer recargue
-          setPlaylistId(message.playlistId);
-        }
-
-      } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
+        setStatus('pairing');
+      } catch (err: any) {
+        // --- CORRECCIÓN: Actualizamos ambos estados en caso de error ---
+        setErrorMessage(err.message);
+        setStatus('error');
+        console.error("Error al iniciar emparejamiento:", err);
       }
     };
 
-    initializeWebSocket(screenId, handleWebSocketMessage);
+    initiatePairing();
 
-    return () => {
-      closeWebSocket();
-    };
-  }, [screenId]);
+    const intervalId = setInterval(async () => {
+        if(status !== 'pairing') return; // Solo hacer polling si estamos en modo pairing
+        try {
+            const statusResponse = await fetch(`/api/screens/pairing-status/${deviceId}`);
+            if(!statusResponse.ok) return;
 
-  if (error) {
-    return <div className="text-red-500 text-center mt-10">{error}</div>;
-  }
+            const data = await statusResponse.json();
+          if (data.status === 'paired') {
+            console.log('¡Emparejamiento exitoso!', data);
+            localStorage.setItem('authToken', data.authToken);
+            localStorage.setItem('screenName', data.name);
 
-  if (isPaired) {
-    return <ContentPlayer screenId={screenId!} initialPlaylistId={playlistId} onPlaylistUpdate={playlistId} />;
-  }
+            // ----- CORRECCIÓN CLAVE AQUÍ -----
+            // Si el playlistId existe, lo guardamos. Si es nulo o undefined, lo eliminamos.
+            if (data.playlistId) {
+              localStorage.setItem('playlistId', data.playlistId.toString());
+            } else {
+              localStorage.removeItem('playlistId');
+            }
 
-  return <PairingCodeDisplay code={pairingCode} />;
-}
+            clearInterval(intervalId);
+            setStatus('paired');
+          }
+        } catch (err) {
+            console.error("Error durante el polling:", err);
+        }
+    }, 5000);
 
-// Envolvemos todo en el QueryClientProvider
-export function Player() {
+    return () => clearInterval(intervalId);
+  }, [status]); // El useEffect ahora depende del status para detener el polling
+
+  // --- CORRECCIÓN: Añadimos un render para el estado de error ---
+  if (status === 'error') {
     return (
-        <QueryClientProvider client={queryClient}>
-            <PlayerPage />
-        </QueryClientProvider>
-    )
+      <div style={playerStyles}>
+        <h1 style={{ color: '#ef4444' }}>Error de Conexión</h1>
+        <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>{errorMessage}</p>
+        <p style={{ fontSize: '1vw', marginTop: '2rem', color: '#aaa' }}>Verifica la consola del servidor para más detalles. La página se reintentará en 15 segundos.</p>
+      </div>
+    );
+  }
+
+  if (status === 'initializing') {
+    return <div style={playerStyles}><h1>Inicializando...</h1></div>;
+  }
+
+  if (status === 'pairing') {
+    return (
+      <div style={playerStyles}>
+        <h1 style={{ fontSize: '3vw' }}>Introduce este código en tu panel de administración:</h1>
+        {pairingCode ? <div style={codeStyles}>{pairingCode}</div> : <p>Obteniendo código...</p>}
+      </div>
+    );
+  }
+
+  if (status === 'paired') {
+    return <ContentPlayer />;
+  }
+
+  return null;
 }

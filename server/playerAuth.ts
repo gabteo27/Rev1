@@ -1,45 +1,27 @@
-import { Hono } from 'hono';
-import { db } from './db';
-import { screens } from '../shared/schema';
-import { eq } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
+import { type Request, type Response, type NextFunction } from "express";
+import { storage } from "./storage";
 
-export const playerAuth = new Hono();
+export async function isPlayerAuthenticated(req: any, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
 
-// Generar un nuevo código de emparejamiento para una pantalla
-playerAuth.post('/code', async (c) => {
-  try {
-    const newScreen = await db
-      .insert(screens)
-      .values({
-        id: `scr_${nanoid()}`, // Prefijo para claridad
-        pairingCode: nanoid(6).toUpperCase(),
-        status: 'offline',
-      })
-      .returning();
-    return c.json(newScreen[0]);
-  } catch (error) {
-    console.error('Error creating new screen:', error);
-    return c.json({ error: 'Failed to create new screen' }, 500);
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: "Authorization token is missing or invalid." });
   }
-});
 
-// Obtener el estado y la configuración de una pantalla (usado por el reproductor)
-playerAuth.get('/status/:id', async (c) => {
-    const { id } = c.req.param();
-    try {
-        const screen = await db
-            .select()
-            .from(screens)
-            .where(eq(screens.id, id))
-            .limit(1);
+  const token = authHeader.split(' ')[1];
 
-        if (screen.length === 0) {
-            return c.json({ error: 'Screen not found' }, 404);
-        }
-        return c.json(screen[0]);
-    } catch (error) {
-        console.error(`Error fetching status for screen ${id}:`, error);
-        return c.json({ error: 'Failed to fetch screen status' }, 500);
+  try {
+    const screen = await storage.getScreenByAuthToken(token);
+
+    if (!screen) {
+      return res.status(401).json({ message: "Invalid token. Screen not authorized." });
     }
-});
+
+    // Adjuntamos la información de la pantalla a la petición para usarla después
+    req.screen = screen;
+    next();
+
+  } catch (error) {
+    res.status(500).json({ message: "Authentication error." });
+  }
+}
