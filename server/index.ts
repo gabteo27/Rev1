@@ -1,11 +1,16 @@
-
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { registerRoutes } from "./routes.js";
+import { setupVite, serveStatic } from "./vite.js";
+import { setupReplitAuth } from "./replitAuth.js";
+import { createServer } from 'http';
+import { WebSocketServer } from 'ws';
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false }));
+
+// Use Replit Auth
+setupReplitAuth(app);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -13,9 +18,9 @@ app.use((req, res, next) => {
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
+  res.json = function (bodyObj, ...args) {
+    capturedJsonResponse = bodyObj;
+    return originalResJson.apply(res, [bodyObj, ...args]);
   };
 
   res.on("finish", () => {
@@ -23,56 +28,55 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse).substring(0, 80)}…`;
       }
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+      console.log(logLine);
     }
   });
 
   next();
 });
 
-(async () => {
-  const port = parseInt(process.env.PORT ?? "5000", 10);
+const server = setupVite(app);
 
-  try {
-    const server = await registerRoutes(app);
-    
-    // Error handler
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
+// Setup WebSocket server for real-time communication
+const wss = new WebSocketServer({ server });
 
-      res.status(status).json({ message });
-      console.error("Server error:", err);
-    });
+wss.on('connection', (ws, req) => {
+  console.log('New WebSocket connection established');
 
-    // Setup vite in development or serve static files in production
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
-      serveStatic(app);
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      console.log('WebSocket message received:', data);
+
+      // Handle screen identification
+      if (data.type === 'identify_screen') {
+        ws.screenId = data.screenId;
+        console.log(`Screen ${data.screenId} identified`);
+      }
+    } catch (error) {
+      console.error('Error parsing WebSocket message:', error);
     }
+  });
 
-    // Start the server only once
-    server.listen(port, "0.0.0.0", () => {
-      const formattedTime = new Date().toLocaleTimeString("en-US", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
+  ws.on('close', () => {
+    console.log('WebSocket connection closed');
+  });
 
-      console.log(`${formattedTime} [express] serving on port ${port}`);
-    });
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+  });
+});
 
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  }
-})();
+// Make WebSocket server available to routes
+export { wss };
+
+registerRoutes(app);
+
+const PORT = 5000;
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`WebSocket server running on port ${PORT}`);
+});
