@@ -836,20 +836,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/deployments/:id/deploy", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id);
+        try {
+          const userId = req.user.claims.sub;
+          const id = parseInt(req.params.id);
 
-      const deployment = await storage.updateDeployment(id, { status: "deployed" }, userId);
-      if (!deployment) {
-        return res.status(404).json({ message: "Deployment not found" });
-      }
+          const deployment = await storage.updateDeployment(id, { status: "deployed" }, userId);
+          if (!deployment) {
+            return res.status(404).json({ message: "Deployment not found" });
+          }
 
-      res.json({ message: "Deployment completed" });
-    } catch (error) {
-      console.error("Error deploying:", error);
-      res.status(500).json({ message: "Failed to deploy"
-});
+          res.json({ message: "Deployment completed" });
+        } catch (error) {
+          console.error("Error deploying:", error);
+          res.status(500).json({ message: "Failed to deploy" });
+        }
+      });
 
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
