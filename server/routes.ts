@@ -11,7 +11,7 @@ import {
 } from '../shared/schema';
 import { eq, and, isNull, or } from 'drizzle-orm';
 import { playerAuth } from './playerAuth';
-import { replitAuth } from './replitAuth';
+import { isAuthenticated } from './replitAuth';
 import { storage } from './storage';
 import { apkBuilder } from './apk-builder';
 
@@ -21,10 +21,35 @@ const app = new Hono();
 const playerConnections = new Map<string, WebSocket>();
 
 // --- Rutas existentes (sin cambios) ---
-app.route('/api/auth', replitAuth);
 app.route('/api/player', playerAuth);
 app.route('/api/storage', storage);
 app.route('/api/apk', apkBuilder)
+
+// Middleware de autenticación para rutas protegidas
+app.use('/api/screens*', async (c, next) => {
+  // Simular req.user basado en headers o sesión
+  const userId = c.req.header('x-user-id') || 'test-user-id';
+  c.set('userId', userId);
+  await next();
+});
+
+app.use('/api/content*', async (c, next) => {
+  const userId = c.req.header('x-user-id') || 'test-user-id';
+  c.set('userId', userId);
+  await next();
+});
+
+app.use('/api/playlists*', async (c, next) => {
+  const userId = c.req.header('x-user-id') || 'test-user-id';
+  c.set('userId', userId);
+  await next();
+});
+
+app.use('/api/schedules*', async (c, next) => {
+  const userId = c.req.header('x-user-id') || 'test-user-id';
+  c.set('userId', userId);
+  await next();
+});
 
 // --- NUEVA lógica de WebSocket ---
 app.get(
@@ -45,7 +70,7 @@ app.get(
           await db
             .update(screens)
             .set({ isOnline: true, lastSeen: new Date() })
-            .where(eq(screens.id, screenId));
+            .where(eq(screens.id, parseInt(screenId)));
           console.log(`Screen ${screenId} status updated to online.`);
         } catch (error) {
           console.error(`Failed to update screen ${screenId} to online:`, error);
@@ -62,7 +87,7 @@ app.get(
           await db
             .update(screens)
             .set({ isOnline: false, lastSeen: new Date() })
-            .where(eq(screens.id, screenId));
+            .where(eq(screens.id, parseInt(screenId)));
           console.log(`Screen ${screenId} status updated to offline.`);
         } catch (error) {
           console.error(`Failed to update screen ${screenId} to offline:`, error);
@@ -123,7 +148,7 @@ app.post('/api/player/pair', async (c) => {
     }
 
     const screen = screenResult[0];
-    const screenId = screen.id;
+    const screenId = screen.id.toString();
 
     if (screen.userId) {
         return c.json({ error: 'Screen already paired' }, 400);
@@ -139,12 +164,12 @@ app.post('/api/player/pair', async (c) => {
             pairingCode: null,
             pairingCodeExpiresAt: null,
         })
-        .where(eq(screens.id, screenId))
+        .where(eq(screens.id, screen.id))
         .returning();
 
     // Forzamos el estado a online si hay una conexión activa
     if (playerConnections.has(screenId)) {
-        await db.update(screens).set({ isOnline: true, lastSeen: new Date() }).where(eq(screens.id, screenId));
+        await db.update(screens).set({ isOnline: true, lastSeen: new Date() }).where(eq(screens.id, screen.id));
         updatedScreen[0].isOnline = true;
     }
 
