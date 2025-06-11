@@ -131,6 +131,7 @@ export interface IStorage {
 
   // Deployment operations
   getDeployments(userId: string): Promise<Deployment[]>;
+  getDeployment(id: number, userId: string): Promise<Deployment | undefined>;
   createDeployment(deployment: InsertDeployment): Promise<Deployment>;
   updateDeployment(
     id: number,
@@ -637,6 +638,14 @@ export class DatabaseStorage implements IStorage {
   async createDeployment(deployment: InsertDeployment): Promise<Deployment> {
     const [item] = await db.insert(deployments).values(deployment).returning();
     return item;
+  }
+
+  async getDeployment(id: number, userId: string): Promise<Deployment | undefined> {
+    const [deployment] = await db
+      .select()
+      .from(deployments)
+      .where(and(eq(deployments.id, id), eq(deployments.userId, userId)));
+    return deployment;
   }
 
   async updateDeployment(
