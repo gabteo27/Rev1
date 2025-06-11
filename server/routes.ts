@@ -901,14 +901,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on("connection", (ws: WebSocket) => {
     console.log("Client connected to WebSocket");
 
+    // Send immediate response to confirm connection
+    ws.send(JSON.stringify({ type: 'connection_established' }));
+
     ws.on("message", async (message) => {
       try {
         const parsed = JSON.parse(message.toString());
+
+        // Handle ping/pong for heartbeat
+        if (parsed.type === 'ping') {
+          ws.send(JSON.stringify({ type: 'pong' }));
+          return;
+        }
 
         // Handle admin panel authentication
         if (parsed.type === 'auth' && parsed.userId) {
           ws.userId = parsed.userId;
           console.log(`WebSocket client authenticated for user: ${ws.userId}`);
+          
+          // Send authentication success response
+          ws.send(JSON.stringify({ 
+            type: 'auth_success', 
+            data: { userId: parsed.userId } 
+          }));
+          return;`);
         }
 
         // Handle player authentication
@@ -919,9 +935,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ws.userId = screen.userId;
               ws.screenId = screen.id;
               console.log(`Player WebSocket authenticated for screen ${screen.id} (user: ${screen.userId})`);
+              
+              // Send authentication success response
+              ws.send(JSON.stringify({ 
+                type: 'auth_success', 
+                data: { screenId: screen.id, userId: screen.userId } 
+              }));
+            } else {
+              ws.send(JSON.stringify({ 
+                type: 'auth_error', 
+                data: { message: 'Invalid token or screen not found' } 
+              }));
             }
           } catch (error) {
             console.error('Player authentication failed:', error);
+            ws.send(JSON.stringify({ 
+              type: 'auth_error', 
+              data: { message: 'Authentication failed' } 
+            }));
           }
         }
       } catch (e) {

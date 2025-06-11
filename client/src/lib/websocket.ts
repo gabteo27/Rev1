@@ -1,8 +1,11 @@
+
 import { queryClient } from './queryClient';
 
 interface WebSocketMessage {
   type: string;
   data?: any;
+  userId?: string;
+  userType?: string;
 }
 
 class WebSocketManager {
@@ -14,10 +17,22 @@ class WebSocketManager {
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private authUser: any = null;
   private connectionPromise: Promise<void> | null = null;
+  private isConnecting = false;
+  private subscribers: Map<string, ((data: any) => void)[]> = new Map();
+  private isDestroyed = false;
 
   async connect(): Promise<void> {
+    if (this.isDestroyed) {
+      console.log('WebSocketManager is destroyed, cannot connect');
+      return;
+    }
+
     if (this.connectionPromise) {
       return this.connectionPromise;
+    }
+
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      return Promise.resolve();
     }
 
     this.connectionPromise = this._connect();
@@ -25,10 +40,17 @@ class WebSocketManager {
   }
 
   private async _connect(): Promise<void> {
+    if (this.isConnecting || this.isDestroyed) {
+      return;
+    }
+
+    this.isConnecting = true;
+
     try {
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        this.connectionPromise = null;
-        return;
+      // Close existing connection if any
+      if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
+        this.ws.close();
+        this.ws = null;
       }
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -37,11 +59,16 @@ class WebSocketManager {
       console.log('Connecting to WebSocket:', wsUrl);
 
       return new Promise((resolve, reject) => {
+        if (this.isDestroyed) {
+          reject(new Error('WebSocketManager destroyed'));
+          return;
+        }
+
         try {
           this.ws = new WebSocket(wsUrl);
 
           const connectionTimeout = setTimeout(() => {
-            if (this.ws) {
+            if (this.ws && this.ws.readyState !== WebSocket.OPEN) {
               this.ws.close();
             }
             reject(new Error('WebSocket connection timeout'));
@@ -52,6 +79,7 @@ class WebSocketManager {
             console.log('WebSocket connected successfully');
             this.reconnectAttempts = 0;
             this.isReconnecting = false;
+            this.isConnecting = false;
             this.connectionPromise = null;
 
             try {
@@ -60,7 +88,7 @@ class WebSocketManager {
               resolve();
             } catch (error) {
               console.error('Authentication failed:', error);
-              resolve(); // Don't reject, just continue without auth
+              resolve(); // Don't reject, just continue
             }
           };
 
@@ -75,11 +103,14 @@ class WebSocketManager {
 
           this.ws.onclose = (event) => {
             clearTimeout(connectionTimeout);
-            console.log('WebSocket disconnected:', event.code, event.reason);
-            this.stopHeartbeat();
+            this.isConnecting = false;
             this.connectionPromise = null;
+            this.stopHeartbeat();
 
-            if (!this.isReconnecting && this.reconnectAttempts < this.maxReconnectAttempts) {
+            console.log('WebSocket disconnected:', event.code, event.reason);
+
+            // Only reconnect if not manually closed and not destroyed
+            if (!this.isDestroyed && event.code !== 1000 && !this.isReconnecting && this.reconnectAttempts < this.maxReconnectAttempts) {
               this.scheduleReconnect();
             }
           };
@@ -87,25 +118,30 @@ class WebSocketManager {
           this.ws.onerror = (error) => {
             clearTimeout(connectionTimeout);
             console.error('WebSocket error:', error);
+            this.isConnecting = false;
             this.connectionPromise = null;
             reject(error);
           };
 
         } catch (error) {
+          this.isConnecting = false;
           reject(error);
         }
       });
 
     } catch (error) {
       console.error('Error creating WebSocket connection:', error);
+      this.isConnecting = false;
       this.connectionPromise = null;
-      this.scheduleReconnect();
+      if (!this.isDestroyed) {
+        this.scheduleReconnect();
+      }
       throw error;
     }
   }
 
   private async authenticate(): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || this.isDestroyed) return;
 
     try {
       console.log('Authenticating WebSocket connection...');
@@ -114,18 +150,25 @@ class WebSocketManager {
       let userData = queryClient.getQueryData(['/api/auth/user']);
 
       if (!userData) {
-        // Try to fetch user data
+        // Try to fetch user data with timeout
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
           const response = await fetch('/api/auth/user', { 
             credentials: 'include',
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json'
-            }
+            },
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
 
           if (response.ok) {
             userData = await response.json();
+            queryClient.setQueryData(['/api/auth/user'], userData);
           }
         } catch (fetchError) {
           console.warn('Could not fetch user data for WebSocket auth:', fetchError);
@@ -135,11 +178,15 @@ class WebSocketManager {
 
       if (userData && typeof userData === 'object' && 'id' in userData) {
         this.authUser = userData;
-        this.send({
-          type: 'auth',
-          userId: userData.id,
-          userType: 'admin'
-        });
+        
+        // Send authentication message
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this.send({
+            type: 'auth',
+            userId: userData.id,
+            userType: 'admin'
+          });
+        }
       }
     } catch (error) {
       console.error('Authentication error:', error);
@@ -147,7 +194,7 @@ class WebSocketManager {
   }
 
   private scheduleReconnect() {
-    if (this.isReconnecting) return;
+    if (this.isReconnecting || this.isDestroyed) return;
 
     this.isReconnecting = true;
     this.reconnectAttempts++;
@@ -158,21 +205,23 @@ class WebSocketManager {
       return;
     }
 
-    const delay = Math.min(this.reconnectDelay * this.reconnectAttempts, 10000);
+    const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
     console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
     setTimeout(() => {
-      this.isReconnecting = false;
-      this.connect().catch(error => {
-        console.error('Reconnection failed:', error);
-      });
+      if (!this.isDestroyed) {
+        this.isReconnecting = false;
+        this.connect().catch(error => {
+          console.error('Reconnection failed:', error);
+        });
+      }
     }, delay);
   }
 
   private startHeartbeat() {
     this.stopHeartbeat();
     this.heartbeatInterval = setInterval(() => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
+      if (this.ws?.readyState === WebSocket.OPEN && !this.isDestroyed) {
         this.send({ type: 'ping' });
       }
     }, 30000);
@@ -186,6 +235,8 @@ class WebSocketManager {
   }
 
   private handleMessage(message: WebSocketMessage) {
+    if (this.isDestroyed) return;
+
     try {
       switch (message.type) {
         case 'pong':
@@ -207,7 +258,18 @@ class WebSocketManager {
           queryClient.invalidateQueries({ queryKey: ['/api/screens'] });
           break;
         default:
-          console.log('Unknown WebSocket message type:', message.type);
+          // Handle subscribed events
+          if (this.subscribers.has(message.type)) {
+            const callbacks = this.subscribers.get(message.type);
+            callbacks?.forEach(callback => {
+              try {
+                callback(message.data);
+              } catch (error) {
+                console.error('Error in WebSocket subscriber callback:', error);
+              }
+            });
+          }
+          break;
       }
     } catch (error) {
       console.error('Error handling WebSocket message:', error);
@@ -215,26 +277,61 @@ class WebSocketManager {
   }
 
   send(message: WebSocketMessage) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (this.ws?.readyState === WebSocket.OPEN && !this.isDestroyed) {
       try {
         this.ws.send(JSON.stringify(message));
       } catch (error) {
         console.error('Error sending WebSocket message:', error);
       }
+    } else {
+      console.warn('WebSocket not ready, message not sent:', message);
     }
   }
 
+  subscribe(eventType: string, callback: (data: any) => void): () => void {
+    if (!this.subscribers.has(eventType)) {
+      this.subscribers.set(eventType, []);
+    }
+    
+    const callbacks = this.subscribers.get(eventType);
+    callbacks?.push(callback);
+
+    // Return unsubscribe function
+    return () => {
+      const callbacks = this.subscribers.get(eventType);
+      if (callbacks) {
+        const index = callbacks.indexOf(callback);
+        if (index !== -1) {
+          callbacks.splice(index, 1);
+        }
+        if (callbacks.length === 0) {
+          this.subscribers.delete(eventType);
+        }
+      }
+    };
+  }
+
   disconnect() {
+    this.isDestroyed = true;
     this.stopHeartbeat();
+    this.isReconnecting = false;
+    this.connectionPromise = null;
+    
     if (this.ws) {
       this.ws.close(1000, 'Client disconnecting');
       this.ws = null;
     }
-    this.connectionPromise = null;
+    
+    this.subscribers.clear();
+    console.log('WebSocket disconnected and cleaned up');
   }
 
   getConnectionState() {
     return this.ws?.readyState || WebSocket.CLOSED;
+  }
+
+  isConnected() {
+    return this.ws?.readyState === WebSocket.OPEN;
   }
 }
 

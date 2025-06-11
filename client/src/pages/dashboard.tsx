@@ -107,64 +107,73 @@ export default function Dashboard() {
 
   // Subscribe to WebSocket events
   useEffect(() => {
-    let unsubscribeAlerts: (() => void) | undefined;
-    let unsubscribeScreens: (() => void) | undefined;
-    let unsubscribePlaylists: (() => void) | undefined;
-    let unsubscribeContentDeleted: (() => void) | undefined;
+    const unsubscribeFunctions: (() => void)[] = [];
 
-    // Suscribirse a alertas
-    unsubscribeAlerts = wsManager.subscribe('alert', (alertData) => {
-      console.log('Alerta recibida vía WebSocket:', alertData);
-      toast({
-        title: alertData.title || "Nueva Alerta",
-        description: alertData.message,
-        variant: alertData.type === 'error' ? 'destructive' : 'default',
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-    });
-
-    unsubscribeScreens = wsManager.subscribe('screen-update', (screenData) => {
-      console.log('Actualización de pantalla recibida:', screenData);
-      toast({
-        title: "Pantalla Actualizada",
-        description: `${screenData.name} ha sido actualizada`,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
-    });
-
-    unsubscribePlaylists = wsManager.subscribe('playlists-updated', () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      if (selectedPlaylist) {
-        queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+    // Wait for WebSocket to be connected before subscribing
+    const setupSubscriptions = () => {
+      if (!wsManager.isConnected()) {
+        setTimeout(setupSubscriptions, 1000);
+        return;
       }
-    });
 
-    unsubscribeContentDeleted = wsManager.subscribe('content-deleted', () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/content"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      if (selectedPlaylist) {
-        queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
-      }
-    });
+      // Subscribe to alerts
+      unsubscribeFunctions.push(
+        wsManager.subscribe('alert', (alertData) => {
+          console.log('Alerta recibida vía WebSocket:', alertData);
+          toast({
+            title: alertData?.title || "Nueva Alerta",
+            description: alertData?.message || "Alerta del sistema",
+            variant: alertData?.type === 'error' ? 'destructive' : 'default',
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+        })
+      );
 
-    // Refetch data to update the UI
-    queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+      // Subscribe to screen updates
+      unsubscribeFunctions.push(
+        wsManager.subscribe('screen-update', (screenData) => {
+          console.log('Actualización de pantalla recibida:', screenData);
+          toast({
+            title: "Pantalla Actualizada",
+            description: `${screenData?.name || 'Pantalla'} ha sido actualizada`,
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+        })
+      );
+
+      // Subscribe to playlist updates
+      unsubscribeFunctions.push(
+        wsManager.subscribe('playlists-updated', () => {
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+          if (selectedPlaylist) {
+            queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+          }
+        })
+      );
+
+      // Subscribe to content deletion
+      unsubscribeFunctions.push(
+        wsManager.subscribe('content-deleted', () => {
+          queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+          if (selectedPlaylist) {
+            queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+          }
+        })
+      );
+    };
+
+    setupSubscriptions();
 
     return () => {
-      // Cleanup subscriptions
-      if (typeof unsubscribeAlerts === 'function') {
-        unsubscribeAlerts();
-      }
-      if (typeof unsubscribeScreens === 'function') {
-        unsubscribeScreens();
-      }
-      if (typeof unsubscribePlaylists === 'function') {
-        unsubscribePlaylists();
-      }
-      if (typeof unsubscribeContentDeleted === 'function') {
-        unsubscribeContentDeleted();
-      }
+      // Cleanup all subscriptions
+      unsubscribeFunctions.forEach(unsubscribe => {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.error('Error unsubscribing from WebSocket event:', error);
+        }
+      });
     };
   }, [toast, selectedPlaylist]);
 
