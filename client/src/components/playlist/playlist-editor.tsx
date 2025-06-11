@@ -1,68 +1,37 @@
+// src/components/playlist/playlist-editor.tsx
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { 
-  GripVertical, 
-  Image, 
-  Video, 
-  FileText, 
-  Globe, 
-  Type,
-  Trash2,
-  Plus,
-  Settings
-} from "lucide-react";
+import { GripVertical, Image, Video, FileText, Globe, Type, Trash2, Plus, Settings } from "lucide-react";
 
-export function PlaylistEditor() {
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>("");
+export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
   const { toast } = useToast();
 
-  const { data: playlists } = useQuery({
-    queryKey: ["/api/playlists"],
+  const { data: playlistData, isLoading } = useQuery({
+    queryKey: ["/api/playlists", playlistId],
     queryFn: async () => {
-      const response = await apiRequest("/api/playlists");
+      if (!playlistId) return null;
+      const response = await apiRequest(`/api/playlists/${playlistId}`);
       return response.json();
     },
-    retry: false,
-  });
-
-  const { data: playlistData } = useQuery({
-    queryKey: ["/api/playlists", selectedPlaylistId],
-    queryFn: async () => {
-      const response = await apiRequest(`/api/playlists/${selectedPlaylistId}`);
-      return response.json();
-    },
-    enabled: !!selectedPlaylistId,
-    retry: false,
-  });
-
-  const { data: content } = useQuery({
-    queryKey: ["/api/content"],
-    queryFn: async () => {
-      const response = await apiRequest("/api/content");
-      return response.json();
-    },
-    retry: false,
+    enabled: !!playlistId,
   });
 
   const updateItemMutation = useMutation({
     mutationFn: async ({ id, customDuration }: { id: number; customDuration: number }) => {
-      const response = await apiRequest(`/api/playlist-items/${id}`, {
+      await apiRequest(`/api/playlist-items/${id}`, {
         method: "PUT",
         body: JSON.stringify({ customDuration })
       });
-      return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId] }),
   });
 
   const deleteItemMutation = useMutation({
@@ -70,43 +39,38 @@ export function PlaylistEditor() {
       await apiRequest(`/api/playlist-items/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
-      toast({
-        title: "Elemento eliminado",
-        description: "El elemento ha sido eliminado de la playlist.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
+      toast({ title: "Elemento eliminado" });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId] });
     },
   });
 
   const reorderMutation = useMutation({
     mutationFn: async (itemOrders: { id: number; order: number }[]) => {
-      await apiRequest(`/api/playlists/${selectedPlaylistId}/reorder`, {
+      await apiRequest(`/api/playlists/${playlistId}/reorder`, {
         method: "PUT",
         body: JSON.stringify({ itemOrders })
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId] }),
   });
 
-  const addItemMutation = useMutation({
-    mutationFn: async (contentItemId: number) => {
-      const order = playlistData?.items?.length || 0;
-      const response = await apiRequest(`/api/playlists/${selectedPlaylistId}/items`, {
-        method: "POST",
-        body: JSON.stringify({ contentItemId, order })
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Contenido agregado",
-        description: "El contenido ha sido agregado a la playlist.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
-    },
-  });
+  const handleDragEnd = (result: any) => {
+    if (!result.destination || !playlistData?.items) return;
+
+    const items = Array.from(playlistData.items);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    const itemOrders = items.map((item, index) => ({ id: item.id, order: index }));
+    reorderMutation.mutate(itemOrders);
+  };
+
+  const handleDurationChange = (itemId: number, duration: string) => {
+    const customDuration = parseInt(duration) || 0;
+    if (customDuration > 0) {
+      updateItemMutation.mutate({ id: itemId, customDuration });
+    }
+  };
 
   const getContentIcon = (type: string) => {
     switch (type) {
@@ -125,27 +89,6 @@ export function PlaylistEditor() {
     }
   };
 
-  const handleDragEnd = (result: any) => {
-    if (!result.destination || !playlistData?.items) return;
-
-    const items = Array.from(playlistData.items);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    const itemOrders = items.map((item, index) => ({
-      id: item.id,
-      order: index,
-    }));
-
-    reorderMutation.mutate(itemOrders);
-  };
-
-  const handleDurationChange = (itemId: number, duration: string) => {
-    const customDuration = parseInt(duration) || 0;
-    if (customDuration > 0) {
-      updateItemMutation.mutate({ id: itemId, customDuration });
-    }
-  };
 
   const calculateTotalDuration = () => {
     if (!playlistData?.items) return 0;
