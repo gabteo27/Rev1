@@ -894,15 +894,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Handle admin panel authentication
         if (parsed.type === 'auth' && parsed.userId) {
-          ws.userId = parsed.userId;
-          console.log(`WebSocket client authenticated for user: ${ws.userId}`);
+          (ws as any).userId = parsed.userId;
+          console.log(`WebSocket client authenticated for user: ${(ws as any).userId}`);
           
           // Send authentication success response
           ws.send(JSON.stringify({ 
             type: 'auth_success', 
             data: { userId: parsed.userId } 
           }));
-          return;`);
+          return;
         }
 
         // Handle player authentication
@@ -910,8 +910,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             const screen = await storage.getScreenByAuthToken(parsed.token);
             if (screen && screen.userId) {
-              ws.userId = screen.userId;
-              ws.screenId = screen.id;
+              (ws as any).userId = screen.userId;
+              (ws as any).screenId = screen.id;
               console.log(`Player WebSocket authenticated for screen ${screen.id} (user: ${screen.userId})`);
               
               // Send authentication success response
@@ -939,7 +939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     ws.on("close", () => {
-        console.log(`Client disconnected (User: ${ws.userId || 'unauthenticated'}, Screen: ${ws.screenId || 'none'})`);
+        console.log(`Client disconnected (User: ${(ws as any).userId || 'unauthenticated'}, Screen: ${(ws as any).screenId || 'none'})`);
       });
     });
 
