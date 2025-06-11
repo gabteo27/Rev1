@@ -696,30 +696,6 @@ export class DatabaseStorage implements IStorage {
       .set({ totalDuration })
       .where(eq(playlists.id, playlistId));
   }
-
-  async reorderPlaylistItems(playlistId: number, itemOrders: { id: number; order: number }[], userId: string) {
-    // Verify playlist ownership
-    const playlist = await db
-      .select()
-      .from(playlists)
-      .where(and(eq(playlists.id, playlistId), eq(playlists.userId, userId)))
-      .limit(1);
-
-    if (playlist.length === 0) {
-      throw new Error("Playlist not found or access denied");
-    }
-
-    // Update each item's order
-    for (const { id, order } of itemOrders) {
-      await db
-        .update(playlistItems)
-        .set({ order })
-        .where(eq(playlistItems.id, id));
-    }
-
-    // Recalculate total duration
-    await this.updatePlaylistDuration(playlistId);
-  }
 }
 
 export const storage = new DatabaseStorage();
