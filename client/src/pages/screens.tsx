@@ -11,13 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Tv, 
-  Plus, 
-  Trash2, 
-  Monitor, 
-  Edit
-} from "lucide-react";
+
+import { Tv, Plus, Trash2, Monitor, Edit, Eye, EyeOff } from "lucide-react";
+import { ScreenPreview } from "@/components/screen/ScreenPreview";
+
 
 const initialPairFormState = { pairingCode: "", name: "", location: "", playlistId: "" };
 
@@ -25,6 +22,8 @@ export default function Screens() {
   const [isPairModalOpen, setIsPairModalOpen] = useState(false);
   const [editingScreen, setEditingScreen] = useState<Screen | null>(null);
   const [pairFormData, setPairFormData] = useState(initialPairFormState);
+  const [visiblePreviews, setVisiblePreviews] = useState<Record<number, boolean>>({});
+
   const { toast } = useToast();
 
   const { data: screens = [], isLoading } = useQuery<Screen[]>({ queryKey: ["/api/screens"], retry: false });
@@ -89,6 +88,12 @@ export default function Screens() {
       setEditingScreen(screen);
     };
 
+  const togglePreview = (id: number) => {
+    setVisiblePreviews(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
   // --- FUNCIONES AUXILIARES ---
 
   const formatDate = (date: Date | null | string) => {
@@ -229,7 +234,7 @@ export default function Screens() {
                         {getStatusBadge(screen.isOnline, screen.lastSeen)}
                     </div>
                   </div>
-
+                  {visiblePreviews[screen.id] && <ScreenPreview screenId={screen.id} />}
                   {/* ✅ MODIFICADO: La sección de contenido ahora ocupa el espacio sobrante. */}
                   <div className="flex-grow my-4 space-y-2 text-sm">
                     <div className="text-slate-600">
@@ -243,14 +248,23 @@ export default function Screens() {
                   {/* ✅ MODIFICADO: Las acciones ahora están en un contenedor separado que se alinea al final. */}
                   <div className="pt-4 border-t flex justify-end items-center space-x-1">
                     <Button 
+                      size="sm"
+                      variant="ghost" 
+                      onClick={() => togglePreview(screen.id)}
+                      title={visiblePreviews[screen.id] ? "Ocultar vista previa" : "Mostrar vista previa"}
+                    >
+                      {visiblePreviews[screen.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+
+                    <Button 
                       size="sm" 
                       variant="ghost" 
                       onClick={() => window.open(`/screen-player?screenId=${screen.id}`, '_blank')}
-                      title="Ver pantalla en vivo"
+                      title="Abrir en nueva pestaña"
                     >
                       <Monitor className="w-4 h-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingScreen(screen)} title="Editar"><Edit className="w-4 h-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleEditScreen(screen)} title="Editar"><Edit className="w-4 h-4" /></Button>
                     <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => deleteMutation.mutate(screen.id)} disabled={deleteMutation.isPending} title="Eliminar"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 </CardContent>

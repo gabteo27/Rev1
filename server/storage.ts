@@ -459,6 +459,14 @@ export class DatabaseStorage implements IStorage {
     return screen;
   }
 
+  async getScreenById(id: number): Promise<Screen | undefined> {
+    const [screen] = await db
+      .select()
+      .from(screens)
+      .where(eq(screens.id, id));
+    return screen;
+  }
+  
   async createScreen(screen: InsertScreen): Promise<Screen> {
     const [item] = await db.insert(screens).values(screen).returning();
     return item;

@@ -415,6 +415,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/screens/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "El ID de la pantalla debe ser un número." });
+      }
+
+      const screen = await storage.getScreenById(id);
+
+      if (!screen) {
+        return res.status(404).json({ message: "Pantalla no encontrada." });
+      }
+
+      res.json(screen);
+    } catch (error) {
+      console.error("Error fetching single screen:", error);
+      res.status(500).json({ message: "Error al obtener la información de la pantalla." });
+    }
+  });
+  
   app.post("/api/screens", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
