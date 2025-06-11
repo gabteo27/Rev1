@@ -237,13 +237,159 @@ const formatDuration = (seconds: number) => {
   const selectedScreenData = Array.isArray(screens) ? screens.find((s: any) => s.id.toString() === selectedScreen) : null;
   const selectedPlaylistData = Array.isArray(playlists) ? playlists.find((p: any) => p.id.toString() === selectedPlaylist) : null;
 
+  // Query for detailed playlist data when a playlist is selected
+  const { data: playlistDetails } = useQuery({
+    queryKey: ["/api/playlists", selectedPlaylist],
+    enabled: !!selectedPlaylist,
+    retry: 1,
+  });
+
 return (
     <div className="space-y-6 min-h-screen bg-background">
       <Header
         title="Dashboard XcienTV"
         subtitle="Panel de control principal para señalización digital"
       />
-      {/* ... El resto de tu JSX sin cambios ... */}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-6">
+        {/* Control Panel */}
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Monitor className="h-5 w-5" />
+              Control de Reproducción
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="screen-select">Seleccionar Pantalla</Label>
+              <Select value={selectedScreen} onValueChange={setSelectedScreen}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Elegir pantalla" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.isArray(screens) && screens.map((screen: any) => (
+                    <SelectItem key={screen.id} value={screen.id.toString()}>
+                      {screen.name} - {screen.isOnline ? 'En línea' : 'Desconectada'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="playlist-select">Seleccionar Playlist</Label>
+              <Select value={selectedPlaylist} onValueChange={setSelectedPlaylist}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Elegir playlist" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.isArray(playlists) && playlists.map((playlist: any) => (
+                    <SelectItem key={playlist.id} value={playlist.id.toString()}>
+                      {playlist.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedScreen && selectedPlaylist && (
+              <div className="flex gap-2 pt-4">
+                <Button
+                  onClick={togglePreview}
+                  disabled={playbackMutation.isPending}
+                  className="flex-1"
+                >
+                  {isPreviewPlaying ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                  {isPreviewPlaying ? 'Pausar' : 'Reproducir'}
+                </Button>
+                <Button
+                  onClick={stopPreview}
+                  disabled={playbackMutation.isPending}
+                  variant="outline"
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {playlistDetails && (
+              <div className="pt-4 border-t">
+                <h4 className="font-medium mb-2">Contenido de la Playlist</h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {playlistDetails.items?.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No hay contenido en esta playlist</p>
+                  ) : (
+                    playlistDetails.items?.map((item: any, index: number) => (
+                      <div key={item.id} className="flex items-center gap-2 p-2 bg-muted rounded text-sm">
+                        <span className="font-mono text-xs w-6">{index + 1}</span>
+                        <span className="flex-1 truncate">{item.contentItem?.title}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {item.contentItem?.type}
+                        </Badge>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Live Preview and System Status */}
+        <div className="lg:col-span-2 space-y-6">
+          <LivePreview />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Widgets en Vivo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <WeatherWidget />
+                <ClockWidget />
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Actividad del Sistema
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
+                  <div>
+                    <p className="text-sm">Sistema operativo</p>
+                    <p className="text-xs text-muted-foreground">Todas las pantallas sincronizadas</p>
+                  </div>
+                </div>
+                {activeAlerts > 0 && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full mt-2" />
+                    <div>
+                      <p className="text-sm">{activeAlerts} alerta{activeAlerts > 1 ? 's' : ''} activa{activeAlerts > 1 ? 's' : ''}</p>
+                      <p className="text-xs text-muted-foreground">Requieren atención</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
+                  <div>
+                    <p className="text-sm">Última sincronización</p>
+                    <p className="text-xs text-muted-foreground">{new Date().toLocaleTimeString('es-ES')}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <Card>
           <CardContent className="p-6">

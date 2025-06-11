@@ -122,17 +122,82 @@ const playerApiRequest = async (endpoint: string, options: RequestInit = {}) => 
 };
 
 export default function ContentPlayer() {
-  const [playlistId] = useState<string | null>(localStorage.getItem('playlistId'));
+  const [playlistId, setPlaylistId] = useState<string | null>(localStorage.getItem('playlistId'));
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [renderKey, setRenderKey] = useState(Date.now());
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: playlist, isLoading, isError, error } = useQuery<PlaylistData>({
+  const { data: playlist, isLoading, isError, error: queryError } = useQuery<PlaylistData>({
     queryKey: ['playlist', playlistId],
     queryFn: () => playerApiRequest(`/api/playlists/${playlistId}`),
     enabled: !!playlistId, // Solo ejecuta la query si hay un playlistId
     refetchOnWindowFocus: false,
     refetchInterval: 5 * 60 * 1000, // Refresca la playlist cada 5 minutos
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    const savedPlaylistId = localStorage.getItem('playlistId');
+
+    if (!token) {
+      setError('No authentication token found');
+      return;
+    }
+
+    if (!savedPlaylistId) {
+      setError('No playlist assigned to this screen');
+      return;
+    }
+
+    setPlaylistId(savedPlaylistId);
+
+    // Listen for playlist changes via WebSocket
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'playlist-change') {
+          const newPlaylistId = message.data.playlistId;
+          if (newPlaylistId) {
+            localStorage.setItem('playlistId', newPlaylistId.toString());
+            setPlaylistId(newPlaylistId.toString());
+            setCurrentItemIndex(0); // Reset to first item
+            setRenderKey(prev => prev + 1); // Force re-render
+          } else {
+            localStorage.removeItem('playlistId');
+            setPlaylistId(null);
+            setError('No playlist assigned to this screen');
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    // Try to connect to WebSocket for real-time updates
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('Player WebSocket connected');
+        // Send authentication
+        ws.send(JSON.stringify({
+          type: 'player-auth',
+          token: token
+        }));
+      };
+
+      ws.onmessage = handleMessage;
+      ws.onerror = (error) => console.error('Player WebSocket error:', error);
+
+      return () => {
+        ws.close();
+      };
+    } catch (error) {
+      console.warn('WebSocket connection failed:', error);
+    }
+  }, []);
 
   // Efecto para el bucle de reproducción
   useEffect(() => {
@@ -166,6 +231,8 @@ export default function ContentPlayer() {
   }, []);
 
   const renderContent = () => {
+    const currentItem = playlist.items[currentItemIndex]?.contentItem;
+    if (!currentItem) return null;
     const url = currentItem.url;
     console.log('Rendering content:', {
       type: currentItem.type,
@@ -267,7 +334,7 @@ export default function ContentPlayer() {
       <div style={styles.message}>
         <h1>Error al cargar la playlist</h1>
         <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
-          {error?.message || 'Error desconocido'}
+          {queryError?.message || 'Error desconocido'}
         </p>
         <p style={{ fontSize: '1vw', marginTop: '1rem', opacity: 0.7 }}>
           Playlist ID: {playlistId}

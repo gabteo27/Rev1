@@ -199,10 +199,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
 
+      // First remove content from all playlists
+      await storage.removeContentFromAllPlaylists(id, userId);
+      
+      // Then delete the content item
       const success = await storage.deleteContentItem(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Content not found" });
       }
+      
+      // Invalidate all playlists cache to refresh UI
+      const message = JSON.stringify({
+        type: "content-deleted",
+        data: { contentId: id, userId },
+      });
+
+      const wssInstance = app.get('wss') as WebSocketServer;
+      wssInstance.clients.forEach((client: WebSocket) => {
+        const clientWithId = client as WebSocketWithId;
+        if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
+          clientWithId.send(message);
+        }
+      });
+
       res.json({ message: "Content deleted successfully" });
     } catch (error) {
       console.error("Error deleting content:", error);
@@ -467,6 +486,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!screen) {
         return res.status(404).json({ message: "Screen not found or access denied" });
       }
+
+      // Broadcast screen update via WebSocket
+      broadcastToUser(userId, 'screen-update', screen);
+
+      // If playlist changed, also broadcast playlist change to the specific screen
+      if (updates.playlistId !== undefined) {
+        broadcastToUser(userId, 'playlist-change', {
+          screenId: id,
+          playlistId: updates.playlistId
+        });
+      }
+
       res.json(screen);
     } catch (error) {
       console.error("Error updating screen:", error);
@@ -933,13 +964,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on("connection", (ws: WebSocket) => {
     console.log("Client connected to WebSocket");
 
-    ws.on("message", (message) => {
+    ws.on("message", async (message) => {
       try {
         const parsed = JSON.parse(message.toString());
-        // Asigna el userId si el cliente lo envía al conectarse
+        
+        // Handle admin panel authentication
         if (parsed.type === 'auth' && parsed.userId) {
           ws.userId = parsed.userId;
           console.log(`WebSocket client authenticated for user: ${ws.userId}`);
+        }
+        
+        // Handle player authentication
+        if (parsed.type === 'player-auth' && parsed.token) {
+          try {
+            const screen = await storage.getScreenByAuthToken(parsed.token);
+            if (screen && screen.userId) {
+              ws.userId = screen.userId;
+              ws.screenId = screen.id;
+              console.log(`Player WebSocket authenticated for screen ${screen.id} (user: ${screen.userId})`);
+            }
+          } catch (error) {
+            console.error('Player authentication failed:', error);
+          }
         }
       } catch (e) {
         console.warn("Invalid WebSocket message received");
@@ -947,7 +993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     
     ws.on("close", () => {
-        console.log(`Client disconnected (User: ${ws.userId || 'unauthenticated'})`);
+        console.log(`Client disconnected (User: ${ws.userId || 'unauthenticated'}, Screen: ${ws.screenId || 'none'})`);
       });
     });
 

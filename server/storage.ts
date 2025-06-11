@@ -28,7 +28,7 @@ import {
   type InsertDeployment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, exists } from "drizzle-orm";
+import { eq, and, desc, asc, exists, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -765,6 +765,36 @@ export class DatabaseStorage implements IStorage {
 
     // Recalculate total duration
     await this.updatePlaylistDuration(playlistId);
+  }
+
+  async getScreenByAuthToken(authToken: string) {
+    const [screen] = await db
+      .select()
+      .from(screens)
+      .where(eq(screens.authToken, authToken));
+    return screen;
+  }
+
+  async removeContentFromAllPlaylists(contentItemId: number, userId: string): Promise<void> {
+    // Get all playlists for this user
+    const userPlaylists = await db
+      .select({ id: playlists.id })
+      .from(playlists)
+      .where(eq(playlists.userId, userId));
+
+    const playlistIds = userPlaylists.map(p => p.id);
+
+    // Remove the content item from all playlist items where it appears
+    if (playlistIds.length > 0) {
+      await db
+        .delete(playlistItems)
+        .where(
+          and(
+            eq(playlistItems.contentItemId, contentItemId),
+            inArray(playlistItems.playlistId, playlistIds)
+          )
+        );
+    }
   }
 }
 
