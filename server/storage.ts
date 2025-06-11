@@ -75,6 +75,10 @@ export interface IStorage {
     playlistItem: InsertPlaylistItem,
     userId: string,
   ): Promise<PlaylistItem>;
+  getPlaylistItemWithContent(
+    itemId: number,
+    userId: string,
+  ): Promise<(PlaylistItem & { contentItem: ContentItem }) | undefined>;
   updatePlaylistItem(
     id: number,
     playlistItem: Partial<InsertPlaylistItem>,
@@ -381,6 +385,28 @@ export class DatabaseStorage implements IStorage {
       .values(playlistItem)
       .returning();
     return item;
+  }
+
+  async getPlaylistItemWithContent(
+    itemId: number,
+    userId: string
+  ): Promise<(PlaylistItem & { contentItem: ContentItem }) | undefined> {
+    const [result] = await db
+      .select({
+        playlistItem: playlistItems,
+        contentItem: contentItems,
+      })
+      .from(playlistItems)
+      .innerJoin(contentItems, eq(playlistItems.contentItemId, contentItems.id))
+      .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+      .where(and(eq(playlistItems.id, itemId), eq(playlists.userId, userId)));
+
+    if (!result) return undefined;
+
+    return {
+      ...result.playlistItem,
+      contentItem: result.contentItem,
+    };
   }
 
   async updatePlaylistItem(id: number, playlistItem: Partial<InsertPlaylistItem>, userId: string): Promise<PlaylistItem | undefined> {
