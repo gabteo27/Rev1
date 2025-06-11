@@ -1,12 +1,41 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Monitor, Play, Pause, RotateCcw, Settings } from "lucide-react";
-import { useState } from "react";
+import { Monitor, Play, Pause, RotateCcw, Settings, Wifi, WifiOff } from "lucide-react";
+import { useState, useEffect } from "react";
+import { websocketManager } from "@/lib/websocket";
 
 export default function LivePreview() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentScreen, setCurrentScreen] = useState("Pantalla Principal");
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    // Listen for WebSocket connection status
+    const handleConnection = () => {
+      setIsConnected(true);
+    };
+
+    const handleDisconnection = () => {
+      setIsConnected(false);
+    };
+
+    const handleMessage = (data: any) => {
+      if (data.type === 'connection_established') {
+        setIsConnected(true);
+      }
+    };
+
+    websocketManager.on('open', handleConnection);
+    websocketManager.on('close', handleDisconnection);
+    websocketManager.on('message', handleMessage);
+
+    return () => {
+      websocketManager.off('open', handleConnection);
+      websocketManager.off('close', handleDisconnection);
+      websocketManager.off('message', handleMessage);
+    };
+  }, []);
 
   return (
     <Card className="border-slate-200">
@@ -16,9 +45,18 @@ export default function LivePreview() {
             <CardTitle className="text-lg">Vista Previa en Vivo</CardTitle>
             <CardDescription>Visualización en tiempo real</CardDescription>
           </div>
-          <Badge className="bg-green-100 text-green-800">
-            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-            En vivo
+          <Badge className={isConnected ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+            {isConnected ? (
+              <>
+                <Wifi className="w-3 h-3 mr-2" />
+                Conectado
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3 h-3 mr-2" />
+                Desconectado
+              </>
+            )}
           </Badge>
         </div>
       </CardHeader>
@@ -27,7 +65,9 @@ export default function LivePreview() {
         <div className="bg-slate-900 rounded-lg aspect-video flex items-center justify-center relative overflow-hidden">
           <div className="text-white text-center">
             <Monitor className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p className="text-sm opacity-75">Conectando a {currentScreen}...</p>
+            <p className="text-sm opacity-75">
+              {isConnected ? `Conectado a ${currentScreen}` : `Conectando a ${currentScreen}...`}
+            </p>
           </div>
 
           {/* Preview Overlay */}

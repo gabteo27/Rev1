@@ -60,10 +60,21 @@ async function startApplication() {
   await setupVite(app, httpServer);
 
   wss.on('connection', (ws, req) => {
-    console.log('New WebSocket connection established from:', req.socket.remoteAddress);
+    console.log('New WebSocket connection established from:', req.socket.remoteAddress || 'unknown');
+    
+    // Initialize connection state
+    (ws as any).isAlive = true;
 
-    // Send initial ping to verify connection
-    ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+    // Send initial connection confirmation
+    try {
+      ws.send(JSON.stringify({ 
+        type: 'connection_established', 
+        timestamp: Date.now(),
+        message: 'WebSocket connection successful'
+      }));
+    } catch (error) {
+      console.error('Error sending initial message:', error);
+    }
 
     ws.on('message', (message) => {
       try {
@@ -71,7 +82,13 @@ async function startApplication() {
         
         // Handle ping/pong for connection health
         if (data.type === 'pong') {
-          return; // Just acknowledge the pong
+          (ws as any).isAlive = true;
+          return;
+        }
+        
+        if (data.type === 'ping') {
+          ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+          return;
         }
         
         console.log('WebSocket message received:', data);
@@ -80,25 +97,37 @@ async function startApplication() {
         if (data.type === 'identify_screen') {
           (ws as any).screenId = data.screenId;
           console.log(`Screen ${data.screenId} identified`);
+          ws.send(JSON.stringify({ 
+            type: 'screen_identified', 
+            screenId: data.screenId,
+            timestamp: Date.now()
+          }));
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
-        // Don't close connection on parse error, just log it
+        // Send error response instead of closing
+        try {
+          ws.send(JSON.stringify({ 
+            type: 'error', 
+            message: 'Invalid message format',
+            timestamp: Date.now()
+          }));
+        } catch (sendError) {
+          console.error('Error sending error message:', sendError);
+        }
       }
     });
 
     ws.on('close', (code, reason) => {
-      console.log(`WebSocket connection closed: ${code} - ${reason}`);
+      console.log(`WebSocket connection closed: ${code} - ${reason || 'No reason provided'}`);
+      if ((ws as any).screenId) {
+        console.log(`Screen ${(ws as any).screenId} disconnected`);
+      }
     });
 
     ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
-      // Try to close the connection gracefully
-      try {
-        ws.terminate();
-      } catch (e) {
-        console.error('Error terminating WebSocket:', e);
-      }
+      console.error('WebSocket error:', error.message || error);
+      // Don't terminate immediately, let the client handle reconnection
     });
 
     // Handle connection cleanup

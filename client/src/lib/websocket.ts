@@ -23,8 +23,19 @@ class WebSocketManager {
       }
 
       try {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        // Get the base URL from the current window location
+        const isHttps = window.location.protocol === 'https:';
+        const protocol = isHttps ? 'wss:' : 'ws:';
+
+        // For Replit, use the same host as the current page
+        let wsUrl: string;
+        if (window.location.hostname.includes('replit.dev')) {
+          // In Replit environment, use the same domain with WebSocket protocol
+          wsUrl = `${protocol}//${window.location.host}/ws`;
+        } else {
+          // For local development
+          wsUrl = `${protocol}//${window.location.hostname}:5000/ws`;
+        }
 
         console.log("Attempting WebSocket connection to:", wsUrl);
         this.ws = new WebSocket(wsUrl);
