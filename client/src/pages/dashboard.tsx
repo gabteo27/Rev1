@@ -159,21 +159,29 @@ export default function Dashboard() {
   // Control playback mutation
   const playbackMutation = useMutation({
     mutationFn: async ({ screenId, playlistId, action }: { screenId: string, playlistId: string, action: 'play' | 'pause' | 'stop' }) => {
-      return await apiRequest(`/api/screens/${screenId}/playback`, {
+      const response = await apiRequest(`/api/screens/${screenId}/playback`, {
         method: "POST",
         body: JSON.stringify({ playlistId, action })
       });
+      return response.json();
     },
     onSuccess: (data, variables) => {
       toast({
         title: "Reproducción actualizada",
         description: `${variables.action === 'play' ? 'Iniciada' : variables.action === 'pause' ? 'Pausada' : 'Detenida'} en la pantalla seleccionada`,
       });
+      
+      // Broadcast update via WebSocket to connected screens
+      wsManager.send('playback-control', {
+        screenId: variables.screenId,
+        playlistId: variables.playlistId,
+        action: variables.action
+      });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "No se pudo controlar la reproducción",
+        description: error.message || "No se pudo controlar la reproducción",
         variant: "destructive",
       });
     }
@@ -229,7 +237,7 @@ export default function Dashboard() {
       />
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -291,9 +299,9 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Enhanced Player Preview */}
-        <Card className="lg:col-span-2">
+        <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Monitor className="h-5 w-5" />

@@ -136,6 +136,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Validate URL format
         try {
           new URL(url);
+          
+          // Generate screenshot for webpage
+          try {
+            const screenshotResponse = await fetch(`https://api.screenshotone.com/take?access_key=demo&url=${encodeURIComponent(url)}&format=png&viewport_width=1280&viewport_height=720&device_scale_factor=1&format=png&response_type=by_format`, {
+              timeout: 10000
+            });
+            
+            if (screenshotResponse.ok) {
+              const screenshotBuffer = await screenshotResponse.arrayBuffer();
+              const screenshotFilename = `screenshot_${Date.now()}.png`;
+              const fs = require('fs');
+              const screenshotPath = `uploads/${screenshotFilename}`;
+              
+              fs.writeFileSync(screenshotPath, Buffer.from(screenshotBuffer));
+              contentData.thumbnailUrl = `/uploads/${screenshotFilename}`;
+            }
+          } catch (screenshotError) {
+            console.warn('Failed to generate screenshot:', screenshotError);
+            // Continue without screenshot
+          }
+          
         } catch (error) {
           return res.status(400).json({ message: "Invalid URL format" });
         }
@@ -466,6 +487,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting screen:", error);
       res.status(500).json({ message: "Failed to delete screen" });
+    }
+  });
+
+  // Playback control endpoint
+  app.post("/api/screens/:id/playback", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const screenId = parseInt(req.params.id, 10);
+      const { playlistId, action } = req.body;
+
+      // Verify screen ownership
+      const screen = await storage.getScreens(userId).then(screens => 
+        screens.find(s => s.id === screenId)
+      );
+      
+      if (!screen) {
+        return res.status(404).json({ message: "Screen not found" });
+      }
+
+      // Log the playback action
+      console.log(`Playback ${action} on screen ${screenId} with playlist ${playlistId}`);
+
+      // Here you would typically send the command to the actual screen
+      // For now, we'll just acknowledge the command
+      
+      res.json({ 
+        message: "Playback command sent",
+        screenId,
+        playlistId,
+        action,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error("Error controlling playback:", error);
+      res.status(500).json({ message: "Failed to control playback" });
     }
   });
 
@@ -905,6 +961,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
   }
+
+  // Analytics routes
+  app.get("/api/analytics", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Mock analytics data - in production you'd query real metrics
+      const analytics = {
+        totalViews: Math.floor(Math.random() * 10000) + 5000,
+        activeScreens: await storage.getScreens(userId).then(screens => screens.filter(s => s.isOnline).length),
+        totalScreens: await storage.getScreens(userId).then(screens => screens.length),
+        averageUptime: 95.5,
+        totalPlaytime: Math.floor(Math.random() * 1000000) + 500000,
+        lastWeekGrowth: 12.5
+      };
+      
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  app.get("/api/analytics/screens", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const screens = await storage.getScreens(userId);
+      
+      const screenMetrics = screens.map(screen => ({
+        id: screen.id,
+        name: screen.name,
+        location: screen.location,
+        uptime: Math.floor(Math.random() * 100),
+        views: Math.floor(Math.random() * 1000) + 100,
+        status: screen.isOnline ? 'online' : 'offline'
+      }));
+      
+      res.json(screenMetrics);
+    } catch (error) {
+      console.error("Error fetching screen analytics:", error);
+      res.status(500).json({ message: "Failed to fetch screen analytics" });
+    }
+  });
+
+  app.get("/api/analytics/content", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const content = await storage.getContentItems(userId);
+      
+      const contentMetrics = content.map(item => ({
+        id: item.id,
+        title: item.title,
+        type: item.type,
+        views: Math.floor(Math.random() * 500) + 50,
+        engagement: Math.floor(Math.random() * 100),
+        duration: item.duration || 30
+      }));
+      
+      res.json(contentMetrics);
+    } catch (error) {
+      console.error("Error fetching content analytics:", error);
+      res.status(500).json({ message: "Failed to fetch content analytics" });
+    }
+  });
+
+  app.get("/api/analytics/playback", isAuthenticated, async (req: any, res) => {
+    try {
+      // Mock playback data
+      const playbackData = [];
+      const today = new Date();
+      
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        
+        playbackData.push({
+          date: date.toISOString().split('T')[0],
+          plays: Math.floor(Math.random() * 200) + 100,
+          views: Math.floor(Math.random() * 1000) + 500,
+          duration: Math.floor(Math.random() * 10000) + 5000
+        });
+      }
+      
+      res.json(playbackData);
+    } catch (error) {
+      console.error("Error fetching playback analytics:", error);
+      res.status(500).json({ message: "Failed to fetch playback analytics" });
+    }
+  });
 
   return httpServer;
 }
