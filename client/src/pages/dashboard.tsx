@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import wsManager from "@/lib/websocket";
+import { wsManager } from "@/lib/websocket";
 import Header from "@/components/layout/header";
 import LivePreview from "@/components/preview/live-preview";
 import { Button } from "@/components/ui/button";
