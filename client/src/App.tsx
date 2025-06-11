@@ -66,6 +66,7 @@ function Router() {
                 <Route path="/deployment" component={Deployment} />
                 <Route path="/settings" component={Settings} />
                 <Route path="/analytics" component={Analytics} />
+                <Route path="/screen-player" component={() => import('./pages/screen-player').then(m => m.default)} />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>

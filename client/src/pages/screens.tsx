@@ -11,17 +11,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Plus,
-  Tv,
-  Monitor,
-  Wifi,
+import { 
+  Tv, 
+  Plus, 
+  Settings, 
+  Trash2, 
+  Monitor, 
+  Wifi, 
   WifiOff,
-  Clock,
-  MapPin,
-  Settings,
-  Trash2,
-  Edit
+  Search,
+  Filter,
+  MoreVertical,
+  Edit,
+  ExternalLink
 } from "lucide-react";
 
 const initialPairFormState = { pairingCode: "", name: "", location: "", playlistId: "" };
@@ -88,6 +90,11 @@ export default function Screens() {
     }
     completePairingMutation.mutate(pairFormData);
   };
+
+    // --- MANEJADORES DE PANTALLA ---
+    const handleEditScreen = (screen: Screen) => {
+      setEditingScreen(screen);
+    };
 
   // --- FUNCIONES AUXILIARES ---
 

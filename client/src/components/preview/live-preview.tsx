@@ -23,7 +23,7 @@ export default function LivePreview() {
 
   const openPlayerWindow = () => {
     if (selectedScreen) {
-      window.open(`/player?screenId=${selectedScreen}`, '_blank', 'width=800,height=600');
+      window.open(`/screen-player?screenId=${selectedScreen}`, '_blank', 'width=1200,height=800');
     }
   };
 
@@ -73,7 +73,7 @@ export default function LivePreview() {
         <div className="bg-slate-900 rounded-lg aspect-video flex items-center justify-center relative overflow-hidden min-h-[200px]">
           {selectedScreen && isPreviewVisible ? (
             <iframe
-              src={`/player?screenId=${selectedScreen}`}
+              src={`/screen-player?screenId=${selectedScreen}`}
               className="w-full h-full border-none"
               title={`Preview for ${selectedScreenData?.name || 'Screen'}`}
             />

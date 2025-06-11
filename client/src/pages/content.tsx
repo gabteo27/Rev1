@@ -40,11 +40,10 @@ export default function Content() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest(`/api/content/${id}`, { method: "DELETE" });
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      return response.json();
+      const response = await apiRequest(`/api/content/${id}`, {
+        method: "DELETE",
+      });
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -383,7 +382,7 @@ export default function Content() {
           <DialogHeader>
             <DialogTitle>Editar Contenido</DialogTitle>
           </DialogHeader>
-          
+
           {editingContent && (
             <div className="space-y-4 py-4">
               <div>
