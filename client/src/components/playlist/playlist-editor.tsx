@@ -1,4 +1,3 @@
-// src/components/playlist/playlist-editor.tsx
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -9,21 +8,75 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, Image, Video, FileText, Globe, Type, Trash2, Plus, Settings } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  GripVertical, 
+  Image, 
+  Video, 
+  FileText, 
+  Globe, 
+  Type, 
+  Trash2, 
+  Plus, 
+  Settings,
+  List 
+} from "lucide-react";
 
-export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
+interface PlaylistEditorProps {
+  playlistId?: number | null;
+  onPlaylistChange?: (playlistId: number | null) => void;
+}
+
+export function PlaylistEditor({ playlistId, onPlaylistChange }: PlaylistEditorProps) {
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>(playlistId?.toString() || "");
   const { toast } = useToast();
 
-  const { data: playlistData, isLoading } = useQuery({
-    queryKey: ["/api/playlists", playlistId],
-    queryFn: async () => {
-      if (!playlistId) return null;
-      const response = await apiRequest(`/api/playlists/${playlistId}`);
-      return response.json();
-    },
-    enabled: !!playlistId,
+  // Get all playlists for the selector
+  const { data: playlists = [] } = useQuery({
+    queryKey: ["/api/playlists"],
+    retry: 1,
   });
 
+  // Get all available content
+  const { data: content = [] } = useQuery({
+    queryKey: ["/api/content"],
+    retry: 1,
+  });
+
+  // Get selected playlist data
+  const { data: playlistData, isLoading } = useQuery({
+    queryKey: ["/api/playlists", selectedPlaylistId],
+    queryFn: async () => {
+      if (!selectedPlaylistId) return null;
+      const response = await apiRequest(`/api/playlists/${selectedPlaylistId}`);
+      return response.json();
+    },
+    enabled: !!selectedPlaylistId,
+  });
+
+  // Add content to playlist mutation
+  const addItemMutation = useMutation({
+    mutationFn: async (contentItemId: number) => {
+      const currentItems = playlistData?.items || [];
+      return await apiRequest(`/api/playlists/${selectedPlaylistId}/items`, {
+        method: "POST",
+        body: JSON.stringify({ 
+          contentItemId,
+          order: currentItems.length
+        })
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      toast({
+        title: "Contenido agregado",
+        description: "El elemento se ha agregado a la playlist.",
+      });
+    },
+  });
+
+  // Update item duration mutation
   const updateItemMutation = useMutation({
     mutationFn: async ({ id, customDuration }: { id: number; customDuration: number }) => {
       await apiRequest(`/api/playlist-items/${id}`, {
@@ -31,28 +84,37 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
         body: JSON.stringify({ customDuration })
       });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] }),
   });
 
+  // Delete item mutation
   const deleteItemMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest(`/api/playlist-items/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       toast({ title: "Elemento eliminado" });
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
     },
   });
 
+  // Reorder items mutation
   const reorderMutation = useMutation({
     mutationFn: async (itemOrders: { id: number; order: number }[]) => {
-      await apiRequest(`/api/playlists/${playlistId}/reorder`, {
+      await apiRequest(`/api/playlists/${selectedPlaylistId}/reorder`, {
         method: "PUT",
         body: JSON.stringify({ itemOrders })
       });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] }),
   });
+
+  const handlePlaylistChange = (value: string) => {
+    setSelectedPlaylistId(value);
+    const playlistIdNum = value ? parseInt(value) : null;
+    onPlaylistChange?.(playlistIdNum);
+  };
 
   const handleDragEnd = (result: any) => {
     if (!result.destination || !playlistData?.items) return;
@@ -89,7 +151,6 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
     }
   };
 
-
   const calculateTotalDuration = () => {
     if (!playlistData?.items) return 0;
     return playlistData.items.reduce((total: number, item: any) => {
@@ -108,16 +169,16 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
 
   return (
     <Card className="border-slate-200">
-      <div className="p-6 border-b border-slate-200">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">Editor de Playlist</h3>
+          <CardTitle className="text-lg font-semibold text-slate-900">Editor de Playlist</CardTitle>
           <div className="flex items-center space-x-2">
-            <Select value={selectedPlaylistId} onValueChange={setSelectedPlaylistId}>
+            <Select value={selectedPlaylistId} onValueChange={handlePlaylistChange}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Seleccionar playlist" />
               </SelectTrigger>
               <SelectContent>
-                {playlists?.map((playlist: any) => (
+                {Array.isArray(playlists) && playlists.map((playlist: any) => (
                   <SelectItem key={playlist.id} value={playlist.id.toString()}>
                     {playlist.name}
                   </SelectItem>
@@ -129,7 +190,7 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
             </Button>
           </div>
         </div>
-      </div>
+      </CardHeader>
 
       <CardContent className="p-6">
         {!selectedPlaylistId ? (
@@ -143,6 +204,11 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
             <p className="text-slate-600">
               Elige una playlist para comenzar a editar su contenido.
             </p>
+          </div>
+        ) : isLoading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-slate-600">Cargando playlist...</p>
           </div>
         ) : !playlistData?.items || playlistData.items.length === 0 ? (
           <div className="text-center py-12">
@@ -158,7 +224,6 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
             <Button
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => {
-                // Show available content to add
                 if (!content || content.length === 0) {
                   toast({
                     title: "No hay contenido",
@@ -168,7 +233,6 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
                   return;
                 }
 
-                // Find content not already in playlist
                 const availableContent = content.filter((c: any) => 
                   !playlistData?.items?.some((item: any) => item.contentItemId === c.id)
                 );
@@ -181,8 +245,6 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
                   return;
                 }
 
-                // Add first available content item for now
-                // In a real app, you'd show a selection modal
                 addItemMutation.mutate(availableContent[0].id);
               }}
             >
