@@ -1,5 +1,5 @@
+
 import { Switch, Route } from "wouter";
-// 1. Importa 'lazy' y 'Suspense' de React
 import { lazy, Suspense } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -20,12 +20,11 @@ import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import Settings from "@/pages/settings";
 import Analytics from "@/pages/analytics";
-import { SidebarProvider } from "@/components/ui/sidebar"; //Import SidebarProvider
+import ScreenPlayer from "@/pages/screen-player";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
-// La importación lazy se mantiene igual
 const PlaylistDetail = lazy(() => import("./pages/playlist-detail"));
 
-// Componente de fallback para Suspense
 function Loading() {
   return (
     <div className="w-full h-full flex items-center justify-center">
@@ -52,7 +51,6 @@ function Router() {
         <div className="flex h-screen bg-slate-50">
           <Sidebar />
           <div className="lg:pl-72 flex flex-col flex-1">
-            {/* 2. Envuelve el Switch que contiene la ruta lazy en Suspense */}
             <Suspense fallback={<Loading />}>
               <Switch>
                 <Route path="/" component={Dashboard} />
@@ -66,7 +64,7 @@ function Router() {
                 <Route path="/deployment" component={Deployment} />
                 <Route path="/settings" component={Settings} />
                 <Route path="/analytics" component={Analytics} />
-                <Route path="/screen-player" component={() => import('./pages/screen-player').then(m => m.default)} />
+                <Route path="/screen-player" component={ScreenPlayer} />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>
