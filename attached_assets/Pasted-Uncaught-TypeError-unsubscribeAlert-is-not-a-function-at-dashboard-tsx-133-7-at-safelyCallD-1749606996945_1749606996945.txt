@@ -1,0 +1,29 @@
+Uncaught TypeError: unsubscribeAlert is not a function
+    at dashboard.tsx:133:7
+    at safelyCallDestroy (chunk-RPCDYKBN.js?v=8eab00da:16748:13)
+    at commitHookEffectListUnmount (chunk-RPCDYKBN.js?v=8eab00da:16875:19)
+    at commitPassiveUnmountInsideDeletedTreeOnFiber (chunk-RPCDYKBN.js?v=8eab00da:18283:17)
+    at commitPassiveUnmountEffectsInsideOfDeletedTree_begin (chunk-RPCDYKBN.js?v=8eab00da:18245:13)
+    at commitPassiveUnmountEffects_begin (chunk-RPCDYKBN.js?v=8eab00da:18181:19)
+    at commitPassiveUnmountEffects (chunk-RPCDYKBN.js?v=8eab00da:18169:11)
+    at flushPassiveEffectsImpl (chunk-RPCDYKBN.js?v=8eab00da:19489:11)
+    at flushPassiveEffects (chunk-RPCDYKBN.js?v=8eab00da:19447:22)
+    at commitRootImpl (chunk-RPCDYKBN.js?v=8eab00da:19416:13)Understand this error
+chunk-RPCDYKBN.js?v=8eab00da:14032 The above error occurred in the <Dashboard> component:
+
+    at Dashboard (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/dashboard.tsx:148:47)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=8eab00da:14032Understand this error
+chunk-RPCDYKBN.js?v=8eab00da:9129 Uncaught TypeError: unsubscribeAlert is not a function
+    at dashboard.tsx:133:7
+    at safelyCallDestroy (chunk-RPCDYKBN.js?v=8eab00da:16748:13)
+    at commitHookEffectListUnmount (chunk-RPCDYKBN.js?v=8eab00da:16875:19)
+    at commitPassiveUnmountInsideDeletedTreeOnFiber (chunk-RPCDYKBN.js?v=8eab00da:18283:17)
+    at commitPassiveUnmountEffectsInsideOfDeletedTree_begin (chunk-RPCDYKBN.js?v=8eab00da:18245:13)
+    at commitPassiveUnmountEffects_begin (chunk-RPCDYKBN.js?v=8eab00da:18181:19)
+    at commitPassiveUnmountEffects (chunk-RPCDYKBN.js?v=8eab00da:18169:11)
+    at flushPassiveEffectsImpl (chunk-RPCDYKBN.js?v=8eab00da:19489:11)
+    at flushPassiveEffects (chunk-RPCDYKBN.js?v=8eab00da:19447:22)
+    at commitRootImpl (chunk-RPCDYKBN.js?v=8eab00da:19416:13)Understand this error
