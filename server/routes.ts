@@ -311,17 +311,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const itemData = {
         playlistId,
         contentItemId: parseInt(contentItemId),
-        order: order || 0
+        order: order || (playlist.items?.length || 0) + 1
       };
 
       const validatedData = insertPlaylistItemSchema.parse(itemData);
-      const item = await storage.createPlaylistItem(validatedData);
+      const item = await storage.addPlaylistItem(validatedData, userId);
       
-      // Recalculate total duration
-      await storage.updatePlaylistDuration(playlistId);
+      // Get the complete item with content details
+      const itemWithContent = await storage.getPlaylistItemWithContent(item.id, userId);
       
-      res.json(item);
-    } catch (error) {
+      res.json(itemWithContent);
+    } catch (error: unknown) {
       console.error("Error adding playlist item:", error);
       res.status(500).json({ message: "Failed to add playlist item" });
     }
