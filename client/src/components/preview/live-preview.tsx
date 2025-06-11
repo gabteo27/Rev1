@@ -3,13 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Monitor, Play, Pause, RotateCcw, Settings } from "lucide-react";
-import { useState } from "react";
+import { Monitor, Play, Pause, ExternalLink, Settings } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 export default function LivePreview() {
-  const [isPlaying, setIsPlaying] = useState(false);
   const [selectedScreen, setSelectedScreen] = useState("");
+  const [isPreviewVisible, setIsPreviewVisible] = useState(false);
 
   // Fetch screens data
   const { data: screens = [] } = useQuery({
@@ -20,6 +20,12 @@ export default function LivePreview() {
   const selectedScreenData = Array.isArray(screens) 
     ? screens.find((s: any) => s.id.toString() === selectedScreen) 
     : null;
+
+  const openPlayerWindow = () => {
+    if (selectedScreen) {
+      window.open(`/player?screenId=${selectedScreen}`, '_blank', 'width=800,height=600');
+    }
+  };
 
   return (
     <Card className="border-slate-200">
@@ -63,27 +69,21 @@ export default function LivePreview() {
           </Select>
         </div>
 
-        {/* Preview Screen */}
+        {/* Preview Frame */}
         <div className="bg-slate-900 rounded-lg aspect-video flex items-center justify-center relative overflow-hidden min-h-[200px]">
-          {selectedScreen && isPlaying ? (
-            <div className="text-white text-center space-y-4">
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-sm text-red-400">REPRODUCIENDO</span>
-              </div>
-              <Monitor className="w-16 h-16 mx-auto text-blue-400" />
-              <div>
-                <p className="text-lg font-semibold">{selectedScreenData?.name || 'Pantalla'}</p>
-                <p className="text-sm text-gray-400">{selectedScreenData?.location || 'Ubicación'}</p>
-              </div>
-            </div>
+          {selectedScreen && isPreviewVisible ? (
+            <iframe
+              src={`/player?screenId=${selectedScreen}`}
+              className="w-full h-full border-none"
+              title={`Preview for ${selectedScreenData?.name || 'Screen'}`}
+            />
           ) : (
             <div className="text-white text-center">
               <Monitor className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p className="text-sm opacity-75">
                 {!selectedScreen 
                   ? 'Selecciona una pantalla para ver la vista previa' 
-                  : 'Presiona reproducir para iniciar'
+                  : 'Presiona "Ver Vista Previa" para iniciar'
                 }
               </p>
             </div>
@@ -104,19 +104,19 @@ export default function LivePreview() {
           <div className="flex items-center space-x-2">
             <Button
               size="sm"
-              variant={isPlaying ? "destructive" : "default"}
-              onClick={() => setIsPlaying(!isPlaying)}
+              variant={isPreviewVisible ? "destructive" : "default"}
+              onClick={() => setIsPreviewVisible(!isPreviewVisible)}
               disabled={!selectedScreen}
             >
-              {isPlaying ? (
+              {isPreviewVisible ? (
                 <>
                   <Pause className="w-4 h-4 mr-1" />
-                  Pausar
+                  Ocultar Vista Previa
                 </>
               ) : (
                 <>
                   <Play className="w-4 h-4 mr-1" />
-                  Reproducir
+                  Ver Vista Previa
                 </>
               )}
             </Button>
@@ -125,10 +125,10 @@ export default function LivePreview() {
               size="sm" 
               variant="outline"
               disabled={!selectedScreen}
-              onClick={() => setIsPlaying(false)}
+              onClick={openPlayerWindow}
             >
-              <RotateCcw className="w-4 h-4 mr-1" />
-              Reiniciar
+              <ExternalLink className="w-4 h-4 mr-1" />
+              Abrir en Nueva Ventana
             </Button>
           </div>
 
@@ -151,6 +151,11 @@ export default function LivePreview() {
                 </span>
               </div>
             </div>
+            {selectedScreenData.playlistId && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Reproduciendo playlist ID: {selectedScreenData.playlistId}
+              </div>
+            )}
           </div>
         )}
       </CardContent>

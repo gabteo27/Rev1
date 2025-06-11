@@ -233,6 +233,14 @@ export default function Screens() {
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t flex justify-end space-x-2">
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      onClick={() => window.open(`/player?screenId=${screen.id}`, '_blank')}
+                      title="Ver pantalla en vivo"
+                    >
+                      <Monitor className="w-4 h-4" />
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => setEditingScreen(screen)}><Edit className="w-4 h-4" /></Button>
                     <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => deleteMutation.mutate(screen.id)} disabled={deleteMutation.isPending}><Trash2 className="w-4 h-4" /></Button>
                   </div>

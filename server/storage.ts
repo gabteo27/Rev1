@@ -28,7 +28,7 @@ import {
   type InsertDeployment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, exists } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -259,6 +259,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteContentItem(id: number, userId: string): Promise<boolean> {
+    // First delete any playlist items that reference this content
+    await db.delete(playlistItems)
+      .where(eq(playlistItems.contentItemId, id));
+
+    // Then delete the content item
     const result = await db
       .delete(contentItems)
       .where(and(eq(contentItems.id, id), eq(contentItems.userId, userId)));

@@ -62,10 +62,15 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: async ({ queryKey }) => {
         const url = queryKey[0] as string;
-        return apiRequest(url);
+        const response = await apiRequest(url);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return response.json();
       },
-      retry: (failureCount, error) => {
-        // Don't retry on 4xx errors
+      retry: (failureCount, error: any) => {
         if (error.message.includes('Request failed: 4')) {
           return false;
         }
@@ -82,3 +87,5 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+export { apiRequest };

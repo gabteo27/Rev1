@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import wsManager from "@/lib/websocket";
 import Header from "@/components/layout/header";
+import LivePreview from "@/components/preview/live-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -304,160 +305,10 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Enhanced Player Preview */}
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Monitor className="h-5 w-5" />
-              Control de Reproducción
-            </CardTitle>
-            <CardDescription>
-              Control remoto de pantallas en tiempo real
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Pantalla de destino</Label>
-                <Select value={selectedScreen} onValueChange={setSelectedScreen}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar pantalla..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.isArray(screens) && screens.length > 0 ? screens.map((screen: any) => (
-                      <SelectItem key={screen.id} value={screen.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${
-                            screen.isOnline ? 'bg-green-500' : 'bg-red-500'
-                          }`} />
-                          <span className="font-medium">{screen.name}</span>
-                          <span className="text-sm text-muted-foreground">- {screen.location}</span>
-                        </div>
-                      </SelectItem>
-                    )) : (
-                      <SelectItem value="none" disabled>No hay pantallas disponibles</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Playlist</Label>
-                <Select value={selectedPlaylist} onValueChange={setSelectedPlaylist}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar playlist..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.isArray(playlists) && playlists.length > 0 ? playlists.map((playlist: any) => (
-                      <SelectItem key={playlist.id} value={playlist.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{playlist.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            ({playlist.totalItems || 0} elementos)
-                          </span>
-                        </div>
-                      </SelectItem>
-                    )) : (
-                      <SelectItem value="none" disabled>No hay playlists disponibles</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button 
-                onClick={togglePreview} 
-                disabled={!selectedScreen || !selectedPlaylist || playbackMutation.isPending}
-                className="flex-1"
-              >
-                {isPreviewPlaying ? (
-                  <>
-                    <Pause className="w-4 h-4 mr-2" />
-                    Pausar
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 mr-2" />
-                    Reproducir
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={stopPreview}
-                disabled={!isPreviewPlaying || playbackMutation.isPending}
-              >
-                <Square className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            {/* Enhanced Preview Display */}
-            <div className="border rounded-lg overflow-hidden bg-gray-900 text-white min-h-[300px] relative">
-              {selectedScreen && isPreviewPlaying ? (
-                <div className="p-6 text-center space-y-4">
-                  <div className="flex items-center justify-center gap-2 mb-4">
-                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                    <span className="text-sm text-red-400">EN VIVO</span>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Monitor className="h-16 w-16 mx-auto text-blue-400" />
-                    <h3 className="text-xl font-semibold">
-                      {selectedScreenData?.name || 'Pantalla'}
-                    </h3>
-                    <p className="text-gray-400">{selectedScreenData?.location || 'Ubicación'}</p>
-                  </div>
-
-                  <div className="bg-gray-800 rounded-lg p-4 mt-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <List className="h-4 w-4 text-blue-400" />
-                      <span className="text-sm">Reproduciendo:</span>
-                    </div>
-                    <p className="font-medium">{selectedPlaylistData?.name || 'Playlist'}</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
-                      <span>Elementos: {selectedPlaylistData?.totalItems || 0}</span>
-                      <span>Duración: {formatDuration(selectedPlaylistData?.totalDuration || 0)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-center gap-2 mt-4">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                  </div>
-                </div>
-              ) : (
-                <div className="p-6 text-center text-gray-400">
-                  <Monitor className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">Control de Reproducción</p>
-                  <p className="text-sm">
-                    {!selectedScreen ? 'Selecciona una pantalla' : 
-                     !selectedPlaylist ? 'Selecciona una playlist' : 
-                     'Presiona reproducir para iniciar'}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Screen Status */}
-            {selectedScreen && selectedScreenData && (
-              <div className="bg-muted rounded-lg p-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Estado de la pantalla:</span>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      selectedScreenData.isOnline ? 'bg-green-500' : 'bg-red-500'
-                    }`} />
-                    <span className={selectedScreenData.isOnline ? 'text-green-600' : 'text-red-600'}>
-                      {selectedScreenData.isOnline ? 'En línea' : 'Desconectada'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Live Preview */}
+        <div className="xl:col-span-2">
+          <LivePreview />
+        </div>
 
         {/* Widgets and Activity */}
         <div className="space-y-6">
