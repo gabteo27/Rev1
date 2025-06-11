@@ -1,4 +1,3 @@
-
 import { Switch, Route, Redirect } from "wouter";
 import { lazy, Suspense, type PropsWithChildren } from "react";
 import { queryClient } from "./lib/queryClient";

@@ -105,12 +105,15 @@ export default function LivePreview() {
           {/* Vista previa en miniatura */}
           <div className="bg-slate-900 rounded-lg aspect-video flex items-center justify-center relative overflow-hidden min-h-[200px]">
             {selectedScreenId && playlistId && playlist?.items?.length > 0 ? (
-              <div className="text-white text-center p-4">
-                <Monitor className="w-12 h-12 mx-auto mb-2" />
-                <p className="text-sm mb-1">Pantalla: {selectedScreenData?.name}</p>
-                <p className="text-xs opacity-75">Playlist: {playlist.name}</p>
-                <p className="text-xs opacity-75">{playlist.items.length} elementos</p>
-              </div>
+              <iframe 
+                src={`/screen-player?screenId=${selectedScreenId}&preview=true`} 
+                className="w-full h-full border-0" 
+                title="Vista previa de la pantalla"
+                style={{ minHeight: '200px' }}
+                onError={() => {
+                  console.error('Error loading preview iframe');
+                }}
+              />
             ) : (
               <div className="text-white text-center p-4">
                 <Tv className="w-12 h-12 mx-auto mb-2 opacity-50" />

@@ -63,9 +63,11 @@ export default function Content() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
+      // Remove duration from update data since it will be managed in playlists
+      const { duration, ...updateData } = data;
       const response = await apiRequest(`/api/content/${data.id}`, {
         method: "PUT",
-        body: JSON.stringify(data),
+        body: JSON.stringify(updateData),
       });
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -153,7 +155,6 @@ export default function Content() {
       title: item.title,
       description: item.description || "",
       category: item.category || "",
-      duration: item.duration || 30,
       tags: Array.isArray(item.tags) ? item.tags.join(", ") : (item.tags || ""),
     });
     setEditModalOpen(true);
@@ -406,38 +407,24 @@ export default function Content() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-category">Categoría</Label>
-                  <Select 
-                    value={editingContent.category} 
-                    onValueChange={(value) => setEditingContent({...editingContent, category: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin categoría</SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="edit-duration">Duración (segundos)</Label>
-                  <Input
-                    id="edit-duration"
-                    type="number"
-                    value={editingContent.duration}
-                    onChange={(e) => setEditingContent({...editingContent, duration: parseInt(e.target.value) || 30})}
-                    min="1"
-                    max="3600"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="edit-category">Categoría</Label>
+                <Select 
+                  value={editingContent.category} 
+                  onValueChange={(value) => setEditingContent({...editingContent, category: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin categoría</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>

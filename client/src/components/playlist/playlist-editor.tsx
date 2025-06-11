@@ -131,9 +131,15 @@ export function PlaylistEditor({ playlistId, onPlaylistChange }: PlaylistEditorP
   };
 
   const handleDurationChange = (itemId: number, duration: string) => {
-    const customDuration = parseInt(duration) || 0;
-    if (customDuration > 0) {
+    const customDuration = parseInt(duration) || 10; // Default to 10 seconds
+    if (customDuration >= 1 && customDuration <= 300) { // Between 1 second and 5 minutes
       updateItemMutation.mutate({ id: itemId, customDuration });
+    } else {
+      toast({
+        title: "Duración inválida",
+        description: "La duración debe estar entre 1 y 300 segundos.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -333,21 +339,26 @@ export function PlaylistEditor({ playlistId, onPlaylistChange }: PlaylistEditorP
                                 </div>
                               </div>
 
-                              <div className="flex items-center space-x-2">
-                                <Input
-                                  type="number"
-                                  value={item.customDuration || item.contentItem.duration || 0}
-                                  onChange={(e) => handleDurationChange(item.id, e.target.value)}
-                                  className="w-16 text-center"
-                                  min="1"
-                                />
-                                <span className="text-sm text-muted-foreground">seg</span>
+                              <div className="flex items-center space-x-3">
+                                <div className="flex items-center space-x-2 bg-muted/50 rounded-md px-2 py-1">
+                                  <Input
+                                    type="number"
+                                    value={item.customDuration || item.contentItem.duration || 10}
+                                    onChange={(e) => handleDurationChange(item.id, e.target.value)}
+                                    className="w-20 text-center h-8 text-sm"
+                                    min="1"
+                                    max="300"
+                                    step="1"
+                                  />
+                                  <span className="text-xs text-muted-foreground font-medium">seg</span>
+                                </div>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="text-red-500 hover:text-red-700 p-2"
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 h-8 w-8"
                                   onClick={() => deleteItemMutation.mutate(item.id)}
                                   disabled={deleteItemMutation.isPending}
+                                  title="Eliminar elemento"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>

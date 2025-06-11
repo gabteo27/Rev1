@@ -8,75 +8,64 @@ import { apiRequest } from '@/lib/queryClient'; // ✅ Asegúrate de importar ap
 export default function ScreenPlayerPage() {
   const urlParams = new URLSearchParams(window.location.search);
   const screenId = urlParams.get('screenId');
+  const playlistIdParam = urlParams.get('playlistId');
+  const isPreview = urlParams.get('preview') === 'true';
 
-  const { data: screen, isLoading, error, refetch } = useQuery({
+  const { data: screen, isLoading, error } = useQuery({
     queryKey: [`/api/screens/${screenId}`],
-    queryFn: () => apiRequest(`/api/screens/${screenId}`).then(res => res.json()), // ✅ Usar apiRequest para la consistencia
     enabled: !!screenId,
     retry: 1,
+    refetchOnWindowFocus: false,
   });
 
-  if (!screenId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-        <Card className="w-96 bg-gray-800 text-white border-gray-700">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><AlertTriangle/>Error</CardTitle>
-            <CardDescription>ID de pantalla no especificado en la URL.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+  // Use playlist from URL params if provided, otherwise use screen's playlist
+  const effectivePlaylistId = playlistIdParam || screen?.playlistId;
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-black text-white">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p>Cargando pantalla...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-white border-t-transparent mx-auto mb-4"></div>
+          <p>Cargando contenido...</p>
         </div>
       </div>
     );
   }
 
-  if (error || !screen) {
+  if (error || (!screen && !playlistIdParam)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-        <Card className="w-96 bg-gray-800 text-white border-gray-700">
-          <CardHeader>
-            <CardTitle>Error al Cargar</CardTitle>
-            <CardDescription>{error?.message || "No se pudo cargar la información de la pantalla."}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => refetch()} variant="secondary">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Reintentar
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <p className="text-xl mb-2">Error al cargar la pantalla</p>
+          <p className="text-sm opacity-75">{error?.message || 'Pantalla no encontrada'}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-white text-black rounded hover:bg-gray-200"
+          >
+            Reintentar
+          </button>
+        </div>
       </div>
     );
   }
 
-  if (!screen.playlistId) {
+  if (!effectivePlaylistId) {
     return (
-        <div className="w-full h-screen flex items-center justify-center text-white bg-black">
-          <div className="text-center">
-            <Monitor className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl mb-2">Pantalla '{screen.name}' lista</h3>
-            <p className="opacity-75">Asigna una playlist desde el panel de administración para comenzar.</p>
-          </div>
+      <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <p className="text-xl mb-2">Sin contenido asignado</p>
+          <p className="text-sm opacity-75">Esta pantalla no tiene una playlist asignada</p>
         </div>
+      </div>
     );
   }
 
   return (
     <div className="w-screen h-screen bg-black">
       <ContentPlayer 
-        screenId={screen.id}
-        playlistId={screen.playlistId}
-        isPreview={true}
+        screenId={screen?.id || parseInt(screenId || '0')}
+        playlistId={effectivePlaylistId}
+        isPreview={isPreview}
         className="w-full h-full"
       />
     </div>
