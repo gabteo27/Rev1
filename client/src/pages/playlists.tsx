@@ -171,7 +171,17 @@ export default function Playlists() {
     }
     createMutation.mutate(newPlaylist);
   };
+  
+  function AvailableContentLibrary({ playlistId, onAdd }: { playlistId: number, onAdd: (contentId: number) => void }) {
+    const { data: allContent = [] } = useQuery({ queryKey: ['/api/content'] });
+    const { data: playlistData } = useQuery({ 
+      queryKey: ['/api/playlists', playlistId],
+      enabled: !!playlistId 
+    });
 
+    const contentInPlaylist = new Set(playlistData?.items?.map((item: any) => item.contentItemId) || []);
+    
+    const availableContent = allContent.filter((item: any) => !contentInPlaylist.has(item.id));
   const handleEditPlaylist = (playlist: any) => {
     setEditingPlaylist({ ...playlist });
     setEditModalOpen(true);
@@ -650,4 +660,4 @@ export default function Playlists() {
       </Dialog>
     </div>
   );
-}
+

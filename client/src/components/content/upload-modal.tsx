@@ -33,7 +33,6 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [tags, setTags] = useState("");
-  const [duration, setDuration] = useState(30);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -220,7 +219,6 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
     formData.append("title", title);
     formData.append("description", description);
     formData.append("type", getFileType(selectedFiles[0]));
-    formData.append("duration", duration.toString());
     formData.append("category", category);
     formData.append("tags", tags);
 
