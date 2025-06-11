@@ -8,7 +8,6 @@ import fs from "fs-extra";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { validatePlayerAuth } from "./playerAuth";
-import { takeScreenshot } from "./screenshot";
 import { randomBytes } from 'crypto';
 import { isPlayerAuthenticated } from "./playerAuth";
 import {
@@ -143,10 +142,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           new URL(url);
           // ✅ 2. Llama a tu función local en lugar de una API externa
-          const thumbnailUrl = await takeScreenshot(url);
-          if (thumbnailUrl) {
-            contentData.thumbnailUrl = thumbnailUrl;
-          }
+          //const thumbnailUrl = await takeScreenshot(url);
+          //if (thumbnailUrl) {
+          //  contentData.thumbnailUrl = thumbnailUrl;
+          //}
         } catch (e) {
           console.error("Error procesando URL o generando miniatura con Puppeteer:", e);
           return res.status(400).json({ message: "URL inválida o no se pudo generar la miniatura." });
@@ -849,6 +848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   app.delete("/api/screens/:id", isAuthenticated, async (req: any, res) => {
+```
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);

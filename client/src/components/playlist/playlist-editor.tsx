@@ -224,12 +224,12 @@ export function PlaylistEditor() {
                   });
                   return;
                 }
-                
+
                 // Find content not already in playlist
                 const availableContent = content.filter((c: any) => 
                   !playlistData?.items?.some((item: any) => item.contentItemId === c.id)
                 );
-                
+
                 if (availableContent.length === 0) {
                   toast({
                     title: "Sin contenido disponible",
@@ -237,7 +237,7 @@ export function PlaylistEditor() {
                   });
                   return;
                 }
-                
+
                 // Add first available content item for now
                 // In a real app, you'd show a selection modal
                 addItemMutation.mutate(availableContent[0].id);

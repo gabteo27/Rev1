@@ -13,7 +13,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { Tv, Plus, Trash2, Monitor, Edit, Eye, EyeOff, Camera } from "lucide-react";
+import {
+  Tv,
+  Plus,
+  Trash2,
+  Monitor,
+  Edit,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { ScreenPreview } from "@/components/screen/ScreenPreview";
 
 
@@ -64,23 +72,6 @@ export default function Screens() {
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     },
     onError: (error: any) => toast({ title: "Error", description: error.message || "No se pudo eliminar la pantalla.", variant: "destructive" })
-  });
-
-  const screenshotMutation = useMutation({
-    mutationFn: (screenId: number) => apiRequest(`/api/screens/${screenId}/screenshot`, { method: "POST" }).then(res => res.json()),
-    onSuccess: (data) => {
-      toast({ 
-        title: "Screenshot capturado", 
-        description: "La imagen ha sido guardada correctamente" 
-      });
-      // Abrir la imagen en nueva pestaña
-      window.open(data.screenshotUrl, '_blank');
-    },
-    onError: (error: any) => toast({ 
-      title: "Error al capturar screenshot", 
-      description: error.message || "No se pudo capturar la imagen", 
-      variant: "destructive" 
-    })
   });
 
   // --- MANEJADORES DE FORMULARIOS ---
@@ -257,7 +248,7 @@ export default function Screens() {
               <Card key={screen.id} className="flex flex-col hover:shadow-md transition-shadow">
                 {/* ✅ MODIFICADO: Se añade flex-col y flex-grow para una estructura flexible vertical. El padding se hace responsivo. */}
                 <CardContent className="p-4 md:p-5 flex-grow flex flex-col">
-                
+
                   {/* ✅ MODIFICADO: La sección del header ahora tiene más espacio y el título es truncado si es muy largo. */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
@@ -281,7 +272,7 @@ export default function Screens() {
                       <span className="font-medium text-slate-700">Última vez online:</span> {formatDate(screen.lastSeen)}
                     </div>
                   </div>
-          
+
                   {/* ✅ MODIFICADO: Las acciones ahora están en un contenedor separado que se alinea al final. */}
                   <div className="pt-4 border-t flex justify-end items-center space-x-1">
                     <Button 
@@ -291,15 +282,6 @@ export default function Screens() {
                       title="Abrir en nueva pestaña"
                     >
                       <Monitor className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={() => screenshotMutation.mutate(screen.id)}
-                      disabled={screenshotMutation.isPending}
-                      title="Capturar screenshot"
-                    >
-                      <Camera className="w-4 h-4" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => handleEditScreen(screen)} title="Editar"><Edit className="w-4 h-4" /></Button>
                     <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => deleteMutation.mutate(screen.id)} disabled={deleteMutation.isPending} title="Eliminar"><Trash2 className="w-4 h-4" /></Button>
