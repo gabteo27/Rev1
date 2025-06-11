@@ -215,11 +215,32 @@ export function PlaylistEditor() {
             <Button
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => {
-                // This would open a content selection modal
-                toast({
-                  title: "Funcionalidad en desarrollo",
-                  description: "La selección de contenido estará disponible pronto.",
-                });
+                // Show available content to add
+                if (!content || content.length === 0) {
+                  toast({
+                    title: "No hay contenido",
+                    description: "Sube archivos primero desde la sección de Contenido.",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+                
+                // Find content not already in playlist
+                const availableContent = content.filter((c: any) => 
+                  !playlistData?.items?.some((item: any) => item.contentItemId === c.id)
+                );
+                
+                if (availableContent.length === 0) {
+                  toast({
+                    title: "Sin contenido disponible",
+                    description: "Todo el contenido ya está en esta playlist.",
+                  });
+                  return;
+                }
+                
+                // Add first available content item for now
+                // In a real app, you'd show a selection modal
+                addItemMutation.mutate(availableContent[0].id);
               }}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -304,20 +325,56 @@ export function PlaylistEditor() {
               </Droppable>
             </DragDropContext>
 
-            <Button
-              variant="outline"
-              className="w-full mt-6 py-3 px-4 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
-              onClick={() => {
-                // This would open a content selection modal
-                toast({
-                  title: "Funcionalidad en desarrollo",
-                  description: "La selección de contenido estará disponible pronto.",
-                });
-              }}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Agregar contenido a la playlist
-            </Button>
+            <div className="mt-6 space-y-4">
+              <h4 className="font-medium text-slate-900">Contenido Disponible</h4>
+              {!content || content.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-slate-300 rounded-lg">
+                  <p className="text-slate-500">No hay contenido disponible</p>
+                  <p className="text-sm text-slate-400 mt-1">Sube archivos desde la sección de Contenido</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {content
+                    .filter((c: any) => !playlistData?.items?.some((item: any) => item.contentItemId === c.id))
+                    .map((contentItem: any) => (
+                      <div
+                        key={contentItem.id}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-white rounded-md flex items-center justify-center">
+                            {getContentIcon(contentItem.type)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{contentItem.title}</p>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs">
+                                {contentItem.type}
+                              </Badge>
+                              <span className="text-sm text-slate-500">
+                                {formatDuration(contentItem.duration || 10)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => addItemMutation.mutate(contentItem.id)}
+                          disabled={addItemMutation.isPending}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))
+                  }
+                  {content.filter((c: any) => !playlistData?.items?.some((item: any) => item.contentItemId === c.id)).length === 0 && (
+                    <div className="text-center py-4 text-slate-500">
+                      <p>Todo el contenido ya está en esta playlist</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         )}
       </CardContent>

@@ -30,7 +30,7 @@ import {
 // Widget components with real APIs
 const WeatherWidget = () => {
   const [weather, setWeather] = useState<any>(null);
-  
+
   useEffect(() => {
     // Using OpenWeatherMap API (user needs to provide API key)
     const fetchWeather = async () => {
@@ -45,7 +45,7 @@ const WeatherWidget = () => {
           });
           return;
         }
-        
+
         const response = await fetch(
           `https://api.openweathermap.org/data/2.5/weather?q=Mexico City&appid=${apiKey}&units=metric`
         );
@@ -61,7 +61,7 @@ const WeatherWidget = () => {
         });
       }
     };
-    
+
     fetchWeather();
     const interval = setInterval(fetchWeather, 10 * 60 * 1000); // Update every 10 minutes
     return () => clearInterval(interval);
@@ -82,7 +82,7 @@ const WeatherWidget = () => {
 
 const ClockWidget = () => {
   const [time, setTime] = useState(new Date());
-  
+
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -179,16 +179,25 @@ export default function Dashboard() {
     retry: 1,
   });
 
-  const { data: content = [] } = useQuery({
+  const { data: content = [], isLoading: isLoadingContent, error: contentError } = useQuery<any[]>({
     queryKey: ["/api/content"],
-    retry: 1,
+    queryFn: async () => {
+      const response = await apiRequest("/api/content");
+      if (!response.ok) {
+        throw new Error(`Error loading content: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Content loaded:', data);
+      return data;
+    },
+    retry: false,
   });
 
   const { data: alerts = [] } = useQuery({
     queryKey: ["/api/alerts"],
     retry: 1,
   });
-  
+
   // Control playback mutation
   const playbackMutation = useMutation({
     mutationFn: async ({ screenId, playlistId, action }: { screenId: string, playlistId: string, action: 'play' | 'pause' | 'stop' }) => {
@@ -203,7 +212,7 @@ export default function Dashboard() {
         title: "Reproducción actualizada",
         description: `${variables.action === 'play' ? 'Iniciada' : variables.action === 'pause' ? 'Pausada' : 'Detenida'} en la pantalla seleccionada`,
       });
-      
+
       // Broadcast update via WebSocket to connected screens
       wsManager.send('playback-control', {
         screenId: variables.screenId,
@@ -222,26 +231,26 @@ export default function Dashboard() {
 
   const togglePreview = () => {
     if (!selectedScreen || !selectedPlaylist) return;
-    
+
     const action = isPreviewPlaying ? 'pause' : 'play';
     playbackMutation.mutate({
       screenId: selectedScreen,
       playlistId: selectedPlaylist,
       action
     });
-    
+
     setIsPreviewPlaying(!isPreviewPlaying);
   };
 
   const stopPreview = () => {
     if (!selectedScreen) return;
-    
+
     playbackMutation.mutate({
       screenId: selectedScreen,
       playlistId: selectedPlaylist,
       action: 'stop'
     });
-    
+
     setIsPreviewPlaying(false);
   };
 
@@ -259,7 +268,7 @@ const formatDuration = (seconds: number) => {
   const minutes = Math.floor((seconds % 3600) / 60);
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 };
-  
+
   const selectedScreenData = Array.isArray(screens) ? screens.find((s: any) => s.id.toString() === selectedScreen) : null;
   const selectedPlaylistData = Array.isArray(playlists) ? playlists.find((p: any) => p.id.toString() === selectedPlaylist) : null;
 
@@ -449,7 +458,7 @@ return (
               <ClockWidget />
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

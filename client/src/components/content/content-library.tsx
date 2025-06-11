@@ -11,10 +11,13 @@ import { apiRequest } from "@/lib/queryClient";
 export default function ContentLibrary() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: content } = useQuery({
+  const { data: content, isLoading, error } = useQuery({
     queryKey: ["/api/content"],
     queryFn: async () => {
       const response = await apiRequest("/api/content");
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
       return response.json();
     },
     retry: false,
@@ -80,7 +83,17 @@ export default function ContentLibrary() {
         {/* Content List */}
         <ScrollArea className="h-64">
           <div className="space-y-2">
-            {filteredContent?.slice(0, 10).map((item: any) => (
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                <p className="text-sm text-slate-500">Cargando contenido...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-500">
+                <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Error al cargar contenido</p>
+              </div>
+            ) : filteredContent?.slice(0, 10).map((item: any) => (
               <div
                 key={item.id}
                 className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
