@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { LivePlayerView } from "@/components/screen/LivePlayerView";
+import { LivePlayerView } from "@/components/screen/LivePlayerPreview";
 import { useToast } from "@/hooks/use-toast";
 import type { Screen, Playlist } from "@shared/schema";
 import Header from "@/components/layout/header";
