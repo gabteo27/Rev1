@@ -16,36 +16,51 @@ class WebSocketManager {
       return Promise.resolve();
     }
 
+    if (this.isConnecting) {
+      return Promise.resolve();
+    }
+
+    this.isConnecting = true;
+
     return new Promise<void>((resolve, reject) => {
-      // Generate WebSocket URL based on current location
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      this.wsUrl = `${protocol}//${host}/ws`;
-
-      console.log('Connecting to WebSocket:', this.wsUrl);
-
       try {
+        // Generate WebSocket URL based on current location
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        this.wsUrl = `${protocol}//${host}/ws`;
+
+        console.log('Connecting to WebSocket:', this.wsUrl);
+
         this.ws = new WebSocket(this.wsUrl);
+
+        const connectionTimeout = setTimeout(() => {
+          if (this.ws?.readyState !== WebSocket.OPEN) {
+            this.ws?.close();
+            this.isConnecting = false;
+            reject(new Error('WebSocket connection timeout'));
+          }
+        }, 10000);
+
+        this.ws.onopen = () => {
+          clearTimeout(connectionTimeout);
+          console.log('WebSocket connected successfully');
+          this.reconnectAttempts = 0;
+          this.isConnecting = false;
+          this.authenticate();
+          resolve();
+        };
+
+        this.ws.onerror = (error) => {
+          clearTimeout(connectionTimeout);
+          console.error('WebSocket error:', error);
+          this.isConnecting = false;
+          reject(error);
+        };
       } catch (error) {
         console.error('Failed to create WebSocket:', error);
+        this.isConnecting = false;
         reject(error);
-        return;
       }
-
-      const connectionTimeout = setTimeout(() => {
-        if (this.ws?.readyState !== WebSocket.OPEN) {
-          this.ws?.close();
-          reject(new Error('WebSocket connection timeout'));
-        }
-      }, 10000); // 10 seconds timeout
-
-      this.ws.onopen = () => {
-        clearTimeout(connectionTimeout);
-        console.log('WebSocket connected successfully');
-        this.reconnectAttempts = 0;
-        this.authenticate();
-        resolve();
-      };
 
       this.ws.onmessage = (event) => {
         try {

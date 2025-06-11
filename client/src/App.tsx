@@ -48,60 +48,58 @@ const AdminLayout = ({ children }: PropsWithChildren) => (
   </SidebarProvider>
 );
 
-function App() {
+// Component interno que maneja la autenticación
+const AppContent = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="light" storageKey="xcientv-ui-theme">
-          <TooltipProvider>
-            <Loading />
-            <Toaster />
-          </TooltipProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    );
+    return <Loading />;
   }
 
+  return (
+    <Switch>
+      {/* Ruta especial para el reproductor, siempre disponible y sin layout */}
+      <Route path="/screen-player" component={ScreenPlayer} />
+
+      {/* Si el usuario está autenticado, muestra el dashboard con sidebar */}
+      {isAuthenticated ? (
+        <AdminLayout>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/content" component={Content} />
+            <Route path="/playlists" component={Playlists} />
+            <Route path="/playlist/:id" component={PlaylistDetail} />
+            <Route path="/screens" component={Screens} />
+            <Route path="/alerts" component={Alerts} />
+            <Route path="/scheduling" component={Scheduling} />
+            <Route path="/widgets" component={Widgets} />
+            <Route path="/deployment" component={Deployment} />
+            <Route path="/settings" component={Settings} />
+            <Route path="/analytics" component={Analytics} />
+            <Route component={NotFound} />
+          </Switch>
+        </AdminLayout>
+      ) : (
+        /* Si no está autenticado, muestra solo el landing */
+        <Switch>
+          <Route path="/" component={Landing} />
+          <Route path="/:rest*">
+            <Redirect to="/" />
+          </Route>
+        </Switch>
+      )}
+    </Switch>
+  );
+};
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="xcientv-ui-theme">
         <TooltipProvider>
           <Toaster />
-          <Switch>
-            {/* Ruta especial para el reproductor, siempre disponible y sin layout */}
-            <Route path="/screen-player" component={ScreenPlayer} />
-
-            {/* Si el usuario está autenticado, muestra el dashboard con sidebar */}
-            {isAuthenticated ? (
-              <AdminLayout>
-                <Switch>
-                  <Route path="/" component={Dashboard} />
-                  <Route path="/dashboard" component={Dashboard} />
-                  <Route path="/content" component={Content} />
-                  <Route path="/playlists" component={Playlists} />
-                  <Route path="/playlist/:id" component={PlaylistDetail} />
-                  <Route path="/screens" component={Screens} />
-                  <Route path="/alerts" component={Alerts} />
-                  <Route path="/scheduling" component={Scheduling} />
-                  <Route path="/widgets" component={Widgets} />
-                  <Route path="/deployment" component={Deployment} />
-                  <Route path="/settings" component={Settings} />
-                  <Route path="/analytics" component={Analytics} />
-                  <Route component={NotFound} />
-                </Switch>
-              </AdminLayout>
-            ) : (
-              /* Si no está autenticado, muestra solo el landing */
-              <Switch>
-                <Route path="/" component={Landing} />
-                <Route path="/:rest*">
-                  <Redirect to="/" />
-                </Route>
-              </Switch>
-            )}
-          </Switch>
+          <AppContent />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
