@@ -13,21 +13,26 @@ export default function Dashboard() {
   const [selectedScreen, setSelectedScreen] = useState<string>("");
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
 
-  // Fetch dashboard data
-  const { data: screens = [] } = useQuery({
+  // Fetch dashboard data with error handling
+  const { data: screens = [], error: screensError } = useQuery({
     queryKey: ["/api/screens"],
     retry: false,
   });
 
-  const { data: playlists = [] } = useQuery({
+  const { data: playlists = [], error: playlistsError } = useQuery({
     queryKey: ["/api/playlists"],
     retry: false,
   });
 
-  const { data: content = [] } = useQuery({
+  const { data: content = [], error: contentError } = useQuery({
     queryKey: ["/api/content"],
     retry: false,
   });
+
+  // Log any errors for debugging
+  if (screensError) console.error('Screens query error:', screensError);
+  if (playlistsError) console.error('Playlists query error:', playlistsError);
+  if (contentError) console.error('Content query error:', contentError);
 
   const { data: selectedScreenData } = useQuery({
     queryKey: ["/api/screens", selectedScreen],

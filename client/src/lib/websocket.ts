@@ -277,9 +277,16 @@ class WebSocketManager {
 // Create singleton instance
 export const websocketManager = new WebSocketManager();
 
-// Auto-connect when module is imported
+// Auto-connect when module is imported, but don't block on errors
 if (typeof window !== "undefined") {
-  websocketManager.connect();
+  // Use setTimeout to avoid blocking the main thread during module loading
+  setTimeout(() => {
+    try {
+      websocketManager.connect();
+    } catch (error) {
+      console.warn('Failed to initialize WebSocket connection:', error);
+    }
+  }, 100);
 }
 
 export default websocketManager;
