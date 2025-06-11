@@ -317,10 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertPlaylistItemSchema.parse(itemData);
       const item = await storage.addPlaylistItem(validatedData, userId);
       
-      // Get the complete item with content details
-      const itemWithContent = await storage.getPlaylistItemWithContent(item.id, userId);
-      
-      res.json(itemWithContent);
+      res.json(item);
     } catch (error: unknown) {
       console.error("Error adding playlist item:", error);
       res.status(500).json({ message: "Failed to add playlist item" });
