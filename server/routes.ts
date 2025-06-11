@@ -325,11 +325,10 @@ export async function registerRoutes(app: Express): Promise<void> {
       const validatedData = insertPlaylistItemSchema.parse(itemData);
       const item = await storage.addPlaylistItem(validatedData, req.user.claims.sub);
 
+      // Get the full item with content details for response
+      const fullItem = await storage.getPlaylistItemWithContent(item.id, userId);
 
-      // Recalculate total duration
-      await storage.updatePlaylistDuration(playlistId);
-
-      res.json(item);
+      res.json(fullItem);
     } catch (error) {
       console.error("Error adding playlist item:", error);
       res.status(500).json({ message: "Failed to add playlist item" });
@@ -822,4 +821,26 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
+}
+
+// Make WebSocket server available to routes
+export { wss };
+
+// Function to broadcast alerts to connected screens
+function broadcastAlert(alert: any) {
+  if (!wss) return;
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1 && client.screenId) { // WebSocket.OPEN = 1
+      try {
+        client.send(JSON.stringify({
+          type: 'alert',
+          screenId: client.screenId,
+          alert: alert
+        }));
+      } catch (error) {
+        console.error('Error broadcasting alert to client:', error);
+      }
+    }
+  });
 }

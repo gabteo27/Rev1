@@ -19,70 +19,36 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-export function setupVite(app: Express, server?: any): void {
-  const serverOptions = {
-    middlewareMode: true,
-    hmr: { server },
-    allowedHosts: true,
-  };
+export async function setupVite(app: Express, server?: any): Promise<void> {
+  try {
+    const serverOptions = {
+      middlewareMode: true,
+      hmr: { server },
+      allowedHosts: true,
+    };
 
-  const vite = await createViteServer({
-    ...viteConfig,
-    configFile: false,
-    customLogger: {
-      ...viteLogger,
-      error: (msg, options) => {
-        viteLogger.error(msg, options);
-        process.exit(1);
+    const vite = await createViteServer({
+      ...viteConfig,
+      configFile: false,
+      customLogger: {
+        ...viteLogger,
+        error: (msg, options) => {
+          viteLogger.error(msg, options);
+          process.exit(1);
+        },
       },
-    },
-    server: serverOptions,
-    appType: "custom",
-  });
+      server: serverOptions,
+      appType: "custom",
+    });
 
-  app.use(vite.middlewares);
+    // Use vite's connect instance as middleware since we already have http server
+    app.use(vite.middlewares);
 
-  // --- INICIO DE LA SECCIÓN MODIFICADA ---
-  app.use("*", async (req, res, next) => {
-    const url = req.originalUrl;
-
-    try {
-      let templatePath;
-
-      // Determinamos qué archivo HTML servir basado en la URL
-      if (url === '/player.html') {
-        templatePath = path.resolve(
-          import.meta.dirname,
-          "..",
-          "client",
-          "player.html"
-        );
-      } else {
-        // Por defecto, para cualquier otra ruta, servimos el index.html principal
-        templatePath = path.resolve(
-          import.meta.dirname,
-          "..",
-          "client",
-          "index.html"
-        );
-      }
-
-      // Verificamos si el archivo existe
-      if (!fs.existsSync(templatePath)) {
-          return res.status(404).send("Not Found");
-      }
-
-      let template = await fs.promises.readFile(templatePath, "utf-8");
-
-      // Aplicamos las transformaciones de Vite
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
-    } catch (e) {
-      vite.ssrFixStacktrace(e as Error);
-      next(e);
-    }
-  });
-  // --- FIN DE LA SECCIÓN MODIFICADA ---
+    console.log("Vite development server setup completed");
+  } catch (error) {
+    console.error("Error setting up Vite:", error);
+    throw error;
+  }
 }
 
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useSearchParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import ContentPlayer from "@/components/player/ContentPlayer";
 import { FunctionalWidget } from "@/components/widgets/functional-widget";
@@ -16,7 +16,10 @@ interface AlertOverlay {
 
 export default function Player() {
   const { screenId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [location] = useLocation();
+  
+  // Parse search params manually
+  const searchParams = new URLSearchParams(location.split('?')[1] || '');
   const isFullscreen = searchParams.get("fullscreen") === "true";
 
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
@@ -45,8 +48,9 @@ export default function Player() {
     if (!screenId) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
 
+    console.log('Player connecting to WebSocket:', wsUrl);
     wsRef.current = new WebSocket(wsUrl);
 
     wsRef.current.onopen = () => {
@@ -60,6 +64,12 @@ export default function Player() {
     wsRef.current.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+
+        // Handle ping/pong
+        if (data.type === 'ping') {
+          wsRef.current?.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+          return;
+        }
 
         if (data.type === 'alert' && data.screenId === parseInt(screenId)) {
           setCurrentAlert(data.alert);
@@ -95,12 +105,19 @@ export default function Player() {
       }
     };
 
-    wsRef.current.onclose = () => {
-      console.log('WebSocket disconnected');
+    wsRef.current.onclose = (event) => {
+      console.log(`Player WebSocket disconnected: ${event.code} - ${event.reason}`);
+    };
+
+    wsRef.current.onerror = (error) => {
+      console.error('Player WebSocket error:', error);
     };
 
     return () => {
-      wsRef.current?.close();
+      if (wsRef.current) {
+        wsRef.current.close(1000, 'Component unmounting');
+        wsRef.current = null;
+      }
     };
   }, [screenId]);
 

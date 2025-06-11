@@ -12,36 +12,83 @@ class WebSocketManager {
         return;
       }
 
-      try {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        // --- CORRECCIÓN ---
-        // Usar window.location.host, que incluye el host y el puerto correctamente 
-        // en la mayoría de los entornos, incluido Replit.
-        const wsUrl = `<span class="math-inline">\{protocol\}//</span>{window.location.host}/ws`;
+      // Close any existing connection first
+      if (this.ws) {
+        try {
+          this.ws.close();
+        } catch (error) {
+          console.error("Error closing existing WebSocket:", error);
+        }
+        this.ws = null;
+      }
 
+      try {
+        // Get the base URL from the current window location
+        const isHttps = window.location.protocol === 'https:';
+        const protocol = isHttps ? 'wss:' : 'ws:';
+
+        // For Replit, use the same host as the current page
+        let wsUrl: string;
+        if (window.location.hostname.includes('replit.dev')) {
+          // In Replit environment, use the same domain with WebSocket protocol
+          wsUrl = `${protocol}//${window.location.host}/ws`;
+        } else {
+          // For local development
+          wsUrl = `${protocol}//${window.location.hostname}:5000/ws`;
+        }
+
+        console.log("Attempting WebSocket connection to:", wsUrl);
         this.ws = new WebSocket(wsUrl);
-      
+
       this.ws.onopen = () => {
-        console.log("WebSocket connected");
+        console.log("WebSocket connected successfully");
         this.reconnectAttempts = 0;
+        this.emit('open');
+
+        // Send pong response to server ping
+        this.ws.addEventListener('message', (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'ping') {
+              this.send({ type: 'pong', timestamp: Date.now() });
+            }
+          } catch (error) {
+            // Ignore ping/pong parsing errors
+          }
+        });
       };
-      
+
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+
+          // Skip ping messages in main handler
+          if (message.type === 'ping') {
+            return;
+          }
+
           this.handleMessage(message);
         } catch (error) {
           console.error("Failed to parse WebSocket message:", error);
         }
       };
-      
+
       this.ws.onclose = (event) => {
-        console.log("WebSocket disconnected:", event.code, event.reason);
-        this.scheduleReconnect();
+        console.log(`WebSocket disconnected: ${event.code} - ${event.reason}`);
+        this.emit('close', event);
+        this.ws = null;
+
+        // Only reconnect if it wasn't a manual close
+        if (event.code !== 1000) {
+          this.scheduleReconnect();
+        }
       };
-      
+
       this.ws.onerror = (error) => {
         console.error("WebSocket error:", error);
+        if (this.ws) {
+          this.ws.close();
+        }
       };
     } catch (error) {
       console.error("Failed to create WebSocket connection:", error);
@@ -53,9 +100,9 @@ class WebSocketManager {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      
+
       console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
-      
+
       setTimeout(() => {
         this.connect();
       }, delay);
@@ -66,8 +113,15 @@ class WebSocketManager {
 
   private handleMessage(message: any) {
     const { type, data } = message;
-    
+
+    // Emit the message event first
+    this.emit('message', message);
+
+    // Handle specific message types
     switch (type) {
+      case "connection_established":
+        this.emit('connection_established');
+        break;
       case "alert":
         this.handleAlert(data);
         break;
@@ -84,7 +138,7 @@ class WebSocketManager {
         console.log("Unknown message type:", type);
     }
 
-    // Notify listeners
+    // Notify type-specific listeners
     const typeListeners = this.listeners.get(type);
     if (typeListeners) {
       typeListeners.forEach(listener => {
@@ -100,7 +154,7 @@ class WebSocketManager {
   private handleAlert(alert: any) {
     // Invalidate alerts cache to refresh the UI
     queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-    
+
     // Show alert notification in UI if needed
     if (alert.isActive) {
       this.showAlertNotification(alert);
@@ -173,14 +227,48 @@ class WebSocketManager {
   isConnected() {
     return this.ws?.readyState === WebSocket.OPEN;
   }
+
+  // Event listener methods for connection events
+  on(event: string, callback: (data?: any) => void) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(callback);
+
+    return () => this.off(event, callback);
+  }
+
+  off(event: string, callback: (data?: any) => void) {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      eventListeners.delete(callback);
+      if (eventListeners.size === 0) {
+        this.listeners.delete(event);
+      }
+    }
+  }
+
+  // Emit events to listeners
+  private emit(event: string, data?: any) {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      eventListeners.forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in ${event} listener:`, error);
+        }
+      });
+    }
+  }
 }
 
 // Create singleton instance
-export const wsManager = new WebSocketManager();
+export const websocketManager = new WebSocketManager();
 
 // Auto-connect when module is imported
 if (typeof window !== "undefined") {
-  wsManager.connect();
+  websocketManager.connect();
 }
 
-export default wsManager;
+export default websocketManager;
