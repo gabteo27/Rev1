@@ -7,42 +7,37 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  url: string,
-  options?: RequestInit
-): Promise<any> {
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    });
+// Helper function for API requests
+export const apiRequest = async (url: string, options: RequestInit = {}) => {
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  });
 
-    if (!response.ok) {
-      let errorMessage = 'Request failed';
-      try {
-        const errorData = await response.text();
-        const parsed = JSON.parse(errorData);
-        errorMessage = parsed.message || errorData;
-      } catch (e) {
-        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      }
-      throw new Error(errorMessage);
+  if (!res.ok) {
+    if (res.status >= 500) {
+      throw new Error(`Server error: ${res.status}`);
     }
 
-    // Handle empty responses
-    if (response.status === 204 || response.headers.get("content-length") === "0") {
-      return null;
+    if (res.status === 404) {
+      throw new Error('Not found');
     }
 
-    return await response.json();
-  } catch (error) {
-    console.error('API Request failed:', error);
-    throw error;
+    if (res.status === 401) {
+      // Handle unauthorized - redirect to login
+      window.location.href = '/';
+      throw new Error('Unauthorized');
+    }
+
+    throw new Error(`Request failed: ${res.status}`);
   }
-}
+
+  return res.json();
+};
 
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
@@ -65,14 +60,19 @@ export const getQueryFn: <T>(options: {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
+      queryFn: async ({ queryKey }) => {
+        const url = queryKey[0] as string;
+        return apiRequest(url);
+      },
+      retry: (failureCount, error) => {
+        // Don't retry on 4xx errors
+        if (error.message.includes('Request failed: 4')) {
+          return false;
+        }
+        return failureCount < 2;
+      },
+      staleTime: 1000 * 30, // 30 seconds
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
-    },
-    mutations: {
-      retry: false,
     },
   },
 });

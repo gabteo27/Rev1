@@ -8,38 +8,37 @@ class WebSocketManager {
   private listeners: Map<string, Set<(data: any) => void>> = new Map();
 
   connect() {
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        return;
-      }
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      return;
+    }
 
-      try {
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        // --- CORRECCIÓN ---
-        // Usar window.location.host, que incluye el host y el puerto correctamente 
-        // en la mayoría de los entornos, incluido Replit.
-        const wsUrl = `<span class="math-inline">\{protocol\}//</span>{window.location.host}/ws`;
+    try {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
 
-        this.ws = new WebSocket(wsUrl);
-      
+      console.log("Connecting to WebSocket:", wsUrl);
+      this.ws = new WebSocket(wsUrl);
+
       this.ws.onopen = () => {
-        console.log("WebSocket connected");
+        console.log("WebSocket connected successfully");
         this.reconnectAttempts = 0;
       };
-      
+
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          console.log("WebSocket message received:", message);
           this.handleMessage(message);
         } catch (error) {
           console.error("Failed to parse WebSocket message:", error);
         }
       };
-      
+
       this.ws.onclose = (event) => {
         console.log("WebSocket disconnected:", event.code, event.reason);
         this.scheduleReconnect();
       };
-      
+
       this.ws.onerror = (error) => {
         console.error("WebSocket error:", error);
       };
@@ -50,92 +49,40 @@ class WebSocketManager {
   }
 
   private scheduleReconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      
-      console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
-      
-      setTimeout(() => {
-        this.connect();
-      }, delay);
-    } else {
-      console.error("Max reconnection attempts reached");
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log("Max reconnection attempts reached");
+      return;
     }
+
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
+    console.log(`Scheduling reconnect in ${delay}ms`);
+
+    setTimeout(() => {
+      this.reconnectAttempts++;
+      this.connect();
+    }, delay);
   }
 
   private handleMessage(message: any) {
     const { type, data } = message;
-    
-    switch (type) {
-      case "alert":
-        this.handleAlert(data);
-        break;
-      case "playlist_update":
-        this.handlePlaylistUpdate(data);
-        break;
-      case "content_update":
-        this.handleContentUpdate(data);
-        break;
-      case "screen_status":
-        this.handleScreenStatus(data);
-        break;
-      default:
-        console.log("Unknown message type:", type);
-    }
-
-    // Notify listeners
     const typeListeners = this.listeners.get(type);
+
     if (typeListeners) {
       typeListeners.forEach(listener => {
         try {
           listener(data);
         } catch (error) {
-          console.error("Error in WebSocket listener:", error);
+          console.error(`Error in WebSocket listener for type ${type}:`, error);
         }
       });
     }
   }
 
-  private handleAlert(alert: any) {
-    // Invalidate alerts cache to refresh the UI
-    queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-    
-    // Show alert notification in UI if needed
-    if (alert.isActive) {
-      this.showAlertNotification(alert);
-    }
-  }
-
-  private handlePlaylistUpdate(data: any) {
-    // Invalidate playlist-related caches
-    queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-    if (data.playlistId) {
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", data.playlistId.toString()] });
-    }
-  }
-
-  private handleContentUpdate(data: any) {
-    // Invalidate content cache
-    queryClient.invalidateQueries({ queryKey: ["/api/content"] });
-  }
-
-  private handleScreenStatus(data: any) {
-    // Invalidate screens cache
-    queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
-  }
-
-  private showAlertNotification(alert: any) {
-    // Create a visual notification for urgent alerts
-    // This could be a toast notification or overlay
-    console.log("New alert received:", alert);
-  }
-
-  // Public methods for subscribing to specific message types
   subscribe(type: string, listener: (data: any) => void) {
     if (!this.listeners.has(type)) {
       this.listeners.set(type, new Set());
     }
+
     this.listeners.get(type)!.add(listener);
 
     // Return unsubscribe function
