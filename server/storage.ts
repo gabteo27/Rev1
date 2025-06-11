@@ -28,7 +28,7 @@ import {
   type InsertDeployment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, exists } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -672,35 +672,7 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updatePlaylistItem(id: number, updates: any, userId: string) {
-    const [item] = await db
-      .update(playlistItems)
-      .set(updates)
-      .where(
-        and(
-          eq(playlistItems.id, id),
-          exists(
-            db
-              .select()
-              .from(playlists)
-              .where(
-                and(
-                  eq(playlists.id, playlistItems.playlistId),
-                  eq(playlists.userId, userId)
-                )
-              )
-          )
-        )
-      )
-      .returning();
 
-    if (item) {
-      // Recalculate total duration when duration changes
-      await this.updatePlaylistDuration(item.playlistId);
-    }
-
-    return item;
-  }
 
   async updatePlaylistDuration(playlistId: number) {
     // Get all items in the playlist with their durations
@@ -724,46 +696,7 @@ export class DatabaseStorage implements IStorage {
       .set({ totalDuration })
       .where(eq(playlists.id, playlistId));
   }
-  async deletePlaylistItem(id: number, userId: string): Promise<boolean> {
-    // First get the playlist ID before deleting
-    const [itemToDelete] = await db
-      .select({ playlistId: playlistItems.playlistId })
-      .from(playlistItems)
-      .where(
-        and(
-          eq(playlistItems.id, id),
-          exists(
-            db
-              .select()
-              .from(playlists)
-              .where(
-                and(
-                  eq(playlists.id, playlistItems.playlistId),
-                  eq(playlists.userId, userId)
-                )
-              )
-          )
-        )
-      )
-      .limit(1);
 
-    if (!itemToDelete) {
-      return false;
-    }
-
-    const result = await db
-      .delete(playlistItems)
-      .where(eq(playlistItems.id, id))
-      .returning();
-
-    if (result.length > 0) {
-      // Recalculate total duration
-      await this.updatePlaylistDuration(itemToDelete.playlistId);
-      return true;
-    }
-
-    return false;
-  }
   async reorderPlaylistItems(playlistId: number, itemOrders: { id: number; order: number }[], userId: string) {
     // Verify playlist ownership
     const playlist = await db

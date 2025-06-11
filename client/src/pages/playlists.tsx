@@ -302,7 +302,7 @@ export default function Playlists() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {content.length === 0 ? (
+            {!Array.isArray(content) || content.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
                 <p>No hay contenido</p>
