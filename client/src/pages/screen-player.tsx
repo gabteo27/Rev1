@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
@@ -11,7 +10,7 @@ import ContentPlayer from '@/components/player/ContentPlayer';
 export default function ScreenPlayerPage() {
   const [, navigate] = useLocation();
   const [isFullscreen, setIsFullscreen] = useState(false);
-  
+
   // Get screen ID from URL params
   const urlParams = new URLSearchParams(window.location.search);
   const screenId = urlParams.get('screenId');
@@ -104,62 +103,69 @@ export default function ScreenPlayerPage() {
   }
 
   return (
-    <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'min-h-screen'}`}>
+    <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'min-h-screen bg-gray-50'}`}>
       {!isFullscreen && (
-        <div className="sticky top-0 z-10 bg-background border-b p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/screens')}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Volver
-              </Button>
-              <div>
-                <h1 className="text-xl font-semibold flex items-center gap-2">
-                  <Monitor className="w-5 h-5" />
-                  {screen.name}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {screen.location || 'Ubicación no especificada'}
-                </p>
+        <div className="sticky top-0 z-10 bg-white shadow-sm border-b">
+          <div className="max-w-6xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-6 bg-white rounded-lg shadow-sm border px-6 py-3">
+                <Button variant="ghost" size="sm" onClick={() => navigate('/screens')} className="hover:bg-gray-100">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Volver
+                </Button>
+
+                <div className="flex items-center gap-3 px-3 border-l border-gray-200">
+                  <Monitor className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <h1 className="text-lg font-semibold text-gray-900">
+                      {screen.name}
+                    </h1>
+                    <p className="text-sm text-gray-500">
+                      {screen.location || 'Ubicación no especificada'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 px-3 border-l border-gray-200">
+                  <Badge variant={screen.isOnline ? "default" : "destructive"} className="text-xs">
+                    {screen.isOnline ? 'En línea' : 'Desconectada'}
+                  </Badge>
+                  {playlist && (
+                    <Badge variant="outline" className="text-xs">
+                      {playlist.name}
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="border-l border-gray-200 pl-3">
+                  <Button variant="outline" size="sm" onClick={toggleFullscreen} className="hover:bg-gray-100">
+                    <FullscreenIcon className="w-4 h-4 mr-2" />
+                    Pantalla Completa
+                  </Button>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Badge variant={screen.isOnline ? "default" : "destructive"}>
-                {screen.isOnline ? 'En línea' : 'Desconectada'}
-              </Badge>
-              {playlist && (
-                <Badge variant="outline">
-                  {playlist.name}
-                </Badge>
-              )}
-              <Button variant="outline" size="sm" onClick={toggleFullscreen}>
-                <FullscreenIcon className="w-4 h-4 mr-2" />
-                Pantalla Completa
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                <RefreshCw className="w-4 h-4" />
-              </Button>
             </div>
           </div>
         </div>
       )}
 
-      <div className={`${isFullscreen ? 'w-full h-full' : 'container mx-auto p-4'}`}>
-        <div className={`${isFullscreen ? 'w-full h-full' : 'aspect-video'} bg-black rounded-lg overflow-hidden`}>
+      <div className={`${isFullscreen ? 'w-full h-full' : 'p-6'}`}>
+        <div className={`${isFullscreen ? 'w-full h-full' : 'max-w-6xl mx-auto'}`}>
           {screen.playlistId && playlist ? (
-            <ContentPlayer 
-              screenId={screenId}
-              playlistId={screen.playlistId}
-              isPreview={true}
-              className="w-full h-full"
-            />
+            <div className={`${isFullscreen ? 'w-full h-full' : 'bg-white rounded-lg shadow-sm border overflow-hidden'}`}>
+              <ContentPlayer 
+                screenId={screenId}
+                playlistId={screen.playlistId}
+                isPreview={false}
+                className={isFullscreen ? "w-full h-full" : "w-full aspect-video"}
+              />
+            </div>
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-white">
+            <div className={`${isFullscreen ? 'w-full h-full' : 'w-full aspect-video bg-white rounded-lg shadow-sm border'} flex items-center justify-center`}>
               <div className="text-center">
-                <Monitor className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <h3 className="text-xl mb-2">Sin contenido asignado</h3>
-                <p className="opacity-75">Esta pantalla no tiene una playlist asignada</p>
+                <Monitor className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-xl mb-2 text-gray-700">Sin contenido asignado</h3>
+                <p className="text-gray-500">Esta pantalla no tiene una playlist asignada</p>
               </div>
             </div>
           )}
