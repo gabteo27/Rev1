@@ -137,10 +137,8 @@ class WebSocketManager {
         this.authUser = userData;
         this.send({
           type: 'auth',
-          data: { 
-            userId: userData.id,
-            userType: 'admin'
-          }
+          userId: userData.id,
+          userType: 'admin'
         });
       }
     } catch (error) {
