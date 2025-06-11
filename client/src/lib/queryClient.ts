@@ -76,3 +76,23 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// API request helper function
+export async function apiRequest(url: string, options: RequestInit = {}) {
+  const response = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+    throw new Error(errorData.message || `HTTP ${response.status}`);
+  }
+
+  return response;
+}
+
+export { queryClient };

@@ -111,5 +111,5 @@ class WebSocketManager {
 }
 
 // Export singleton instance
-const wsManager = new WebSocketManager();
+export const wsManager = new WebSocketManager();
 export default wsManager;
