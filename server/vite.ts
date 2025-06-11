@@ -21,28 +21,23 @@ export function log(message: string, source = "express") {
 
 export async function setupVite(app: Express, server?: any): Promise<void> {
   try {
-    const serverOptions = {
-      middlewareMode: true,
-      hmr: { server },
-      allowedHosts: true,
-    };
-
-    const vite = await createViteServer({
-      ...viteConfig,
-      configFile: false,
-      customLogger: {
-        ...viteLogger,
-        error: (msg, options) => {
-          viteLogger.error(msg, options);
-          process.exit(1);
-        },
+    const vite = await import("vite");
+    const viteDevServer = await vite.createServer({
+      server: { 
+        middlewareMode: true,
+        hmr: { 
+          port: 24678,
+          overlay: false
+        }
       },
-      server: serverOptions,
-      appType: "custom",
+      appType: "spa",
+      optimizeDeps: {
+        exclude: ['@tanstack/react-query']
+      }
     });
 
     // Use vite's connect instance as middleware since we already have http server
-    app.use(vite.middlewares);
+    app.use(viteDevServer.middlewares);
 
     console.log("Vite development server setup completed");
   } catch (error) {

@@ -44,5 +44,13 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    hmr: {
+      // Replit usa un proxy en el puerto 443 (HTTPS)
+      clientPort: 443,
+    },
+    // Permite que cualquier subdominio de replit.dev se conecte
+    allowedHosts: [
+        '.replit.dev'
+    ],
   },
 });
