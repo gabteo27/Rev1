@@ -1,12 +1,25 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Monitor, Play, Pause, RotateCcw, Settings } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 export default function LivePreview() {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState("Pantalla Principal");
+  const [selectedScreen, setSelectedScreen] = useState("");
+
+  // Fetch screens data
+  const { data: screens = [] } = useQuery({
+    queryKey: ["/api/screens"],
+    retry: 1,
+  });
+
+  const selectedScreenData = Array.isArray(screens) 
+    ? screens.find((s: any) => s.id.toString() === selectedScreen) 
+    : null;
 
   return (
     <Card className="border-slate-200">
@@ -16,26 +29,74 @@ export default function LivePreview() {
             <CardTitle className="text-lg">Vista Previa en Vivo</CardTitle>
             <CardDescription>Visualización en tiempo real</CardDescription>
           </div>
-          <Badge className="bg-green-100 text-green-800">
-            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+          <Badge className="bg-green-100 text-green-800 border-green-300">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
             En vivo
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Screen Selector */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Seleccionar Pantalla:</label>
+          <Select value={selectedScreen} onValueChange={setSelectedScreen}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar pantalla..." />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.isArray(screens) && screens.length > 0 ? (
+                screens.map((screen: any) => (
+                  <SelectItem key={screen.id} value={screen.id.toString()}>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        screen.isOnline ? 'bg-green-500' : 'bg-red-500'
+                      }`} />
+                      <span>{screen.name}</span>
+                      {screen.location && <span className="text-muted-foreground">- {screen.location}</span>}
+                    </div>
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" disabled>No hay pantallas disponibles</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Preview Screen */}
-        <div className="bg-slate-900 rounded-lg aspect-video flex items-center justify-center relative overflow-hidden">
-          <div className="text-white text-center">
-            <Monitor className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p className="text-sm opacity-75">Conectando a {currentScreen}...</p>
-          </div>
+        <div className="bg-slate-900 rounded-lg aspect-video flex items-center justify-center relative overflow-hidden min-h-[200px]">
+          {selectedScreen && isPlaying ? (
+            <div className="text-white text-center space-y-4">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                <span className="text-sm text-red-400">REPRODUCIENDO</span>
+              </div>
+              <Monitor className="w-16 h-16 mx-auto text-blue-400" />
+              <div>
+                <p className="text-lg font-semibold">{selectedScreenData?.name || 'Pantalla'}</p>
+                <p className="text-sm text-gray-400">{selectedScreenData?.location || 'Ubicación'}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-white text-center">
+              <Monitor className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p className="text-sm opacity-75">
+                {!selectedScreen 
+                  ? 'Selecciona una pantalla para ver la vista previa' 
+                  : 'Presiona reproducir para iniciar'
+                }
+              </p>
+            </div>
+          )}
 
           {/* Preview Overlay */}
-          <div className="absolute top-2 left-2">
-            <Badge variant="outline" className="bg-black/50 text-white border-white/20">
-              {currentScreen}
-            </Badge>
-          </div>
+          {selectedScreenData && (
+            <div className="absolute top-2 left-2">
+              <Badge variant="outline" className="bg-black/50 text-white border-white/20">
+                {selectedScreenData.name}
+              </Badge>
+            </div>
+          )}
         </div>
 
         {/* Controls */}
@@ -45,6 +106,7 @@ export default function LivePreview() {
               size="sm"
               variant={isPlaying ? "destructive" : "default"}
               onClick={() => setIsPlaying(!isPlaying)}
+              disabled={!selectedScreen}
             >
               {isPlaying ? (
                 <>
@@ -59,7 +121,12 @@ export default function LivePreview() {
               )}
             </Button>
 
-            <Button size="sm" variant="outline">
+            <Button 
+              size="sm" 
+              variant="outline"
+              disabled={!selectedScreen}
+              onClick={() => setIsPlaying(false)}
+            >
               <RotateCcw className="w-4 h-4 mr-1" />
               Reiniciar
             </Button>
@@ -70,24 +137,22 @@ export default function LivePreview() {
           </Button>
         </div>
 
-        {/* Screen Selector */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-slate-600">Seleccionar Pantalla:</p>
-          <div className="grid grid-cols-1 gap-2">
-            {["Pantalla Principal", "Pantalla Secundaria", "Pantalla Recepción"].map((screen) => (
-              <Button
-                key={screen}
-                variant={currentScreen === screen ? "default" : "outline"}
-                size="sm"
-                className="justify-start"
-                onClick={() => setCurrentScreen(screen)}
-              >
-                <Monitor className="w-4 h-4 mr-2" />
-                {screen}
-              </Button>
-            ))}
+        {/* Screen Status */}
+        {selectedScreenData && (
+          <div className="bg-muted rounded-lg p-3">
+            <div className="flex items-center justify-between text-sm">
+              <span>Estado:</span>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  selectedScreenData.isOnline ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <span className={selectedScreenData.isOnline ? 'text-green-600' : 'text-red-600'}>
+                  {selectedScreenData.isOnline ? 'En línea' : 'Desconectada'}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

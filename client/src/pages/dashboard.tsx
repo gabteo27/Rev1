@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { wsManager } from "@/lib/websocket";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,6 +89,37 @@ export default function Dashboard() {
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const { toast } = useToast();
+
+  // Subscribe to WebSocket events
+  useEffect(() => {
+    const unsubscribeAlert = wsManager.subscribe('alert', (alertData) => {
+      console.log('Alert received via WebSocket:', alertData);
+      toast({
+        title: alertData.title || "Nueva Alerta",
+        description: alertData.message,
+        variant: alertData.type === 'error' ? 'destructive' : 'default',
+      });
+      
+      // Refetch alerts to update the UI
+      queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+    });
+
+    const unsubscribeScreen = wsManager.subscribe('screen-update', (screenData) => {
+      console.log('Screen update received via WebSocket:', screenData);
+      toast({
+        title: "Pantalla Actualizada",
+        description: `${screenData.name} ha sido actualizada`,
+      });
+      
+      // Refetch screens to update the UI
+      queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+    });
+
+    return () => {
+      unsubscribeAlert();
+      unsubscribeScreen();
+    };
+  }, [toast]);
 
   // Fetch data with proper error handling
   const { data: screens = [] } = useQuery({
@@ -176,7 +208,7 @@ export default function Dashboard() {
   const selectedPlaylistData = Array.isArray(playlists) ? playlists.find((p: any) => p.id.toString() === selectedPlaylist) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-screen bg-background">
       <Header
         title="Dashboard XcienTV"
         subtitle="Panel de control principal para señalización digital"
@@ -335,7 +367,7 @@ export default function Dashboard() {
             </div>
             
             {/* Enhanced Preview Display */}
-            <div className="border rounded-lg overflow-hidden bg-black text-white min-h-[300px] relative">
+            <div className="border rounded-lg overflow-hidden bg-gray-900 text-white min-h-[300px] relative"
               {selectedScreen && isPreviewPlaying ? (
                 <div className="p-6 text-center space-y-4">
                   <div className="flex items-center justify-center gap-2 mb-4">

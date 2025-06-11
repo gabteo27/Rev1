@@ -713,6 +713,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pairingCodeExpiresAt: null,
       });
 
+      // Broadcast screen update via WebSocket
+      broadcastScreenUpdate(updatedScreen);
+
       return res.json({ message: "Pantalla emparejada exitosamente.", screen: updatedScreen });
     } catch (error) {
       console.error("Error completing pairing:", error);
@@ -854,6 +857,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const message = JSON.stringify({
       type: "alert",
       data: alert,
+    });
+
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  }
+
+  // Function to broadcast screen updates
+  function broadcastScreenUpdate(screen: any) {
+    const message = JSON.stringify({
+      type: "screen-update",
+      data: screen,
     });
 
     wss.clients.forEach((client) => {
