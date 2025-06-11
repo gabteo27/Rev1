@@ -25,21 +25,17 @@ export async function setupVite(app: Express, server?: any): Promise<void> {
     const viteDevServer = await vite.createServer({
       server: { 
         middlewareMode: true,
-        hmr: { 
-          port: 24678,
-          overlay: false
-        }
+        hmr: false  // Disable HMR completely to prevent conflicts
       },
       appType: "spa",
-      optimizeDeps: {
-        exclude: ['@tanstack/react-query']
-      }
+      clearScreen: false,
+      logLevel: 'error'  // Reduce Vite logging
     });
 
     // Use vite's connect instance as middleware since we already have http server
     app.use(viteDevServer.middlewares);
 
-    console.log("Vite development server setup completed");
+    console.log("Vite development server setup completed (HMR disabled)");
   } catch (error) {
     console.error("Error setting up Vite:", error);
     throw error;

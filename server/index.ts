@@ -67,17 +67,22 @@ async function startApplication() {
     
     // Initialize connection state
     (ws as any).isAlive = true;
+    (ws as any).connectionTime = Date.now();
 
-    // Send initial connection confirmation
-    try {
-      ws.send(JSON.stringify({ 
-        type: 'connection_established', 
-        timestamp: Date.now(),
-        message: 'WebSocket connection successful'
-      }));
-    } catch (error) {
-      console.error('Error sending initial message:', error);
-    }
+    // Send initial connection confirmation after a small delay
+    setTimeout(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({ 
+            type: 'connection_established', 
+            timestamp: Date.now(),
+            message: 'WebSocket connection successful'
+          }));
+        } catch (error) {
+          console.error('Error sending initial message:', error);
+        }
+      }
+    }, 100);
 
     ws.on('message', (message) => {
       try {

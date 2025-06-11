@@ -9,13 +9,19 @@ class WebSocketManager {
 
   connect() {
       if (this.ws?.readyState === WebSocket.OPEN) {
+        console.log("WebSocket already connected");
+        return;
+      }
+
+      if (this.ws?.readyState === WebSocket.CONNECTING) {
+        console.log("WebSocket already connecting");
         return;
       }
 
       // Close any existing connection first
       if (this.ws) {
         try {
-          this.ws.close();
+          this.ws.close(1000, 'Reconnecting');
         } catch (error) {
           console.error("Error closing existing WebSocket:", error);
         }
@@ -30,13 +36,22 @@ class WebSocketManager {
         console.log("Connecting to WebSocket:", wsUrl);
         this.ws = new WebSocket(wsUrl);
 
+      // Set connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (this.ws?.readyState === WebSocket.CONNECTING) {
+          console.log("Connection timeout, closing WebSocket");
+          this.ws.close();
+        }
+      }, 10000); // 10 second timeout
+
       this.ws.onopen = () => {
+        clearTimeout(connectionTimeout);
         console.log("WebSocket connected successfully");
         this.reconnectAttempts = 0;
         this.emit('open');
 
         // Send pong response to server ping
-        this.ws.addEventListener('message', (event) => {
+        this.ws?.addEventListener('message', (event) => {
           try {
             const data = JSON.parse(event.data);
             if (data.type === 'ping') {
