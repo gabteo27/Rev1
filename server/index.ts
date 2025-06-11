@@ -5,6 +5,7 @@ import { setupAuth } from "./replitAuth.js";
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 
+async function startApplication() {
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false }));
@@ -41,9 +42,6 @@ app.use((req, res, next) => {
 // Create HTTP server first
 const httpServer = createServer(app);
 
-// Setup Vite with the HTTP server
-await setupVite(app, httpServer);
-
 // Setup WebSocket server for real-time communication
 const wss = new WebSocketServer({ 
   server: httpServer,
@@ -53,6 +51,9 @@ const wss = new WebSocketServer({
     return true;
   }
 });
+
+// Setup Vite with the HTTP server after WebSocket
+await setupVite(app, httpServer);
 
 wss.on('connection', (ws, req) => {
   console.log('New WebSocket connection established from:', req.socket.remoteAddress);
@@ -126,8 +127,7 @@ wss.on('close', () => {
 // Make WebSocket server available to routes
 export { wss };
 
-async function startServer() {
-  await registerRoutes(app);
+await registerRoutes(app);
 
   const PORT = 5000;
   httpServer.listen(PORT, "0.0.0.0", () => {
@@ -136,4 +136,4 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+startApplication().catch(console.error);
