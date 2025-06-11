@@ -107,8 +107,13 @@ export default function Dashboard() {
 
   // Subscribe to WebSocket events
   useEffect(() => {
+    let unsubscribeAlerts: (() => void) | undefined;
+    let unsubscribeScreens: (() => void) | undefined;
+    let unsubscribePlaylists: (() => void) | undefined;
+    let unsubscribeContentDeleted: (() => void) | undefined;
+
     // Suscribirse a alertas
-    const unsubscribeAlerts = wsManager.subscribe('alert', (alertData) => {
+    unsubscribeAlerts = wsManager.subscribe('alert', (alertData) => {
       console.log('Alerta recibida vía WebSocket:', alertData);
       toast({
         title: alertData.title || "Nueva Alerta",
@@ -118,7 +123,7 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
     });
 
-    const unsubscribeScreens = wsManager.subscribe('screen-update', (screenData) => {
+    unsubscribeScreens = wsManager.subscribe('screen-update', (screenData) => {
       console.log('Actualización de pantalla recibida:', screenData);
       toast({
         title: "Pantalla Actualizada",
@@ -127,14 +132,14 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     });
 
-    const unsubscribePlaylists = wsManager.subscribe('playlists-updated', () => {
+    unsubscribePlaylists = wsManager.subscribe('playlists-updated', () => {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
       if (selectedPlaylist) {
         queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
       }
     });
 
-    const unsubscribeContentDeleted = wsManager.subscribe('content-deleted', () => {
+    unsubscribeContentDeleted = wsManager.subscribe('content-deleted', () => {
       queryClient.invalidateQueries({ queryKey: ["/api/content"] });
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
       if (selectedPlaylist) {
@@ -161,7 +166,7 @@ export default function Dashboard() {
         unsubscribeContentDeleted();
       }
     };
-  }, [toast]);
+  }, [toast, selectedPlaylist]);
 
   // Fetch data with proper error handling
   const { data: screens = [] } = useQuery({

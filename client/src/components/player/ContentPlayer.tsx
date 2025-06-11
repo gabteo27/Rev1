@@ -129,7 +129,7 @@ export default function ContentPlayer() {
 
   const { data: playlist, isLoading, isError, error: queryError } = useQuery<PlaylistData>({
     queryKey: ['playlist', playlistId],
-    queryFn: () => playerApiRequest(`/api/playlists/${playlistId}`),
+    queryFn: () => playerApiRequest(`/api/player/playlists/${playlistId}`),
     enabled: !!playlistId, // Solo ejecuta la query si hay un playlistId
     refetchOnWindowFocus: false,
     refetchInterval: 5 * 60 * 1000, // Refresca la playlist cada 5 minutos
@@ -176,28 +176,6 @@ export default function ContentPlayer() {
         window.wsConnection.removeEventListener('message', handleMessage);
       };
     }
-
-    // Listen for playlist changes via WebSocket
-    const handleMessage = (event: MessageEvent) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.type === 'playlist-change') {
-          const newPlaylistId = message.data.playlistId;
-          if (newPlaylistId) {
-            localStorage.setItem('playlistId', newPlaylistId.toString());
-            setPlaylistId(newPlaylistId.toString());
-            setCurrentItemIndex(0); // Reset to first item
-            setRenderKey(prev => prev + 1); // Force re-render
-          } else {
-            localStorage.removeItem('playlistId');
-            setPlaylistId(null);
-            setError('No playlist assigned to this screen');
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
 
     // Try to connect to WebSocket for real-time updates
     try {
