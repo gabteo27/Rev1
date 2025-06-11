@@ -154,6 +154,32 @@ export default function ContentPlayer() {
     // Listen for playlist changes via WebSocket
     const handleMessage = (event: MessageEvent) => {
       try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'playlist-change') {
+          const newPlaylistId = data.data.playlistId;
+          if (newPlaylistId) {
+            localStorage.setItem('playlistId', newPlaylistId.toString());
+            setPlaylistId(newPlaylistId.toString());
+            setCurrentItemIndex(0);
+            setRenderKey(Date.now());
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to parse WebSocket message:', error);
+      }
+    };
+
+    // Add WebSocket listener if available
+    if (window.wsConnection) {
+      window.wsConnection.addEventListener('message', handleMessage);
+      return () => {
+        window.wsConnection.removeEventListener('message', handleMessage);
+      };
+    }
+
+    // Listen for playlist changes via WebSocket
+    const handleMessage = (event: MessageEvent) => {
+      try {
         const message = JSON.parse(event.data);
         if (message.type === 'playlist-change') {
           const newPlaylistId = message.data.playlistId;

@@ -208,19 +208,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Content not found" });
       }
       
-      // Invalidate all playlists cache to refresh UI
-      const message = JSON.stringify({
-        type: "content-deleted",
-        data: { contentId: id, userId },
-      });
-
-      const wssInstance = app.get('wss') as WebSocketServer;
-      wssInstance.clients.forEach((client: WebSocket) => {
-        const clientWithId = client as WebSocketWithId;
-        if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
-          clientWithId.send(message);
-        }
-      });
+      // Broadcast content deletion to update UI
+      broadcastToUser(userId, 'content-deleted', { contentId: id });
+      
+      // Also broadcast playlist updates to refresh all playlist views
+      broadcastToUser(userId, 'playlists-updated', { timestamp: new Date() });
 
       res.json({ message: "Content deleted successfully" });
     } catch (error) {
@@ -490,11 +482,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast screen update via WebSocket
       broadcastToUser(userId, 'screen-update', screen);
 
-      // If playlist changed, also broadcast playlist change to the specific screen
+      // If playlist changed, also broadcast playlist change to connected players
       if (updates.playlistId !== undefined) {
-        broadcastToUser(userId, 'playlist-change', {
-          screenId: id,
-          playlistId: updates.playlistId
+        const wssInstance = app.get('wss') as WebSocketServer;
+        wssInstance.clients.forEach((client: WebSocket) => {
+          const clientWithId = client as WebSocketWithId;
+          if (clientWithId.readyState === WebSocket.OPEN && 
+              clientWithId.screenId === id) {
+            clientWithId.send(JSON.stringify({
+              type: 'playlist-change',
+              data: { playlistId: updates.playlistId }
+            }));
+          }
         });
       }
 

@@ -127,6 +127,21 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     });
 
+    const unsubscribePlaylists = wsManager.subscribe('playlists-updated', () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      if (selectedPlaylist) {
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+      }
+    });
+
+    const unsubscribeContentDeleted = wsManager.subscribe('content-deleted', () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      if (selectedPlaylist) {
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+      }
+    });
+
     // Refetch data to update the UI
     queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
     queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
@@ -138,6 +153,12 @@ export default function Dashboard() {
       }
       if (typeof unsubscribeScreens === 'function') {
         unsubscribeScreens();
+      }
+      if (typeof unsubscribePlaylists === 'function') {
+        unsubscribePlaylists();
+      }
+      if (typeof unsubscribeContentDeleted === 'function') {
+        unsubscribeContentDeleted();
       }
     };
   }, [toast]);
@@ -240,6 +261,10 @@ const formatDuration = (seconds: number) => {
   // Query for detailed playlist data when a playlist is selected
   const { data: playlistDetails } = useQuery({
     queryKey: ["/api/playlists", selectedPlaylist],
+    queryFn: async () => {
+      const response = await apiRequest(`/api/playlists/${selectedPlaylist}`);
+      return response.json();
+    },
     enabled: !!selectedPlaylist,
     retry: 1,
   });
