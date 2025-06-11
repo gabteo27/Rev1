@@ -21,6 +21,8 @@ import Settings from "@/pages/settings";
 import Analytics from "@/pages/analytics";
 import ScreenPlayer from "@/pages/screen-player";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { useEffect } from "react";
+import wsManager from "./ws-manager";
 
 const PlaylistDetail = lazy(() => import("./pages/playlist-detail"));
 
@@ -50,6 +52,44 @@ const AdminLayout = ({ children }: PropsWithChildren) => (
 // Component interno que maneja la autenticación
 const AppContent = () => {
   const { isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    // Initialize WebSocket connection with error handling
+    const initializeWebSocket = async () => {
+      try {
+        await wsManager.connect();
+      } catch (error) {
+        console.error('Failed to initialize WebSocket:', error);
+        // Continue without WebSocket - app should still work
+      }
+    };
+
+    initializeWebSocket();
+
+    return () => {
+      wsManager.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      wsManager.disconnect();
+    };
+
+    // Handle unhandled promise rejections
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      event.preventDefault(); // Prevent the default browser behavior
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
 
   if (isLoading) {
     return <Loading />;

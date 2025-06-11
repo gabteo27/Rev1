@@ -1,160 +1,243 @@
+import { queryClient } from './queryClient';
+
+interface WebSocketMessage {
+  type: string;
+  data?: any;
+}
+
 class WebSocketManager {
   private ws: WebSocket | null = null;
-  private listeners: Map<string, ((data: any) => void)[]> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectInterval = 1000;
-  private isConnecting = false;
-  private wsUrl: string = "";
+  private reconnectDelay = 1000;
+  private isReconnecting = false;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private authUser: any = null;
+  private connectionPromise: Promise<void> | null = null;
 
-  constructor() {
-    this.connect();
+  async connect(): Promise<void> {
+    if (this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
+    this.connectionPromise = this._connect();
+    return this.connectionPromise;
   }
 
-  connect() {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      return Promise.resolve();
-    }
-
-    if (this.isConnecting) {
-      return Promise.resolve();
-    }
-
-    this.isConnecting = true;
-
-    return new Promise<void>((resolve, reject) => {
-      try {
-        // Generate WebSocket URL based on current location
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        this.wsUrl = `${protocol}//${host}/ws`;
-
-        console.log('Connecting to WebSocket:', this.wsUrl);
-
-        this.ws = new WebSocket(this.wsUrl);
-
-        const connectionTimeout = setTimeout(() => {
-          if (this.ws?.readyState !== WebSocket.OPEN) {
-            this.ws?.close();
-            this.isConnecting = false;
-            reject(new Error('WebSocket connection timeout'));
-          }
-        }, 10000);
-
-        this.ws.onopen = () => {
-          clearTimeout(connectionTimeout);
-          console.log('WebSocket connected successfully');
-          this.reconnectAttempts = 0;
-          this.isConnecting = false;
-          this.authenticate();
-          resolve();
-        };
-
-        this.ws.onerror = (error) => {
-          clearTimeout(connectionTimeout);
-          console.error('WebSocket error:', error);
-          this.isConnecting = false;
-          reject(error);
-        };
-      } catch (error) {
-        console.error('Failed to create WebSocket:', error);
-        this.isConnecting = false;
-        reject(error);
+  private async _connect(): Promise<void> {
+    try {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.connectionPromise = null;
+        return;
       }
 
-      this.ws.onmessage = (event) => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+      console.log('Connecting to WebSocket:', wsUrl);
+
+      return new Promise((resolve, reject) => {
         try {
-          const message = JSON.parse(event.data);
-          this.handleMessage(message);
+          this.ws = new WebSocket(wsUrl);
+
+          const connectionTimeout = setTimeout(() => {
+            if (this.ws) {
+              this.ws.close();
+            }
+            reject(new Error('WebSocket connection timeout'));
+          }, 10000);
+
+          this.ws.onopen = async () => {
+            clearTimeout(connectionTimeout);
+            console.log('WebSocket connected successfully');
+            this.reconnectAttempts = 0;
+            this.isReconnecting = false;
+            this.connectionPromise = null;
+
+            try {
+              await this.authenticate();
+              this.startHeartbeat();
+              resolve();
+            } catch (error) {
+              console.error('Authentication failed:', error);
+              resolve(); // Don't reject, just continue without auth
+            }
+          };
+
+          this.ws.onmessage = (event) => {
+            try {
+              const message: WebSocketMessage = JSON.parse(event.data);
+              this.handleMessage(message);
+            } catch (error) {
+              console.error('Error parsing WebSocket message:', error);
+            }
+          };
+
+          this.ws.onclose = (event) => {
+            clearTimeout(connectionTimeout);
+            console.log('WebSocket disconnected:', event.code, event.reason);
+            this.stopHeartbeat();
+            this.connectionPromise = null;
+
+            if (!this.isReconnecting && this.reconnectAttempts < this.maxReconnectAttempts) {
+              this.scheduleReconnect();
+            }
+          };
+
+          this.ws.onerror = (error) => {
+            clearTimeout(connectionTimeout);
+            console.error('WebSocket error:', error);
+            this.connectionPromise = null;
+            reject(error);
+          };
+
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          reject(error);
         }
-      };
+      });
 
-      this.ws.onclose = (event) => {
-        clearTimeout(connectionTimeout);
-        console.log('WebSocket disconnected:', event.code, event.reason);
-        if (event.code !== 1000) { // Not a normal closure
-          this.handleReconnect();
-        }
-      };
-
-      this.ws.onerror = (error) => {
-        clearTimeout(connectionTimeout);
-        console.error('WebSocket error:', error);
-        reject(error);
-      };
-    });
+    } catch (error) {
+      console.error('Error creating WebSocket connection:', error);
+      this.connectionPromise = null;
+      this.scheduleReconnect();
+      throw error;
+    }
   }
 
-  private handleReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
+  private async authenticate(): Promise<void> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+    try {
+      console.log('Authenticating WebSocket connection...');
+
+      // Get current user from React Query cache first
+      let userData = queryClient.getQueryData(['/api/auth/user']);
+
+      if (!userData) {
+        // Try to fetch user data
+        try {
+          const response = await fetch('/api/auth/user', { 
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            userData = await response.json();
+          }
+        } catch (fetchError) {
+          console.warn('Could not fetch user data for WebSocket auth:', fetchError);
+          return;
+        }
+      }
+
+      if (userData && typeof userData === 'object' && 'id' in userData) {
+        this.authUser = userData;
+        this.send({
+          type: 'auth',
+          data: { 
+            userId: userData.id,
+            userType: 'admin'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Authentication error:', error);
+    }
+  }
+
+  private scheduleReconnect() {
+    if (this.isReconnecting) return;
+
+    this.isReconnecting = true;
+    this.reconnectAttempts++;
+
+    if (this.reconnectAttempts > this.maxReconnectAttempts) {
+      console.log('Max reconnection attempts reached');
+      this.isReconnecting = false;
       return;
     }
 
-    this.reconnectAttempts++;
-    const delay = Math.min(1000 * this.reconnectAttempts, 10000); // Max 10 seconds
-
+    const delay = Math.min(this.reconnectDelay * this.reconnectAttempts, 10000);
     console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
     setTimeout(() => {
+      this.isReconnecting = false;
       this.connect().catch(error => {
         console.error('Reconnection failed:', error);
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.handleReconnect();
-        }
       });
     }, delay);
   }
 
-  public subscribe(type: string, callback: (data: any) => void) {
-    if (!this.listeners.has(type)) {
-      this.listeners.set(type, []);
-    }
-    this.listeners.get(type)!.push(callback);
-    return () => {
-      this.unsubscribe(type, callback);
-    };
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.send({ type: 'ping' });
+      }
+    }, 30000);
   }
 
-  private handleMessage(message: any) {
-    const { type, data } = message;
-    const typeListeners = this.listeners.get(type);
-    if (typeListeners) {
-      typeListeners.forEach(listener => listener(data));
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
   }
 
-  public unsubscribe(type: string, callback?: (data: any) => void) {
-    const typeListeners = this.listeners.get(type);
-    if (typeListeners && callback) {
-      const index = typeListeners.indexOf(callback);
-      if (index > -1) {
-        typeListeners.splice(index, 1);
+  private handleMessage(message: WebSocketMessage) {
+    try {
+      switch (message.type) {
+        case 'pong':
+          // Heartbeat response - no action needed
+          break;
+        case 'auth_success':
+          console.log('WebSocket authentication successful');
+          break;
+        case 'auth_error':
+          console.error('WebSocket authentication failed:', message.data);
+          break;
+        case 'content_updated':
+          queryClient.invalidateQueries({ queryKey: ['/api/content'] });
+          break;
+        case 'playlist_updated':
+          queryClient.invalidateQueries({ queryKey: ['/api/playlists'] });
+          break;
+        case 'screen_updated':
+          queryClient.invalidateQueries({ queryKey: ['/api/screens'] });
+          break;
+        default:
+          console.log('Unknown WebSocket message type:', message.type);
+      }
+    } catch (error) {
+      console.error('Error handling WebSocket message:', error);
+    }
+  }
+
+  send(message: WebSocketMessage) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify(message));
+      } catch (error) {
+        console.error('Error sending WebSocket message:', error);
       }
     }
   }
 
-  public send(type: string, data: any) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type, data }));
-    } else {
-      console.warn('WebSocket not connected, cannot send message');
+  disconnect() {
+    this.stopHeartbeat();
+    if (this.ws) {
+      this.ws.close(1000, 'Client disconnecting');
+      this.ws = null;
     }
+    this.connectionPromise = null;
   }
 
-  public isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN || false;
-  }
-
-  private authenticate() {
-    // Implement your authentication logic here if needed.
-    // For example, you might send an authentication token to the server.
-    console.log('Authenticating WebSocket connection...');
+  getConnectionState() {
+    return this.ws?.readyState || WebSocket.CLOSED;
   }
 }
 
-const wsManager = new WebSocketManager();
-export default wsManager;
-export { wsManager };
+export const wsManager = new WebSocketManager();

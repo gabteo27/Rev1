@@ -33,9 +33,24 @@ export default function Content() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { data: content, isLoading } = useQuery({
+  const { data: content, isLoading, error, refetch } = useQuery({
     queryKey: ["/api/content"],
-    retry: false,
+    queryFn: async () => {
+      const response = await apiRequest("/api/content");
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    retry: (failureCount, error: any) => {
+      // Retry network errors but not auth/permission errors
+      if (error?.status === 401 || error?.status === 403) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
 
   const deleteMutation = useMutation({
@@ -193,6 +208,30 @@ export default function Content() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col h-full">
+        <Header title="Contenido" subtitle="Gestiona tus archivos multimedia" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              Error al cargar contenido
+            </h3>
+            <p className="text-slate-600 mb-6">
+              {error.message || "No se pudo cargar el contenido. Por favor, intenta nuevamente."}
+            </p>
+            <Button onClick={() => refetch()} className="bg-blue-600 hover:bg-blue-700">
+              Reintentar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       <Header
@@ -293,9 +332,11 @@ export default function Content() {
                     </div>
 
                     {/* Duration Badge */}
-                    <div className="absolute top-3 right-3 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs">
-                      {item.duration}s
-                    </div>
+                    {item.duration && (
+                      <div className="absolute top-3 right-3 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs">
+                        {item.duration}s
+                      </div>
+                    )}
                   </div>
 
                   {/* Content Info */}

@@ -42,18 +42,23 @@ export const queryClient = new QueryClient({
         }
       },
       retry: (failureCount, error: any) => {
-        if (error.message.includes('Error: 4') || error.message.includes('Error: 5')) {
+        // Don't retry on 4xx errors
+        if (error?.status >= 400 && error?.status < 500) {
           return false;
         }
-        return failureCount < 1;
+        return failureCount < 3;
       },
-      retryDelay: 1000,
-      staleTime: 1000 * 60,
+      staleTime: 1000 * 60 * 5, // 5 minutes
       refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
     },
     mutations: {
-      onError: (error: any) => {
-        console.error("Mutation failed:", error.message);
+      retry: (failureCount, error: any) => {
+        // Don't retry mutations on 4xx errors
+        if (error?.status >= 400 && error?.status < 500) {
+          return false;
+        }
+        return failureCount < 2;
       },
     },
   },
