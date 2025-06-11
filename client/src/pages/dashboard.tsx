@@ -36,10 +36,10 @@ export default function Dashboard() {
   });
 
   // Calculate stats
-  const activeScreens = screens.filter((s: any) => s.isOnline)?.length || 0;
-  const totalPlaylists = playlists.length || 0;
-  const totalFiles = content.length || 0;
-  const totalDuration = playlists.reduce((acc: number, p: any) => acc + (p.totalDuration || 0), 0) || 0;
+  const activeScreens = Array.isArray(screens) ? screens.filter((s: any) => s.isOnline)?.length || 0 : 0;
+  const totalPlaylists = Array.isArray(playlists) ? playlists.length || 0 : 0;
+  const totalFiles = Array.isArray(content) ? content.length || 0 : 0;
+  const totalDuration = Array.isArray(playlists) ? playlists.reduce((acc: number, p: any) => acc + (p.totalDuration || 0), 0) || 0 : 0;
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -62,7 +62,7 @@ export default function Dashboard() {
     setIsPreviewPlaying(!isPreviewPlaying);
   };
 
-  const selectedScreenInfo = screens.find((s: any) => s.id === parseInt(selectedScreen));
+  const selectedScreenInfo = Array.isArray(screens) ? screens.find((s: any) => s.id === parseInt(selectedScreen)) : null;
 
   return (
     <div className="space-y-6">
@@ -155,7 +155,7 @@ export default function Dashboard() {
                     <SelectValue placeholder="Seleccionar pantalla..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {screens.map((screen: any) => (
+                    {Array.isArray(screens) ? screens.map((screen: any) => (
                       <SelectItem key={screen.id} value={screen.id.toString()}>
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${
@@ -164,7 +164,7 @@ export default function Dashboard() {
                           {screen.name} - {screen.location}
                         </div>
                       </SelectItem>
-                    ))}
+                    )) : []}
                   </SelectContent>
                 </Select>
               </div>
@@ -281,7 +281,7 @@ export default function Dashboard() {
                 <p className="text-xs text-muted-foreground">Hace unos momentos</p>
               </div>
             </div>
-            {playlists.slice(0, 3).map((playlist: any, index: number) => (
+            {Array.isArray(playlists) ? playlists.slice(0, 3).map((playlist: any, index: number) => (
               <div key={playlist.id} className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
                 <div>
@@ -291,7 +291,7 @@ export default function Dashboard() {
                   </p>
                 </div>
               </div>
-            ))}
+            )) : []}
           </CardContent>
         </Card>
 
@@ -306,7 +306,7 @@ export default function Dashboard() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm">Pantallas conectadas</span>
-              <Badge variant="default">{activeScreens} / {screens.length}</Badge>
+              <Badge variant="default">{activeScreens} / {Array.isArray(screens) ? screens.length : 0}</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm">Contenido total</span>
