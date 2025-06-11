@@ -5,11 +5,12 @@ import { WebSocketServer, WebSocket } from "ws";
 import multer from "multer";
 import path from "path";
 import fs from "fs-extra";
-import { takeScreenshot } from './screenshot';
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import { validatePlayerAuth } from "./playerAuth";
+import { takeScreenshot } from "./screenshot";
 import { randomBytes } from 'crypto';
 import { isPlayerAuthenticated } from "./playerAuth";
-import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertContentItemSchema,
   insertPlaylistSchema,
@@ -192,16 +193,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // First remove content from all playlists
       await storage.removeContentFromAllPlaylists(id, userId);
-      
+
       // Then delete the content item
       const success = await storage.deleteContentItem(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Content not found" });
       }
-      
+
       // Broadcast content deletion to update UI
       broadcastToUser(userId, 'content-deleted', { contentId: id });
-      
+
       // Also broadcast playlist updates to refresh all playlist views
       broadcastToUser(userId, 'playlists-updated', { timestamp: new Date() });
 
@@ -425,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error al obtener la información de la pantalla." });
     }
   });
-  
+
   app.post("/api/screens", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -542,7 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const screen = await storage.getScreens(userId).then(screens => 
         screens.find(s => s.id === screenId)
       );
-      
+
       if (!screen) {
         return res.status(404).json({ message: "Screen not found" });
       }
@@ -552,7 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Here you would typically send the command to the actual screen
       // For now, we'll just acknowledge the command
-      
+
       res.json({ 
         message: "Playback command sent",
         screenId,
@@ -586,7 +587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Broadcast alert via WebSocket
       const alertData = { title, message, type, userId, timestamp: new Date() };
-  
+
       // Send to all connected clients for this user
       app.get('wss').clients.forEach((client: any) => {
         if (client.readyState === 1 && client.userId === userId) {
@@ -847,7 +848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  app.delete("/api/schedules/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
@@ -970,20 +971,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   interface WebSocketWithId extends WebSocket {
     userId?: string;
   }
-  
+
   wss.on("connection", (ws: WebSocket) => {
     console.log("Client connected to WebSocket");
 
     ws.on("message", async (message) => {
       try {
         const parsed = JSON.parse(message.toString());
-        
+
         // Handle admin panel authentication
         if (parsed.type === 'auth' && parsed.userId) {
           ws.userId = parsed.userId;
           console.log(`WebSocket client authenticated for user: ${ws.userId}`);
         }
-        
+
         // Handle player authentication
         if (parsed.type === 'player-auth' && parsed.token) {
           try {
@@ -1001,7 +1002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn("Invalid WebSocket message received");
       }
     });
-    
+
     ws.on("close", () => {
         console.log(`Client disconnected (User: ${ws.userId || 'unauthenticated'}, Screen: ${ws.screenId || 'none'})`);
       });
@@ -1054,7 +1055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analytics", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      
+
       // Mock analytics data - in production you'd query real metrics
       const analytics = {
         totalViews: Math.floor(Math.random() * 10000) + 5000,
@@ -1064,7 +1065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalPlaytime: Math.floor(Math.random() * 1000000) + 500000,
         lastWeekGrowth: 12.5
       };
-      
+
       res.json(analytics);
     } catch (error) {
       console.error("Error fetching analytics:", error);
@@ -1076,7 +1077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const screens = await storage.getScreens(userId);
-      
+
       const screenMetrics = screens.map(screen => ({
         id: screen.id,
         name: screen.name,
@@ -1085,7 +1086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         views: Math.floor(Math.random() * 1000) + 100,
         status: screen.isOnline ? 'online' : 'offline'
       }));
-      
+
       res.json(screenMetrics);
     } catch (error) {
       console.error("Error fetching screen analytics:", error);
@@ -1097,7 +1098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const content = await storage.getContentItems(userId);
-      
+
       const contentMetrics = content.map(item => ({
         id: item.id,
         title: item.title,
@@ -1106,7 +1107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         engagement: Math.floor(Math.random() * 100),
         duration: item.duration || 30
       }));
-      
+
       res.json(contentMetrics);
     } catch (error) {
       console.error("Error fetching content analytics:", error);
@@ -1119,11 +1120,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mock playback data
       const playbackData = [];
       const today = new Date();
-      
+
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
-        
+
         playbackData.push({
           date: date.toISOString().split('T')[0],
           plays: Math.floor(Math.random() * 200) + 100,
@@ -1131,7 +1132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           duration: Math.floor(Math.random() * 10000) + 5000
         });
       }
-      
+
       res.json(playbackData);
     } catch (error) {
       console.error("Error fetching playback analytics:", error);

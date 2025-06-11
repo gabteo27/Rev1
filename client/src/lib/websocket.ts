@@ -67,15 +67,20 @@ class WebSocketManager {
   private reconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      const delay = Math.min(this.reconnectAttempts * this.reconnectInterval, 10000);
-      console.log(`Attempting to reconnect in ${delay}ms`);
+      const delay = Math.min(1000 * this.reconnectAttempts, 5000); // Reducir delay máximo
+      console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
       setTimeout(() => {
-        this.connect().catch(error => {
-          console.error('Reconnection failed:', error);
-        });
+        if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
+          this.connect();
+        }
       }, delay);
     } else {
       console.error('Max reconnection attempts reached');
+      // Reset attempts after a longer delay to allow retry
+      setTimeout(() => {
+        this.reconnectAttempts = 0;
+      }, 30000);
     }
   }
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { LivePlayerView } from "@/components/screen/LivePlayerPreview";
+
 import { useToast } from "@/hooks/use-toast";
 import type { Screen, Playlist } from "@shared/schema";
 import Header from "@/components/layout/header";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { Tv, Plus, Trash2, Monitor, Edit, Eye, EyeOff } from "lucide-react";
+import { Tv, Plus, Trash2, Monitor, Edit, Eye, EyeOff, Camera } from "lucide-react";
 import { ScreenPreview } from "@/components/screen/ScreenPreview";
 
 
@@ -64,6 +64,23 @@ export default function Screens() {
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     },
     onError: (error: any) => toast({ title: "Error", description: error.message || "No se pudo eliminar la pantalla.", variant: "destructive" })
+  });
+
+  const screenshotMutation = useMutation({
+    mutationFn: (screenId: number) => apiRequest(`/api/screens/${screenId}/screenshot`, { method: "POST" }).then(res => res.json()),
+    onSuccess: (data) => {
+      toast({ 
+        title: "Screenshot capturado", 
+        description: "La imagen ha sido guardada correctamente" 
+      });
+      // Abrir la imagen en nueva pestaña
+      window.open(data.screenshotUrl, '_blank');
+    },
+    onError: (error: any) => toast({ 
+      title: "Error al capturar screenshot", 
+      description: error.message || "No se pudo capturar la imagen", 
+      variant: "destructive" 
+    })
   });
 
   // --- MANEJADORES DE FORMULARIOS ---
@@ -213,8 +230,20 @@ export default function Screens() {
       </Dialog>
       {/* MODAL PARA VER EN VIVO */}
       <Dialog open={!!livePreviewScreenId} onOpenChange={() => setLivePreviewScreenId(null)}>
-        <DialogContent className="max-w-4xl p-0 border-0 bg-transparent">
-          {livePreviewScreenId && <LivePlayerView screenId={livePreviewScreenId} />}
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Vista en Vivo</DialogTitle>
+          </DialogHeader>
+          {livePreviewScreenId && (
+            <div className="aspect-video bg-black rounded-lg overflow-hidden">
+              <iframe 
+                src={`/screen-player?screenId=${livePreviewScreenId}`} 
+                className="w-full h-full" 
+                frameBorder="0"
+                title="Vista en vivo de la pantalla"
+              />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
       {/* LISTA DE PANTALLAS */}
@@ -241,7 +270,6 @@ export default function Screens() {
                         {getStatusBadge(screen.isOnline, screen.lastSeen)}
                     </div>
                   </div>
-                  {visiblePreviews[screen.id] && <ScreenPreview screenId={screen.id} />}
                   <ScreenPreview screen={screen} onPlayClick={setLivePreviewScreenId} />
                   {/* ✅ MODIFICADO: La sección de contenido ahora ocupa el espacio sobrante. */}
                   <div className="flex-grow my-4 space-y-2 text-sm">
@@ -263,14 +291,14 @@ export default function Screens() {
                     >
                       <Monitor className="w-4 h-4" />
                     </Button>
-
                     <Button 
                       size="sm" 
                       variant="ghost" 
-                      onClick={() => window.open(`/screen-player?screenId=${screen.id}`, '_blank')}
-                      title="Abrir en nueva pestaña"
+                      onClick={() => screenshotMutation.mutate(screen.id)}
+                      disabled={screenshotMutation.isPending}
+                      title="Capturar screenshot"
                     >
-                      <Monitor className="w-4 h-4" />
+                      <Camera className="w-4 h-4" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => handleEditScreen(screen)} title="Editar"><Edit className="w-4 h-4" /></Button>
                     <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => deleteMutation.mutate(screen.id)} disabled={deleteMutation.isPending} title="Eliminar"><Trash2 className="w-4 h-4" /></Button>
