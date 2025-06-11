@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCw } from "lucide-react";
@@ -25,18 +26,6 @@ export default function ScreenViewerPage() {
     refetchInterval: 5000,
   });
 
-  // Auto fullscreen on load
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(console.error);
-        setIsFullscreen(true);
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
   // Handle fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -49,7 +38,7 @@ export default function ScreenViewerPage() {
 
   if (!screenId) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+      <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-black text-white">
         <div className="text-center">
           <p className="text-xl">ID de pantalla no especificado</p>
         </div>
@@ -59,7 +48,7 @@ export default function ScreenViewerPage() {
 
   if (isLoading) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+      <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-black text-white">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
           <p>Cargando pantalla...</p>
@@ -70,7 +59,7 @@ export default function ScreenViewerPage() {
 
   if (error || !screen) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+      <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-black text-white">
         <div className="text-center">
           <p className="text-xl mb-4">Error al cargar la pantalla</p>
           <p className="opacity-75">No se pudo conectar con la pantalla</p>
@@ -80,14 +69,16 @@ export default function ScreenViewerPage() {
   }
 
   return (
-    <div className="w-full h-screen bg-black overflow-hidden">
+    <div className="fixed inset-0 w-full h-full bg-black overflow-hidden">
       {screen.playlistId && playlist ? (
-        <ContentPlayer 
-          screenId={screenId}
-          playlistId={screen.playlistId}
-          isPreview={true}
-          className="w-full h-full"
-        />
+        <div className="w-full h-full flex items-center justify-center">
+          <ContentPlayer 
+            screenId={screenId}
+            playlistId={screen.playlistId}
+            isPreview={true}
+            className="w-full h-full max-w-full max-h-full object-contain"
+          />
+        </div>
       ) : (
         <div className="w-full h-full flex items-center justify-center text-white">
           <div className="text-center">

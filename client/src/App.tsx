@@ -46,6 +46,9 @@ function Router() {
 
   return (
     <Switch>
+      {/* Screen viewer - standalone without layout */}
+      <Route path="/screen-viewer" component={ScreenViewer} />
+      
       {!isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
@@ -67,7 +70,6 @@ function Router() {
               <Route path="/settings" component={Settings} />
               <Route path="/analytics" component={Analytics} />
               <Route path="/screen-player" component={ScreenPlayer} />
-              <Route path="/screen-viewer" component={ScreenViewer} />
               <Route component={NotFound} />
             </Switch>
           </Suspense>
