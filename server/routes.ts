@@ -964,6 +964,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clientWithId.send(message);
       }
     });
+  }
+
   // Function to broadcast alerts to all connected clients
   function broadcastAlert(alert: any) {
     const message = JSON.stringify({

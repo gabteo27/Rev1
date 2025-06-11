@@ -106,45 +106,41 @@ export default function Dashboard() {
   const { toast } = useToast();
 
   // Subscribe to WebSocket events
-      useEffect(() => {
-        // Suscribirse a alertas
-        const unsubscribeAlerts = wsManager.subscribe('alert', (alertData) => {
-          console.log('Alerta recibida vía WebSocket:', alertData);
-          toast({
-            title: alertData.title || "Nueva Alerta",
-            description: alertData.message,
-            variant: alertData.type === 'error' ? 'destructive' : 'default',
-          });
-          queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-        });
-      
-      // Refetch alerts to update the UI
+  useEffect(() => {
+    // Suscribirse a alertas
+    const unsubscribeAlerts = wsManager.subscribe('alert', (alertData) => {
+      console.log('Alerta recibida vía WebSocket:', alertData);
+      toast({
+        title: alertData.title || "Nueva Alerta",
+        description: alertData.message,
+        variant: alertData.type === 'error' ? 'destructive' : 'default',
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
     });
 
-      const unsubscribeScreens = wsManager.subscribe('screen-update', (screenData) => {
-        console.log('Actualización de pantalla recibida:', screenData);
-        toast({
-          title: "Pantalla Actualizada",
-          description: `${screenData.name} ha sido actualizada`,
-        });
-        queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+    const unsubscribeScreens = wsManager.subscribe('screen-update', (screenData) => {
+      console.log('Actualización de pantalla recibida:', screenData);
+      toast({
+        title: "Pantalla Actualizada",
+        description: `${screenData.name} ha sido actualizada`,
       });
-      
-      // Refetch screens to update the UI
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     });
 
-return () => {
-    // ✅ VERIFICACIÓN: Nos aseguramos de que las funciones existan antes de llamarlas
-    if (typeof unsubscribeAlerts === 'function') {
-      unsubscribeAlerts();
-    }
-    if (typeof unsubscribeScreens === 'function') {
-      unsubscribeScreens();
-    }
-  };
-}, [toast]);
+    // Refetch data to update the UI
+    queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+
+    return () => {
+      // Cleanup subscriptions
+      if (typeof unsubscribeAlerts === 'function') {
+        unsubscribeAlerts();
+      }
+      if (typeof unsubscribeScreens === 'function') {
+        unsubscribeScreens();
+      }
+    };
+  }, [toast]);
 
   // Fetch data with proper error handling
   const { data: screens = [] } = useQuery({
