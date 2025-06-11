@@ -5,39 +5,33 @@ import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { 
   Plus, 
   List, 
   Play, 
-  Clock, 
-  FileText,
+  FileText, 
+  GripVertical, 
   Trash2,
-  GripVertical,
-  X
+  Clock,
+  Image,
+  Video,
+  FileSpreadsheet
 } from "lucide-react";
 
 export default function Playlists() {
-  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState<number | null>(null);
-  const [newPlaylist, setNewPlaylist] = useState({
-    name: "",
-    description: ""
-  });
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newPlaylist, setNewPlaylist] = useState({ name: "", description: "" });
   const { toast } = useToast();
 
-  const { data: playlists = [], isLoading } = useQuery({
+  // Fetch data
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
     queryKey: ["/api/playlists"],
-  });
-
-  const { data: content = [] } = useQuery({
-    queryKey: ["/api/content"],
   });
 
   const { data: selectedPlaylistData } = useQuery({
@@ -45,6 +39,11 @@ export default function Playlists() {
     enabled: !!selectedPlaylist,
   });
 
+  const { data: content = [] } = useQuery({
+    queryKey: ["/api/content"],
+  });
+
+  // Create playlist mutation
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest("/api/playlists", {
@@ -63,13 +62,15 @@ export default function Playlists() {
     },
   });
 
-  const addItemMutation = useMutation({
-    mutationFn: async ({ playlistId, contentItemId }: { playlistId: number; contentItemId: number }) => {
+  // Add content to playlist mutation
+  const addContentMutation = useMutation({
+    mutationFn: async ({ playlistId, contentItemId }: { playlistId: number, contentItemId: number }) => {
+      const currentItems = selectedPlaylistData?.items || [];
       return await apiRequest(`/api/playlists/${playlistId}/items`, {
         method: "POST",
         body: JSON.stringify({ 
           contentItemId,
-          order: (selectedPlaylistData && Array.isArray(selectedPlaylistData.items) ? selectedPlaylistData.items.length : 0) + 1
+          order: currentItems.length + 1
         })
       });
     },
@@ -77,12 +78,20 @@ export default function Playlists() {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
       toast({
-        title: "Elemento agregado",
-        description: "El contenido se ha agregado a la playlist.",
+        title: "Contenido agregado",
+        description: "El elemento se ha agregado a la playlist.",
       });
     },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo agregar el contenido a la playlist.",
+        variant: "destructive",
+      });
+    }
   });
 
+  // Remove item from playlist mutation
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: number) => {
       return await apiRequest(`/api/playlist-items/${itemId}`, {
@@ -94,7 +103,24 @@ export default function Playlists() {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
       toast({
         title: "Elemento eliminado",
-        description: "El contenido se ha removido de la playlist.",
+        description: "El elemento se ha eliminado de la playlist.",
+      });
+    },
+  });
+
+  // Delete playlist mutation
+  const deletePlaylistMutation = useMutation({
+    mutationFn: async (playlistId: number) => {
+      return await apiRequest(`/api/playlists/${playlistId}`, {
+        method: "DELETE"
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      setSelectedPlaylist(null);
+      toast({
+        title: "Playlist eliminada",
+        description: "La playlist se ha eliminado correctamente.",
       });
     },
   });
@@ -120,11 +146,23 @@ export default function Playlists() {
       });
       return;
     }
-    addItemMutation.mutate({ playlistId: selectedPlaylist, contentItemId });
+    addContentMutation.mutate({ playlistId: selectedPlaylist, contentItemId });
   };
 
   const handleRemoveItem = (itemId: number) => {
     removeItemMutation.mutate(itemId);
+  };
+
+  const handleDeletePlaylist = (playlistId: number) => {
+    if (confirm("¿Estás seguro de que quieres eliminar esta playlist?")) {
+      deletePlaylistMutation.mutate(playlistId);
+    }
+  };
+
+  const getFileIcon = (type: string) => {
+    if (type?.startsWith('image/')) return Image;
+    if (type?.startsWith('video/')) return Video;
+    return FileSpreadsheet;
   };
 
   const formatDuration = (seconds: number) => {
@@ -133,10 +171,17 @@ export default function Playlists() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  if (isLoading) {
+  const formatFileSize = (bytes: number) => {
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    if (bytes === 0) return '0 B';
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  if (playlistsLoading) {
     return (
       <div className="space-y-6">
-        <Header title="Playlists" subtitle="Gestiona tus listas de reproducción" />
+        <Header title="Playlists" subtitle="Gestión de listas de reproducción" />
         <div className="flex justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -148,7 +193,7 @@ export default function Playlists() {
     <div className="space-y-6">
       <Header
         title="Playlists"
-        subtitle="Gestiona tus listas de reproducción"
+        subtitle="Gestión de listas de reproducción para señalización digital"
         actions={
           <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
             <DialogTrigger asChild>
@@ -178,6 +223,7 @@ export default function Playlists() {
                     value={newPlaylist.description}
                     onChange={(e) => setNewPlaylist(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Descripción opcional"
+                    rows={3}
                   />
                 </div>
                 <div className="flex justify-end gap-2">
@@ -219,18 +265,30 @@ export default function Playlists() {
                   }`}
                   onClick={() => setSelectedPlaylist(playlist.id)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
                       <h3 className="font-medium">{playlist.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {playlist.totalItems || 0} elementos
-                      </p>
+                      {playlist.description && (
+                        <p className="text-sm text-muted-foreground mt-1">{playlist.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                        <span>{playlist.totalItems || 0} elementos</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {Math.floor((playlist.totalDuration || 0) / 60)}m
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <Badge variant="secondary">
-                        {formatDuration(playlist.totalDuration || 0)}
-                      </Badge>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeletePlaylist(playlist.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))
@@ -252,7 +310,7 @@ export default function Playlists() {
               }
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             {!selectedPlaylist ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Play className="h-12 w-12 mx-auto mb-4 opacity-20" />
@@ -266,25 +324,30 @@ export default function Playlists() {
               </div>
             ) : (
               <div className="space-y-3">
-                {selectedPlaylistData.items.map((item: any, index: number) => (
-                  <div key={item.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex-1">
-                      <h4 className="font-medium">{item.contentItem.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {item.contentItem.type} • {formatDuration(item.contentItem.duration || 0)}
-                      </p>
+                {selectedPlaylistData.items.map((item: any, index: number) => {
+                  const IconComponent = getFileIcon(item.contentItem?.type);
+                  return (
+                    <div key={item.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                      <GripVertical className="h-4 w-4 text-muted-foreground" />
+                      <IconComponent className="h-8 w-8 text-blue-500" />
+                      <div className="flex-1">
+                        <h4 className="font-medium">{item.contentItem?.name || 'Contenido'}</h4>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span>#{index + 1}</span>
+                          <span>{formatFileSize(item.contentItem?.size || 0)}</span>
+                          <span>{formatDuration(item.customDuration || item.contentItem?.duration || 0)}</span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveItem(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Badge variant="outline">#{index + 1}</Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveItem(item.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )) || []}
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -309,23 +372,36 @@ export default function Playlists() {
                 <p className="text-sm">Sube archivos primero</p>
               </div>
             ) : (
-              content.map((item: any) => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent cursor-pointer"
-                  onClick={() => handleAddContent(item.id)}
-                >
-                  <div className="flex-1">
-                    <h4 className="font-medium">{item.name}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {item.type} • {formatDuration(item.duration || 0)}
-                    </p>
+              content.map((item: any) => {
+                const IconComponent = getFileIcon(item.type);
+                const isInPlaylist = selectedPlaylistData?.items?.some((pItem: any) => pItem.contentItemId === item.id);
+                
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex items-center gap-3 p-3 border rounded-lg transition-colors ${
+                      isInPlaylist 
+                        ? 'bg-muted border-muted-foreground/20' 
+                        : 'hover:bg-accent cursor-pointer'
+                    }`}
+                    onClick={() => !isInPlaylist && handleAddContent(item.id)}
+                  >
+                    <IconComponent className="h-8 w-8 text-blue-500" />
+                    <div className="flex-1">
+                      <h4 className="font-medium">{item.name}</h4>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>{formatFileSize(item.size || 0)}</span>
+                        <span>{formatDuration(item.duration || 0)}</span>
+                      </div>
+                    </div>
+                    {isInPlaylist && (
+                      <Badge variant="secondary" className="text-xs">
+                        En playlist
+                      </Badge>
+                    )}
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))
+                );
+              })
             )}
           </CardContent>
         </Card>

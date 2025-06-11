@@ -10,7 +10,7 @@ async function throwIfResNotOk(res: Response) {
 export async function apiRequest(
   url: string,
   options?: RequestInit
-): Promise<Response> {
+): Promise<any> {
   try {
     const response = await fetch(url, {
       ...options,
@@ -32,7 +32,12 @@ export async function apiRequest(
       throw new Error(errorMessage);
     }
 
-    return response;
+    // Handle empty responses
+    if (response.status === 204 || response.headers.get("content-length") === "0") {
+      return null;
+    }
+
+    return await response.json();
   } catch (error) {
     console.error('API Request failed:', error);
     throw error;

@@ -17,18 +17,8 @@ import {
   insertWidgetSchema,
   insertScheduleSchema,
   insertDeploymentSchema,
-  users,
-  contentItems,
-  playlists,
-  playlistItems,
-  screens,
-  alerts,
-  widgets,
 } from "@shared/schema";
 import { buildApk } from "./apk-builder";
-import { Request, Response } from "express";
-import { db } from "./db.js";
-import { eq, and, desc, asc } from "drizzle-orm";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -48,7 +38,9 @@ const upload = multer({
   },
 });
 
-export async function registerRoutes(app: Express): Promise<void> {
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth middleware
+  await setupAuth(app);
 
   // Auth routes
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
@@ -319,17 +311,17 @@ export async function registerRoutes(app: Express): Promise<void> {
       const itemData = {
         playlistId,
         contentItemId: parseInt(contentItemId),
-        order: order || 0
+        order: order || (playlist.items?.length || 0) + 1
       };
 
       const validatedData = insertPlaylistItemSchema.parse(itemData);
-      const item = await storage.addPlaylistItem(validatedData, req.user.claims.sub);
-
-      // Get the full item with content details for response
-      const fullItem = await storage.getPlaylistItemWithContent(item.id, userId);
-
-      res.json(fullItem);
-    } catch (error) {
+      const item = await storage.addPlaylistItem(validatedData, userId);
+      
+      // Get the complete item with content details
+      const itemWithContent = await storage.getPlaylistItemWithContent(item.id, userId);
+      
+      res.json(itemWithContent);
+    } catch (error: unknown) {
       console.error("Error adding playlist item:", error);
       res.status(500).json({ message: "Failed to add playlist item" });
     }
@@ -803,6 +795,28 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
       });
 
+      /* Update deployment status to building
+      const deployment = await storage.updateDeployment(id, { status: "building" }, userId);
+      if (!deployment) {
+        return res.status(404).json({ message: "Deployment not found" });
+      }
+
+      // In a real implementation, this would trigger the APK build process
+      // For now, we'll simulate it by updating to ready status after a delay
+      setTimeout(async () => {
+        await storage.updateDeployment(id, { 
+          status: "ready",
+          buildUrl: `https://example.com/builds/app-v${deployment.version}.apk`
+        }, userId);
+      }, 5000);
+
+      res.json({ message: "Build started" });
+    } catch (error) {
+      console.error("Error starting build:", error);
+      res.status(500).json({ message: "Failed to start build" });
+    }
+  });
+
   app.post("/api/deployments/:id/deploy", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -816,31 +830,41 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.json({ message: "Deployment completed" });
     } catch (error) {
       console.error("Error deploying:", error);
-      res.status(500).json({ message: "Failed to deploy"});
+      res.status(500).json({ message: "Failed to deploy" });
     }
-    });
-  // Serve uploaded files
+  }); */
+
+ // Serve uploaded files and APKs
   app.use("/uploads", express.static("uploads"));
-}
+  app.use("/apks", express.static(path.resolve(process.cwd(), "dist/apks")));
 
-// Make WebSocket server available to routes
-export { wss };
 
-// Function to broadcast alerts to connected screens
-function broadcastAlert(alert: any) {
-  if (!wss) return;
+  const httpServer = createServer(app);
 
-  wss.clients.forEach((client) => {
-    if (client.readyState === 1 && client.screenId) { // WebSocket.OPEN = 1
-      try {
-        client.send(JSON.stringify({
-          type: 'alert',
-          screenId: client.screenId,
-          alert: alert
-        }));
-      } catch (error) {
-        console.error('Error broadcasting alert to client:', error);
-      }
-    }
+  // WebSocket server for real-time updates
+  const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+
+  wss.on("connection", (ws: WebSocket) => {
+    console.log("Client connected to WebSocket");
+
+    ws.on("close", () => {
+      console.log("Client disconnected from WebSocket");
+    });
   });
+
+  // Function to broadcast alerts to all connected clients
+  function broadcastAlert(alert: any) {
+    const message = JSON.stringify({
+      type: "alert",
+      data: alert,
+    });
+
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  }
+
+  return httpServer;
 }
