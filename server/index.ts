@@ -124,9 +124,6 @@ wss.on('close', () => {
   clearInterval(interval);
 });
 
-// Make WebSocket server available to routes
-export { wss };
-
 await registerRoutes(app);
 
   const PORT = 5000;
@@ -134,6 +131,9 @@ await registerRoutes(app);
     console.log(`Server running on port ${PORT}`);
     console.log(`WebSocket server running on port ${PORT}`);
   });
+
+// Make WebSocket server available to routes
+export { wss };
 }
 
 startApplication().catch(console.error);
