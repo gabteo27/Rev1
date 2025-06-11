@@ -22,7 +22,7 @@ import Analytics from "@/pages/analytics";
 import ScreenPlayer from "@/pages/screen-player";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useEffect } from "react";
-import wsManager from "./ws-manager";
+import { wsManager } from "./lib/websocket";
 
 const PlaylistDetail = lazy(() => import("./pages/playlist-detail"));
 
