@@ -69,10 +69,16 @@ export const queryClient = new QueryClient({
         if (error.message.includes('Request failed: 4')) {
           return false;
         }
+        // Max 2 retries for network errors
         return failureCount < 2;
       },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       staleTime: 1000 * 30, // 30 seconds
       refetchOnWindowFocus: false,
+      // Handle network errors gracefully
+      onError: (error) => {
+        console.warn('Query error:', error);
+      },
     },
   },
 });

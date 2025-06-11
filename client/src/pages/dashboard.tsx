@@ -130,8 +130,12 @@ export default function Dashboard() {
     });
 
     return () => {
-      unsubscribeAlert();
-      unsubscribeScreen();
+      if (typeof unsubscribeAlert === 'function') {
+        unsubscribeAlert();
+      }
+      if (typeof unsubscribeScreen === 'function') {
+        unsubscribeScreen();
+      }
     };
   }, [toast]);
 

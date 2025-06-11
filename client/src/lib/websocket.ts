@@ -45,7 +45,9 @@ class WebSocketManager {
       this.ws.onclose = (event) => {
         console.log('WebSocket disconnected:', event.code, event.reason);
         this.isConnecting = false;
-        this.reconnect();
+        if (event.code !== 1000) { // Only reconnect if not a normal closure
+            this.reconnect();
+        }
       };
 
       this.ws.onerror = (error) => {
@@ -77,6 +79,9 @@ class WebSocketManager {
       this.listeners.set(type, []);
     }
     this.listeners.get(type)!.push(callback);
+    return () => {
+      this.unsubscribe(type, callback);
+    };
   }
 
   private handleMessage(message: any) {
