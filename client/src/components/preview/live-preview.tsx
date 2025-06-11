@@ -26,12 +26,12 @@ export default function LivePreview() {
       }
     };
 
-    websocketManager.on('open', handleConnection);
+    websocketManager.on('connection_established', handleConnection);
     websocketManager.on('close', handleDisconnection);
     websocketManager.on('message', handleMessage);
 
     return () => {
-      websocketManager.off('open', handleConnection);
+      websocketManager.off('connection_established', handleConnection);
       websocketManager.off('close', handleDisconnection);
       websocketManager.off('message', handleMessage);
     };

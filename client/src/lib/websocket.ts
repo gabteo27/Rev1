@@ -43,6 +43,7 @@ class WebSocketManager {
       this.ws.onopen = () => {
         console.log("WebSocket connected successfully");
         this.reconnectAttempts = 0;
+        this.emit('open');
 
         // Send pong response to server ping
         this.ws.addEventListener('message', (event) => {
@@ -74,6 +75,7 @@ class WebSocketManager {
 
       this.ws.onclose = (event) => {
         console.log(`WebSocket disconnected: ${event.code} - ${event.reason}`);
+        this.emit('close', event);
         this.ws = null;
 
         // Only reconnect if it wasn't a manual close
@@ -112,7 +114,14 @@ class WebSocketManager {
   private handleMessage(message: any) {
     const { type, data } = message;
 
+    // Emit the message event first
+    this.emit('message', message);
+
+    // Handle specific message types
     switch (type) {
+      case "connection_established":
+        this.emit('connection_established');
+        break;
       case "alert":
         this.handleAlert(data);
         break;
@@ -129,7 +138,7 @@ class WebSocketManager {
         console.log("Unknown message type:", type);
     }
 
-    // Notify listeners
+    // Notify type-specific listeners
     const typeListeners = this.listeners.get(type);
     if (typeListeners) {
       typeListeners.forEach(listener => {
@@ -218,14 +227,48 @@ class WebSocketManager {
   isConnected() {
     return this.ws?.readyState === WebSocket.OPEN;
   }
+
+  // Event listener methods for connection events
+  on(event: string, callback: (data?: any) => void) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(callback);
+
+    return () => this.off(event, callback);
+  }
+
+  off(event: string, callback: (data?: any) => void) {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      eventListeners.delete(callback);
+      if (eventListeners.size === 0) {
+        this.listeners.delete(event);
+      }
+    }
+  }
+
+  // Emit events to listeners
+  private emit(event: string, data?: any) {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      eventListeners.forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in ${event} listener:`, error);
+        }
+      });
+    }
+  }
 }
 
 // Create singleton instance
-export const wsManager = new WebSocketManager();
+export const websocketManager = new WebSocketManager();
 
 // Auto-connect when module is imported
 if (typeof window !== "undefined") {
-  wsManager.connect();
+  websocketManager.connect();
 }
 
-export default wsManager;
+export default websocketManager;
