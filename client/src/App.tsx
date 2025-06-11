@@ -21,6 +21,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Settings from "@/pages/settings";
 import Analytics from "@/pages/analytics";
 import ScreenPlayer from "@/pages/screen-player";
+import ScreenViewer from "@/pages/screen-viewer";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 const PlaylistDetail = lazy(() => import("./pages/playlist-detail"));
@@ -66,6 +67,7 @@ function Router() {
               <Route path="/settings" component={Settings} />
               <Route path="/analytics" component={Analytics} />
               <Route path="/screen-player" component={ScreenPlayer} />
+              <Route path="/screen-viewer" component={ScreenViewer} />
               <Route component={NotFound} />
             </Switch>
           </Suspense>

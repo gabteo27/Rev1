@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,9 +72,10 @@ export default function LivePreview() {
         <div className="bg-slate-900 rounded-lg aspect-video flex items-center justify-center relative overflow-hidden min-h-[200px]">
           {selectedScreen && isPreviewVisible ? (
             <iframe
-              src={`/screen-player?screenId=${selectedScreen}`}
+              src={`/screen-viewer?screenId=${selectedScreen}`}
               className="w-full h-full border-none"
               title={`Preview for ${selectedScreenData?.name || 'Screen'}`}
+              allowFullScreen
             />
           ) : (
             <div className="text-white text-center">

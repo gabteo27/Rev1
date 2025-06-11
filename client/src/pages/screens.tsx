@@ -237,10 +237,11 @@ export default function Screens() {
           {livePreviewScreenId && (
             <div className="aspect-video bg-black rounded-lg overflow-hidden">
               <iframe 
-                src={`/screen-player?screenId=${livePreviewScreenId}`} 
+                src={`/screen-viewer?screenId=${livePreviewScreenId}`} 
                 className="w-full h-full" 
                 frameBorder="0"
                 title="Vista en vivo de la pantalla"
+                allowFullScreen
               />
             </div>
           )}
