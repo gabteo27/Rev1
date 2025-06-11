@@ -1,5 +1,4 @@
 import { Switch, Route } from "wouter";
-// 1. Importa 'lazy' y 'Suspense' de React
 import { lazy, Suspense } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -7,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useAuth } from "@/hooks/useAuth";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Content from "@/pages/content";
@@ -20,9 +20,8 @@ import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import Settings from "@/pages/settings";
 import Analytics from "@/pages/analytics";
-import { SidebarProvider } from "@/components/ui/sidebar"; //Import SidebarProvider
+import { SidebarProvider } from "@/components/ui/sidebar";
 
-// La importación lazy se mantiene igual
 const PlaylistDetail = lazy(() => import("./pages/playlist-detail"));
 
 // Componente de fallback para Suspense
@@ -79,16 +78,24 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="xcientv-ui-theme">
-        <TooltipProvider>
-          <SidebarProvider>
-            <Toaster />
-            <Router />
-          </SidebarProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <ThemeProvider defaultTheme="light" storageKey="xcientv-ui-theme">
+            <ErrorBoundary>
+              <TooltipProvider>
+                <ErrorBoundary>
+                  <SidebarProvider>
+                    <Toaster />
+                    <Router />
+                  </SidebarProvider>
+                </ErrorBoundary>
+              </TooltipProvider>
+            </ErrorBoundary>
+          </ThemeProvider>
+        </ErrorBoundary>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
