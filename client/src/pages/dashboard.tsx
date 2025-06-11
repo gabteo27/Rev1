@@ -34,8 +34,16 @@ const WeatherWidget = () => {
     // Using OpenWeatherMap API (user needs to provide API key)
     const fetchWeather = async () => {
       try {
-        const apiKey = process.env.VITE_OPENWEATHER_API_KEY;
-        if (!apiKey) return;
+        const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
+        if (!apiKey) {
+          // Use demo data when no API key is available
+          setWeather({
+            name: 'Ciudad de México',
+            main: { temp: 22 },
+            weather: [{ description: 'Despejado' }]
+          });
+          return;
+        }
         
         const response = await fetch(
           `https://api.openweathermap.org/data/2.5/weather?q=Mexico City&appid=${apiKey}&units=metric`
@@ -44,6 +52,12 @@ const WeatherWidget = () => {
         setWeather(data);
       } catch (error) {
         console.error('Weather API error:', error);
+        // Fallback to demo data on error
+        setWeather({
+          name: 'Ciudad de México',
+          main: { temp: 22 },
+          weather: [{ description: 'No disponible' }]
+        });
       }
     };
     
@@ -367,7 +381,7 @@ export default function Dashboard() {
             </div>
             
             {/* Enhanced Preview Display */}
-            <div className="border rounded-lg overflow-hidden bg-gray-900 text-white min-h-[300px] relative"
+            <div className="border rounded-lg overflow-hidden bg-gray-900 text-white min-h-[300px] relative">
               {selectedScreen && isPreviewPlaying ? (
                 <div className="p-6 text-center space-y-4">
                   <div className="flex items-center justify-center gap-2 mb-4">

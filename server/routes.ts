@@ -316,7 +316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertPlaylistItemSchema.parse(itemData);
       const item = await storage.addPlaylistItem(validatedData, userId);
-      
+
       res.json(item);
     } catch (error: unknown) {
       console.error("Error adding playlist item:", error);
@@ -469,7 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Alert routes
+  // Alerts routes
   app.get("/api/alerts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -478,6 +478,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching alerts:", error);
       res.status(500).json({ message: "Failed to fetch alerts" });
+    }
+  });
+
+  // Trigger alert endpoint for testing
+  app.post("/api/alerts/trigger", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { title, message, type = 'info' } = req.body;
+
+      // Broadcast alert via WebSocket
+      const alertData = { title, message, type, userId, timestamp: new Date() };
+
+      // Send to all connected clients for this user
+      app.get('wss').clients.forEach((client: any) => {
+        if (client.readyState === 1 && client.userId === userId) {
+          client.send(JSON.stringify({
+            type: 'alert',
+            data: alertData
+          }));
+        }
+      });
+
+      res.json({ message: "Alert sent successfully" });
+    } catch (error) {
+      console.error("Error triggering alert:", error);
+      res.status(500).json({ message: "Failed to trigger alert" });
     }
   });
 
