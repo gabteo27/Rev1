@@ -2,132 +2,114 @@ import { queryClient } from "./queryClient";
 
 class WebSocketManager {
   private ws: WebSocket | null = null;
+  private listeners: Map<string, ((data: any) => void)[]> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
-  private listeners: Map<string, Set<(data: any) => void>> = new Map();
+  private reconnectInterval = 1000;
+  private isConnecting = false;
 
-  connect() {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+  constructor() {
+    this.connect();
+  }
+
+  private connect() {
+    if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
-    try {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+    this.isConnecting = true;
 
-      console.log("Connecting to WebSocket:", wsUrl);
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/ws`;
+
+      console.log('Connecting to WebSocket:', wsUrl);
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log("WebSocket connected successfully");
+        console.log('WebSocket connected successfully');
         this.reconnectAttempts = 0;
+        this.isConnecting = false;
       };
 
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log("WebSocket message received:", message);
           this.handleMessage(message);
         } catch (error) {
-          console.error("Failed to parse WebSocket message:", error);
+          console.error('Error parsing WebSocket message:', error);
         }
       };
 
       this.ws.onclose = (event) => {
-        console.log("WebSocket disconnected:", event.code, event.reason);
-        this.scheduleReconnect();
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        this.isConnecting = false;
+        this.reconnect();
       };
 
       this.ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
+        console.error('WebSocket error:', error);
+        this.isConnecting = false;
       };
     } catch (error) {
-      console.error("Failed to create WebSocket connection:", error);
-      this.scheduleReconnect();
+      console.error('Failed to create WebSocket connection:', error);
+      this.isConnecting = false;
+      this.reconnect();
     }
   }
 
-  private scheduleReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log("Max reconnection attempts reached");
-      return;
-    }
-
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
-    console.log(`Scheduling reconnect in ${delay}ms`);
-
-    setTimeout(() => {
+  private reconnect() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      this.connect();
-    }, delay);
+      const delay = Math.min(this.reconnectAttempts * this.reconnectInterval, 10000); // cap at 10 seconds
+      console.log(`Attempting to reconnect in ${delay}ms`);
+      setTimeout(() => {
+        this.connect();
+      }, delay);
+    } else {
+      console.error('Max reconnection attempts reached');
+    }
+  }
+
+  public subscribe(type: string, callback: (data: any) => void) {
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, []);
+    }
+    this.listeners.get(type)!.push(callback);
   }
 
   private handleMessage(message: any) {
     const { type, data } = message;
     const typeListeners = this.listeners.get(type);
-
     if (typeListeners) {
-      typeListeners.forEach(listener => {
-        try {
-          listener(data);
-        } catch (error) {
-          console.error(`Error in WebSocket listener for type ${type}:`, error);
-        }
-      });
+      typeListeners.forEach(listener => listener(data));
     }
   }
 
-  subscribe(type: string, listener: (data: any) => void) {
-    if (!this.listeners.has(type)) {
-      this.listeners.set(type, new Set());
-    }
-
-    this.listeners.get(type)!.add(listener);
-
-    // Return unsubscribe function
-    return () => {
-      const typeListeners = this.listeners.get(type);
-      if (typeListeners) {
-        typeListeners.delete(listener);
-        if (typeListeners.size === 0) {
-          this.listeners.delete(type);
-        }
+  public unsubscribe(type: string, callback?: (data: any) => void) {
+    const typeListeners = this.listeners.get(type);
+    if (typeListeners && callback) {
+      const index = typeListeners.indexOf(callback);
+      if (index > -1) {
+        typeListeners.splice(index, 1);
       }
-    };
+    }
   }
 
-  send(message: any) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+  public send(type: string, data: any) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type, data }));
     } else {
-      console.warn("WebSocket is not connected. Message not sent:", message);
+      console.warn('WebSocket not connected, cannot send message');
     }
   }
 
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-    this.listeners.clear();
-  }
-
-  getConnectionState() {
-    return this.ws?.readyState || WebSocket.CLOSED;
-  }
-
-  isConnected() {
-    return this.ws?.readyState === WebSocket.OPEN;
+  public isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN || false;
   }
 }
 
-// Create singleton instance
+// Export singleton instance
 export const wsManager = new WebSocketManager();
-
-// Auto-connect when module is imported
-if (typeof window !== "undefined") {
-  wsManager.connect();
-}
-
 export default wsManager;
