@@ -1,12 +1,14 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Eye, Monitor, Image as ImageIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { apiRequest } from '@/lib/queryClient';
 
 interface ScreenPreviewProps {
-  screen: any; // Pasamos el objeto screen completo
-  onPlayClick: (screenId: number) => void; // Función para abrir el modal
+  screen: any;
+  onPlayClick: (screenId: number) => void;
 }
 
 export const ScreenPreview: React.FC<ScreenPreviewProps> = ({ screen, onPlayClick }) => {
@@ -23,7 +25,14 @@ export const ScreenPreview: React.FC<ScreenPreviewProps> = ({ screen, onPlayClic
   return (
     <div className="relative aspect-video w-full bg-slate-200 dark:bg-slate-800 rounded-lg overflow-hidden mt-4 group">
       {thumbnailUrl ? (
-        <img src={thumbnailUrl} alt="Preview" className="w-full h-full object-cover" />
+        <img 
+          src={thumbnailUrl} 
+          alt="Preview" 
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <Monitor className="w-10 h-10 text-slate-400 dark:text-slate-600" />
@@ -34,6 +43,7 @@ export const ScreenPreview: React.FC<ScreenPreviewProps> = ({ screen, onPlayClic
         <Button
           onClick={() => onPlayClick(screen.id)}
           variant="secondary"
+          size="sm"
         >
           <Eye className="w-4 h-4 mr-2" />
           Ver en Vivo
@@ -41,11 +51,16 @@ export const ScreenPreview: React.FC<ScreenPreviewProps> = ({ screen, onPlayClic
       </div>
 
       {firstItem && (
-        <Badge className="absolute bottom-2 left-2" variant="secondary">{firstItem.title}</Badge>
+        <Badge className="absolute bottom-2 left-2" variant="secondary">
+          {firstItem.title || firstItem.name}
+        </Badge>
+      )}
+
+      {playlist && (
+        <Badge className="absolute top-2 right-2" variant="outline">
+          {playlist.items?.length || 0} elementos
+        </Badge>
       )}
     </div>
   );
 };
-
-// Necesitamos este import para la función de la query
-import { apiRequest } from '@/lib/queryClient';
