@@ -50,24 +50,25 @@ function Router() {
       ) : (
         <div className="flex h-screen bg-slate-50">
           <Sidebar />
-          <div className="lg:pl-72 flex flex-col flex-1">
-            <Suspense fallback={<Loading />}>
-              <Switch>
-                <Route path="/" component={Dashboard} />
-                <Route path="/content" component={Content} />
-                <Route path="/playlists" component={Playlists} />
-                <Route path="/playlist/:id" component={PlaylistDetail} />
-                <Route path="/screens" component={Screens} />
-                <Route path="/alerts" component={Alerts} />
-                <Route path="/scheduling" component={Scheduling} />
-                <Route path="/widgets" component={Widgets} />
-                <Route path="/deployment" component={Deployment} />
-                <Route path="/settings" component={Settings} />
-                <Route path="/analytics" component={Analytics} />
-                <Route path="/screen-player" component={ScreenPlayer} />
-                <Route component={NotFound} />
-              </Switch>
-            </Suspense>
+          <div className="lg:pl-sidebar flex flex-col flex-1">
+
+          <Suspense fallback={<Loading />}>
+            <Switch>
+              <Route path="/" component={Dashboard} />
+              <Route path="/content" component={Content} />
+              <Route path="/playlists" component={Playlists} />
+              <Route path="/playlist/:id" component={PlaylistDetail} />
+              <Route path="/screens" component={Screens} />
+              <Route path="/alerts" component={Alerts} />
+              <Route path="/scheduling" component={Scheduling} />
+              <Route path="/widgets" component={Widgets} />
+              <Route path="/deployment" component={Deployment} />
+              <Route path="/settings" component={Settings} />
+              <Route path="/analytics" component={Analytics} />
+              <Route path="/screen-player" component={ScreenPlayer} />
+              <Route component={NotFound} />
+            </Switch>
+          </Suspense>
           </div>
         </div>
       )}

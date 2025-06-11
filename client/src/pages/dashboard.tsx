@@ -106,39 +106,45 @@ export default function Dashboard() {
   const { toast } = useToast();
 
   // Subscribe to WebSocket events
-  useEffect(() => {
-    const unsubscribeAlert = wsManager.subscribe('alert', (alertData) => {
-      console.log('Alert received via WebSocket:', alertData);
-      toast({
-        title: alertData.title || "Nueva Alerta",
-        description: alertData.message,
-        variant: alertData.type === 'error' ? 'destructive' : 'default',
-      });
+      useEffect(() => {
+        // Suscribirse a alertas
+        const unsubscribeAlerts = wsManager.subscribe('alert', (alertData) => {
+          console.log('Alerta recibida vía WebSocket:', alertData);
+          toast({
+            title: alertData.title || "Nueva Alerta",
+            description: alertData.message,
+            variant: alertData.type === 'error' ? 'destructive' : 'default',
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+        });
       
       // Refetch alerts to update the UI
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
     });
 
-    const unsubscribeScreen = wsManager.subscribe('screen-update', (screenData) => {
-      console.log('Screen update received via WebSocket:', screenData);
-      toast({
-        title: "Pantalla Actualizada",
-        description: `${screenData.name} ha sido actualizada`,
+      const unsubscribeScreens = wsManager.subscribe('screen-update', (screenData) => {
+        console.log('Actualización de pantalla recibida:', screenData);
+        toast({
+          title: "Pantalla Actualizada",
+          description: `${screenData.name} ha sido actualizada`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
       });
       
       // Refetch screens to update the UI
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     });
 
-    return () => {
-      if (typeof unsubscribeAlert === 'function') {
-        unsubscribeAlert();
-      }
-      if (typeof unsubscribeScreen === 'function') {
-        unsubscribeScreen();
-      }
-    };
-  }, [toast]);
+return () => {
+    // ✅ VERIFICACIÓN: Nos aseguramos de que las funciones existan antes de llamarlas
+    if (typeof unsubscribeAlerts === 'function') {
+      unsubscribeAlerts();
+    }
+    if (typeof unsubscribeScreens === 'function') {
+      unsubscribeScreens();
+    }
+  };
+}, [toast]);
 
   // Fetch data with proper error handling
   const { data: screens = [] } = useQuery({
@@ -160,7 +166,7 @@ export default function Dashboard() {
     queryKey: ["/api/alerts"],
     retry: 1,
   });
-
+  
   // Control playback mutation
   const playbackMutation = useMutation({
     mutationFn: async ({ screenId, playlistId, action }: { screenId: string, playlistId: string, action: 'play' | 'pause' | 'stop' }) => {
@@ -225,23 +231,23 @@ export default function Dashboard() {
     playlists.reduce((sum: number, playlist: any) => sum + (playlist.totalDuration || 0), 0) : 0;
   const activeAlerts = Array.isArray(alerts) ? alerts.filter((a: any) => a.isActive).length : 0;
 
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-  };
 
+const formatDuration = (seconds: number) => {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+};
+  
   const selectedScreenData = Array.isArray(screens) ? screens.find((s: any) => s.id.toString() === selectedScreen) : null;
   const selectedPlaylistData = Array.isArray(playlists) ? playlists.find((p: any) => p.id.toString() === selectedPlaylist) : null;
 
-  return (
+return (
     <div className="space-y-6 min-h-screen bg-background">
       <Header
         title="Dashboard XcienTV"
         subtitle="Panel de control principal para señalización digital"
       />
-
-      {/* Statistics Cards */}
+      {/* ... El resto de tu JSX sin cambios ... */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <Card>
           <CardContent className="p-6">
@@ -305,14 +311,10 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Live Preview */}
         <div className="xl:col-span-2">
           <LivePreview />
         </div>
-
-        {/* Widgets and Activity */}
         <div className="space-y-6">
-          {/* Live Widgets */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -325,8 +327,6 @@ export default function Dashboard() {
               <ClockWidget />
             </CardContent>
           </Card>
-
-          {/* System Activity */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -342,7 +342,6 @@ export default function Dashboard() {
                   <p className="text-xs text-muted-foreground">Todas las pantallas sincronizadas</p>
                 </div>
               </div>
-              
               {activeAlerts > 0 && (
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-orange-500 rounded-full mt-2" />
@@ -352,34 +351,12 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
-
               <div className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
                 <div>
                   <p className="text-sm">Última sincronización</p>
                   <p className="text-xs text-muted-foreground">{new Date().toLocaleTimeString('es-ES')}</p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Resumen Rápido</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Pantallas conectadas</span>
-                <Badge variant="default">{activeScreens}/{totalScreens}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Contenido total</span>
-                <Badge variant="secondary">{totalFiles} archivos</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Tiempo de contenido</span>
-                <Badge variant="outline">{formatDuration(totalDuration)}</Badge>
               </div>
             </CardContent>
           </Card>

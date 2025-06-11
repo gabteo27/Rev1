@@ -545,7 +545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Broadcast alert via WebSocket
       const alertData = { title, message, type, userId, timestamp: new Date() };
-
+  
       // Send to all connected clients for this user
       app.get('wss').clients.forEach((client: any) => {
         if (client.readyState === 1 && client.userId === userId) {
@@ -582,8 +582,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertAlertSchema.parse(alertData);
       const alert = await storage.createAlert(validatedData);
 
-      // Broadcast alert via WebSocket
-      broadcastAlert(alert);
+      // ✅ Usa la nueva función para notificar solo a los clientes del usuario
+      broadcastToUser(userId, 'alert', alert);
 
       res.json(alert);
     } catch (error) {
@@ -926,14 +926,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket server for real-time updates
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
+  interface WebSocketWithId extends WebSocket {
+    userId?: string;
+  }
+  
   wss.on("connection", (ws: WebSocket) => {
     console.log("Client connected to WebSocket");
 
-    ws.on("close", () => {
-      console.log("Client disconnected from WebSocket");
+    ws.on("message", (message) => {
+      try {
+        const parsed = JSON.parse(message.toString());
+        // Asigna el userId si el cliente lo envía al conectarse
+        if (parsed.type === 'auth' && parsed.userId) {
+          ws.userId = parsed.userId;
+          console.log(`WebSocket client authenticated for user: ${ws.userId}`);
+        }
+      } catch (e) {
+        console.warn("Invalid WebSocket message received");
+      }
     });
-  });
+    
+    ws.on("close", () => {
+        console.log(`Client disconnected (User: ${ws.userId || 'unauthenticated'})`);
+      });
+    });
 
+  app.set('wss', wss);
+
+  function broadcastToUser(userId: string, type: string, data: any) {
+    const message = JSON.stringify({ type, data });
+    const wssInstance = app.get('wss') as WebSocketServer;
+
+    wssInstance.clients.forEach((client: WebSocket) => {
+      const clientWithId = client as WebSocketWithId;
+      // Envía si el cliente está abierto y pertenece al usuario correcto
+      if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
+        clientWithId.send(message);
+      }
+    });
   // Function to broadcast alerts to all connected clients
   function broadcastAlert(alert: any) {
     const message = JSON.stringify({
