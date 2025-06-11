@@ -281,9 +281,9 @@ return (
         subtitle="Panel de control principal para señalización digital"
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-6">
+      <div className="px-6 space-y-6">
         {/* Control Panel */}
-        <Card className="lg:col-span-1">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Monitor className="h-5 w-5" />
@@ -291,44 +291,46 @@ return (
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="screen-select">Seleccionar Pantalla</Label>
-              <Select value={selectedScreen} onValueChange={setSelectedScreen}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Elegir pantalla" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.isArray(screens) && screens.map((screen: any) => (
-                    <SelectItem key={screen.id} value={screen.id.toString()}>
-                      {screen.name} - {screen.isOnline ? 'En línea' : 'Desconectada'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="screen-select">Seleccionar Pantalla</Label>
+                <Select value={selectedScreen} onValueChange={setSelectedScreen}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Elegir pantalla" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.isArray(screens) && screens.map((screen: any) => (
+                      <SelectItem key={screen.id} value={screen.id.toString()}>
+                        {screen.name} - {screen.isOnline ? 'En línea' : 'Desconectada'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label htmlFor="playlist-select">Seleccionar Playlist</Label>
-              <Select value={selectedPlaylist} onValueChange={setSelectedPlaylist}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Elegir playlist" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.isArray(playlists) && playlists.map((playlist: any) => (
-                    <SelectItem key={playlist.id} value={playlist.id.toString()}>
-                      {playlist.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div>
+                <Label htmlFor="playlist-select">Seleccionar Playlist</Label>
+                <Select value={selectedPlaylist} onValueChange={setSelectedPlaylist}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Elegir playlist" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.isArray(playlists) && playlists.map((playlist: any) => (
+                      <SelectItem key={playlist.id} value={playlist.id.toString()}>
+                        {playlist.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {selectedScreen && selectedPlaylist && (
-              <div className="flex gap-2 pt-4">
+              <div className="flex gap-2 pt-4 justify-center">
                 <Button
                   onClick={togglePreview}
                   disabled={playbackMutation.isPending}
-                  className="flex-1"
+                  className="flex-1 max-w-xs"
                 >
                   {isPreviewPlaying ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
                   {isPreviewPlaying ? 'Pausar' : 'Reproducir'}
@@ -366,127 +368,75 @@ return (
           </CardContent>
         </Card>
 
-        {/* Live Preview and System Status */}
-        <div className="lg:col-span-2 space-y-6">
-          <LivePreview />
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Widgets en Vivo
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <WeatherWidget />
-                <ClockWidget />
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Actividad del Sistema
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
-                  <div>
-                    <p className="text-sm">Sistema operativo</p>
-                    <p className="text-xs text-muted-foreground">Todas las pantallas sincronizadas</p>
-                  </div>
-                </div>
-                {activeAlerts > 0 && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full mt-2" />
-                    <div>
-                      <p className="text-sm">{activeAlerts} alerta{activeAlerts > 1 ? 's' : ''} activa{activeAlerts > 1 ? 's' : ''}</p>
-                      <p className="text-xs text-muted-foreground">Requieren atención</p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
-                  <div>
-                    <p className="text-sm">Última sincronización</p>
-                    <p className="text-xs text-muted-foreground">{new Date().toLocaleTimeString('es-ES')}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        {/* Vista Previa */}
+        <LivePreview />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                <Tv className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+      <div className="px-6 space-y-6">
+        {/* Estadísticas principales */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                  <Tv className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-muted-foreground">Pantallas</p>
+                  <p className="text-2xl font-bold">{activeScreens}/{totalScreens}</p>
+                  <p className="text-xs text-muted-foreground">Activas/Total</p>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm text-muted-foreground">Pantallas</p>
-                <p className="text-2xl font-bold">{activeScreens}/{totalScreens}</p>
-                <p className="text-xs text-muted-foreground">Activas/Total</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                <List className="w-6 h-6 text-green-600 dark:text-green-400" />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                  <List className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-muted-foreground">Playlists</p>
+                  <p className="text-2xl font-bold">{Array.isArray(playlists) ? playlists.length : 0}</p>
+                  <p className="text-xs text-muted-foreground">Configuradas</p>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm text-muted-foreground">Playlists</p>
-                <p className="text-2xl font-bold">{Array.isArray(playlists) ? playlists.length : 0}</p>
-                <p className="text-xs text-muted-foreground">Configuradas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                <Folder className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                  <Folder className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-muted-foreground">Contenido</p>
+                  <p className="text-2xl font-bold">{totalFiles}</p>
+                  <p className="text-xs text-muted-foreground">Archivos</p>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm text-muted-foreground">Contenido</p>
-                <p className="text-2xl font-bold">{totalFiles}</p>
-                <p className="text-xs text-muted-foreground">Archivos</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-muted-foreground">Duración Total</p>
+                  <p className="text-2xl font-bold">{formatDuration(totalDuration)}</p>
+                  <p className="text-xs text-muted-foreground">Contenido</p>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm text-muted-foreground">Duración Total</p>
-                <p className="text-2xl font-bold">{formatDuration(totalDuration)}</p>
-                <p className="text-xs text-muted-foreground">Contenido</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
-          <LivePreview />
+            </CardContent>
+          </Card>
         </div>
-        <div className="space-y-6">
+
+        {/* Widgets y actividad del sistema */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -499,6 +449,7 @@ return (
               <ClockWidget />
             </CardContent>
           </Card>
+          
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

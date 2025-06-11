@@ -6,12 +6,17 @@ import { Image, Video, FileText, Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function ContentLibrary() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const { data: content } = useQuery({
     queryKey: ["/api/content"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/content");
+      return response.json();
+    },
     retry: false,
   });
 

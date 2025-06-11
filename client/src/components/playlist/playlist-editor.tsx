@@ -26,23 +26,38 @@ export function PlaylistEditor() {
 
   const { data: playlists } = useQuery({
     queryKey: ["/api/playlists"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/playlists");
+      return response.json();
+    },
     retry: false,
   });
 
   const { data: playlistData } = useQuery({
     queryKey: ["/api/playlists", selectedPlaylistId],
+    queryFn: async () => {
+      const response = await apiRequest(`/api/playlists/${selectedPlaylistId}`);
+      return response.json();
+    },
     enabled: !!selectedPlaylistId,
     retry: false,
   });
 
   const { data: content } = useQuery({
     queryKey: ["/api/content"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/content");
+      return response.json();
+    },
     retry: false,
   });
 
   const updateItemMutation = useMutation({
     mutationFn: async ({ id, customDuration }: { id: number; customDuration: number }) => {
-      const response = await apiRequest("PUT", `/api/playlist-items/${id}`, { customDuration });
+      const response = await apiRequest(`/api/playlist-items/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ customDuration })
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -52,7 +67,7 @@ export function PlaylistEditor() {
 
   const deleteItemMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/playlist-items/${id}`);
+      await apiRequest(`/api/playlist-items/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       toast({
@@ -65,7 +80,10 @@ export function PlaylistEditor() {
 
   const reorderMutation = useMutation({
     mutationFn: async (itemOrders: { id: number; order: number }[]) => {
-      await apiRequest("PUT", `/api/playlists/${selectedPlaylistId}/reorder`, { itemOrders });
+      await apiRequest(`/api/playlists/${selectedPlaylistId}/reorder`, {
+        method: "PUT",
+        body: JSON.stringify({ itemOrders })
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
@@ -75,9 +93,9 @@ export function PlaylistEditor() {
   const addItemMutation = useMutation({
     mutationFn: async (contentItemId: number) => {
       const order = playlistData?.items?.length || 0;
-      const response = await apiRequest("POST", `/api/playlists/${selectedPlaylistId}/items`, {
-        contentItemId,
-        order,
+      const response = await apiRequest(`/api/playlists/${selectedPlaylistId}/items`, {
+        method: "POST",
+        body: JSON.stringify({ contentItemId, order })
       });
       return response.json();
     },
