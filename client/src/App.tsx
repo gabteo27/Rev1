@@ -1,3 +1,4 @@
+
 import { Switch, Route, Redirect } from "wouter";
 import { lazy, Suspense, type PropsWithChildren } from "react";
 import { queryClient } from "./lib/queryClient";
@@ -33,81 +34,74 @@ const Loading = () => (
   </div>
 );
 
-// ✅ Componente para el layout principal del panel de administración
+// Componente para el layout principal del panel de administración
 const AdminLayout = ({ children }: PropsWithChildren) => (
-  <div className="flex h-screen bg-slate-50 dark:bg-background">
-    <Sidebar />
-    <div className="lg:pl-sidebar flex-1 flex flex-col overflow-hidden">
-      <Suspense fallback={<Loading />}>
-        {children}
-      </Suspense>
+  <SidebarProvider>
+    <div className="flex h-screen bg-slate-50 dark:bg-background">
+      <Sidebar />
+      <div className="lg:pl-sidebar flex-1 flex flex-col overflow-hidden">
+        <Suspense fallback={<Loading />}>
+          {children}
+        </Suspense>
+      </div>
     </div>
-  </div>
+  </SidebarProvider>
 );
 
-// ✅ Componente que renderiza las rutas protegidas si el usuario está autenticado
-const AppRoutes = () => {
+function App() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <Loading />;
-  }
-
-  // Si el usuario está autenticado, muestra el layout del admin con sus rutas internas
-  if (isAuthenticated) {
     return (
-      <AdminLayout>
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/content" component={Content} />
-          <Route path="/playlists" component={Playlists} />
-          <Route path="/playlist/:id" component={PlaylistDetail} />
-          <Route path="/screens" component={Screens} />
-          <Route path="/alerts" component={Alerts} />
-          <Route path="/scheduling" component={Scheduling} />
-          <Route path="/widgets" component={Widgets} />
-          <Route path="/deployment" component={Deployment} />
-          <Route path="/settings" component={Settings} />
-          <Route path="/analytics" component={Analytics} />
-          {/* La ruta de /screen-player ya no está aquí */}
-          <Route component={NotFound} />
-        </Switch>
-      </AdminLayout>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="light" storageKey="xcientv-ui-theme">
+          <TooltipProvider>
+            <Loading />
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     );
   }
 
-  // Si no está autenticado, muestra las rutas públicas
-  return (
-    <Switch>
-      <Route path="/" component={Landing} />
-      {/* Si intentan acceder a otra ruta sin estar logueado, los mandamos al landing */}
-      <Route path="/:rest*">
-        <Redirect to="/" />
-      </Route>
-    </Switch>
-  );
-};
-
-
-// ✅ El componente App principal ahora tiene una estructura de enrutamiento de alto nivel
-function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="xcientv-ui-theme">
         <TooltipProvider>
-          <SidebarProvider>
-            <Toaster />
-            <Switch>
-              {/* Ruta especial para el reproductor, siempre disponible y sin layout */}
-              <Route path="/screen-player" component={ScreenPlayer} />
+          <Toaster />
+          <Switch>
+            {/* Ruta especial para el reproductor, siempre disponible y sin layout */}
+            <Route path="/screen-player" component={ScreenPlayer} />
 
-              {/* Todas las demás rutas son manejadas por AppRoutes */}
-              <Route path="/:rest*">
-                <AppRoutes />
-              </Route>
-            </Switch>
-          </SidebarProvider>
+            {/* Si el usuario está autenticado, muestra el dashboard con sidebar */}
+            {isAuthenticated ? (
+              <AdminLayout>
+                <Switch>
+                  <Route path="/" component={Dashboard} />
+                  <Route path="/dashboard" component={Dashboard} />
+                  <Route path="/content" component={Content} />
+                  <Route path="/playlists" component={Playlists} />
+                  <Route path="/playlist/:id" component={PlaylistDetail} />
+                  <Route path="/screens" component={Screens} />
+                  <Route path="/alerts" component={Alerts} />
+                  <Route path="/scheduling" component={Scheduling} />
+                  <Route path="/widgets" component={Widgets} />
+                  <Route path="/deployment" component={Deployment} />
+                  <Route path="/settings" component={Settings} />
+                  <Route path="/analytics" component={Analytics} />
+                  <Route component={NotFound} />
+                </Switch>
+              </AdminLayout>
+            ) : (
+              /* Si no está autenticado, muestra solo el landing */
+              <Switch>
+                <Route path="/" component={Landing} />
+                <Route path="/:rest*">
+                  <Redirect to="/" />
+                </Route>
+              </Switch>
+            )}
+          </Switch>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
