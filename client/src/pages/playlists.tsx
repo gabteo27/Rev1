@@ -69,7 +69,7 @@ export default function Playlists() {
         method: "POST",
         body: JSON.stringify({ 
           contentItemId,
-          order: (selectedPlaylistData?.items?.length || 0) + 1
+          order: (selectedPlaylistData && Array.isArray(selectedPlaylistData.items) ? selectedPlaylistData.items.length : 0) + 1
         })
       });
     },
@@ -200,11 +200,11 @@ export default function Playlists() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <List className="h-5 w-5" />
-              Playlists ({playlists.length})
+              Playlists ({Array.isArray(playlists) ? playlists.length : 0})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {playlists.length === 0 ? (
+            {!Array.isArray(playlists) || playlists.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <List className="h-12 w-12 mx-auto mb-4 opacity-20" />
                 <p>No hay playlists</p>
@@ -247,7 +247,7 @@ export default function Playlists() {
             </CardTitle>
             <CardDescription>
               {selectedPlaylist ? 
-                `Elementos en "${playlists.find((p: any) => p.id === selectedPlaylist)?.name}"` :
+                `Elementos en "${Array.isArray(playlists) ? playlists.find((p: any) => p.id === selectedPlaylist)?.name : ''}"` :
                 "Selecciona una playlist para ver su contenido"
               }
             </CardDescription>
@@ -258,7 +258,7 @@ export default function Playlists() {
                 <Play className="h-12 w-12 mx-auto mb-4 opacity-20" />
                 <p>Selecciona una playlist</p>
               </div>
-            ) : selectedPlaylistData?.items?.length === 0 ? (
+            ) : !selectedPlaylistData || !Array.isArray(selectedPlaylistData.items) || selectedPlaylistData.items.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
                 <p>Playlist vacía</p>
@@ -266,7 +266,7 @@ export default function Playlists() {
               </div>
             ) : (
               <div className="space-y-3">
-                {selectedPlaylistData?.items?.map((item: any, index: number) => (
+                {selectedPlaylistData.items.map((item: any, index: number) => (
                   <div key={item.id} className="flex items-center gap-3 p-3 border rounded-lg">
                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                     <div className="flex-1">
