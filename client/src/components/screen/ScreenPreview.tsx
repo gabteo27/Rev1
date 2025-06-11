@@ -1,32 +1,51 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Eye, Monitor, Image as ImageIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface ScreenPreviewProps {
-  screenId: number;
+  screen: any; // Pasamos el objeto screen completo
+  onPlayClick: (screenId: number) => void; // Función para abrir el modal
 }
 
-export const ScreenPreview: React.FC<ScreenPreviewProps> = ({ screenId }) => {
-  const [isLoading, setIsLoading] = React.useState(true);
+export const ScreenPreview: React.FC<ScreenPreviewProps> = ({ screen, onPlayClick }) => {
+  // Obtenemos la playlist asignada a esta pantalla
+  const { data: playlist } = useQuery({
+    queryKey: ['playlist_preview', screen.playlistId],
+    queryFn: () => apiRequest(`/api/playlists/${screen.playlistId}`).then(res => res.json()),
+    enabled: !!screen.playlistId,
+  });
 
-  // Usamos la ruta que ya tienes para visualizar el reproductor de una pantalla específica
-  const playerUrl = `/screen-player?screenId=${screenId}`;
+  const firstItem = playlist?.items?.[0]?.contentItem;
+  const thumbnailUrl = firstItem?.thumbnailUrl || (firstItem?.type === 'image' ? firstItem.url : null);
 
   return (
-    <div className="relative aspect-video w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-700 mt-4">
-      {isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-black bg-opacity-50">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="mt-2 text-xs">Cargando vista previa...</span>
+    <div className="relative aspect-video w-full bg-slate-200 dark:bg-slate-800 rounded-lg overflow-hidden mt-4 group">
+      {thumbnailUrl ? (
+        <img src={thumbnailUrl} alt="Preview" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <Monitor className="w-10 h-10 text-slate-400 dark:text-slate-600" />
         </div>
       )}
-      <iframe
-        src={playerUrl}
-        title={`Vista previa de la Pantalla ${screenId}`}
-        className={`w-full h-full border-0 transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
-        onLoad={() => setIsLoading(false)}
-        // El sandbox añade una capa de seguridad
-        sandbox="allow-scripts allow-same-origin"
-      />
+
+      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <Button
+          onClick={() => onPlayClick(screen.id)}
+          variant="secondary"
+        >
+          <Eye className="w-4 h-4 mr-2" />
+          Ver en Vivo
+        </Button>
+      </div>
+
+      {firstItem && (
+        <Badge className="absolute bottom-2 left-2" variant="secondary">{firstItem.title}</Badge>
+      )}
     </div>
   );
 };
+
+// Necesitamos este import para la función de la query
+import { apiRequest } from '@/lib/queryClient';

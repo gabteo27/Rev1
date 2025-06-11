@@ -4,6 +4,8 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import multer from "multer";
 import path from "path";
+import fs from "fs-extra";
+import { takeScreenshot } from './screenshot';
 import { storage } from "./storage";
 import { randomBytes } from 'crypto';
 import { isPlayerAuthenticated } from "./playerAuth";
@@ -109,17 +111,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let contentData: any = {
         userId,
         title,
-        description,
-        duration: duration ? parseInt(duration) : 30,
+        description: description || null,
+        duration: duration ? parseInt(duration, 10) : 30,
         category: category || null,
         tags: tags ? (Array.isArray(tags) ? tags : tags.split(",").map((t: string) => t.trim())) : [],
+        thumbnailUrl: null, // ✅ Inicializamos thumbnailUrl
       };
 
       if (req.file) {
-        // File upload - determine type from file
+        // Manejo de archivos subidos
         const mimeType = req.file.mimetype;
         if (mimeType.startsWith('image/')) {
           contentData.type = 'image';
+          contentData.thumbnailUrl = `/uploads/${req.file.filename}`; // La propia imagen es su miniatura
         } else if (mimeType.startsWith('video/')) {
           contentData.type = 'video';
         } else if (mimeType === 'application/pdf') {
@@ -129,50 +133,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         contentData.url = `/uploads/${req.file.filename}`;
         contentData.fileSize = req.file.size;
+
       } else if (url) {
-        // URL content - set type as webpage
+        // Manejo de contenido web
         contentData.type = 'webpage';
         contentData.url = url;
-        // Validate URL format
+
         try {
           new URL(url);
-          
-          // Generate screenshot for webpage
-          try {
-            const screenshotResponse = await fetch(`https://api.screenshotone.com/take?access_key=demo&url=${encodeURIComponent(url)}&format=png&viewport_width=1280&viewport_height=720&device_scale_factor=1&format=png&response_type=by_format`, {
-              timeout: 10000
-            });
-            
-            if (screenshotResponse.ok) {
-              const screenshotBuffer = await screenshotResponse.arrayBuffer();
-              const screenshotFilename = `screenshot_${Date.now()}.png`;
-              const fs = require('fs');
-              const screenshotPath = `uploads/${screenshotFilename}`;
-              
-              fs.writeFileSync(screenshotPath, Buffer.from(screenshotBuffer));
-              contentData.thumbnailUrl = `/uploads/${screenshotFilename}`;
-            }
-          } catch (screenshotError) {
-            console.warn('Failed to generate screenshot:', screenshotError);
-            // Continue without screenshot
+          // ✅ 2. Llama a tu función local en lugar de una API externa
+          const thumbnailUrl = await takeScreenshot(url);
+          if (thumbnailUrl) {
+            contentData.thumbnailUrl = thumbnailUrl;
           }
-          
-        } catch (error) {
-          return res.status(400).json({ message: "Invalid URL format" });
+        } catch (e) {
+          console.error("Error procesando URL o generando miniatura con Puppeteer:", e);
+          return res.status(400).json({ message: "URL inválida o no se pudo generar la miniatura." });
         }
-      } else {
-        return res.status(400).json({ message: "Either file or URL is required" });
-      }
+        } else {
+        return res.status(400).json({ message: "Se requiere un archivo o una URL." });
+        }
 
       const validatedData = insertContentItemSchema.parse(contentData);
       const item = await storage.createContentItem(validatedData);
-      res.json(item);
-    } catch (error) {
+      res.status(201).json(item);
+
+    } catch (error: any) {
       console.error("Error creating content:", error);
       if (error.name === 'ZodError') {
-        res.status(400).json({ message: "Invalid data provided", errors: error.errors });
+        res.status(400).json({ message: "Datos inválidos", errors: error.errors });
       } else {
-        res.status(500).json({ message: "Failed to create content" });
+        res.status(500).json({ message: "No se pudo crear el contenido" });
       }
     }
   });

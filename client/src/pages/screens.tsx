@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { LivePlayerView } from "@/components/screen/LivePlayerView";
 import { useToast } from "@/hooks/use-toast";
 import type { Screen, Playlist } from "@shared/schema";
 import Header from "@/components/layout/header";
@@ -21,6 +22,7 @@ const initialPairFormState = { pairingCode: "", name: "", location: "", playlist
 export default function Screens() {
   const [isPairModalOpen, setIsPairModalOpen] = useState(false);
   const [editingScreen, setEditingScreen] = useState<Screen | null>(null);
+  const [livePreviewScreenId, setLivePreviewScreenId] = useState<number | null>(null);
   const [pairFormData, setPairFormData] = useState(initialPairFormState);
   const [visiblePreviews, setVisiblePreviews] = useState<Record<number, boolean>>({});
 
@@ -209,7 +211,12 @@ export default function Screens() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+      {/* MODAL PARA VER EN VIVO */}
+      <Dialog open={!!livePreviewScreenId} onOpenChange={() => setLivePreviewScreenId(null)}>
+        <DialogContent className="max-w-4xl p-0 border-0 bg-transparent">
+          {livePreviewScreenId && <LivePlayerView screenId={livePreviewScreenId} />}
+        </DialogContent>
+      </Dialog>
       {/* LISTA DE PANTALLAS */}
       <div className="flex-1 px-4 sm:px-6 py-6 overflow-auto">
         {screens.length === 0 ? (
@@ -220,7 +227,7 @@ export default function Screens() {
               <Card key={screen.id} className="flex flex-col hover:shadow-md transition-shadow">
                 {/* ✅ MODIFICADO: Se añade flex-col y flex-grow para una estructura flexible vertical. El padding se hace responsivo. */}
                 <CardContent className="p-4 md:p-5 flex-grow flex flex-col">
-
+                
                   {/* ✅ MODIFICADO: La sección del header ahora tiene más espacio y el título es truncado si es muy largo. */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
@@ -235,6 +242,7 @@ export default function Screens() {
                     </div>
                   </div>
                   {visiblePreviews[screen.id] && <ScreenPreview screenId={screen.id} />}
+                  <ScreenPreview screen={screen} onPlayClick={setLivePreviewScreenId} />
                   {/* ✅ MODIFICADO: La sección de contenido ahora ocupa el espacio sobrante. */}
                   <div className="flex-grow my-4 space-y-2 text-sm">
                     <div className="text-slate-600">
@@ -244,16 +252,16 @@ export default function Screens() {
                       <span className="font-medium text-slate-700">Última vez online:</span> {formatDate(screen.lastSeen)}
                     </div>
                   </div>
-
+          
                   {/* ✅ MODIFICADO: Las acciones ahora están en un contenedor separado que se alinea al final. */}
                   <div className="pt-4 border-t flex justify-end items-center space-x-1">
                     <Button 
-                      size="sm"
+                      size="sm" 
                       variant="ghost" 
-                      onClick={() => togglePreview(screen.id)}
-                      title={visiblePreviews[screen.id] ? "Ocultar vista previa" : "Mostrar vista previa"}
+                      onClick={() => window.open(`/screen-player?screenId=${screen.id}`, '_blank')}
+                      title="Abrir en nueva pestaña"
                     >
-                      {visiblePreviews[screen.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      <Monitor className="w-4 h-4" />
                     </Button>
 
                     <Button 
