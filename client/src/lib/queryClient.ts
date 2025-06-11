@@ -1,55 +1,73 @@
+import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-import { QueryClient } from "@tanstack/react-query";
+async function throwIfResNotOk(res: Response) {
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    throw new Error(`${res.status}: ${text}`);
+  }
+}
 
-export const queryClient = new QueryClient({  
-  defaultOptions: {
-    queries: {
-      queryFn: async ({ queryKey }) => {
-        try {
-          const url = queryKey[0] as string;
-          const response = await fetch(url, {
-            credentials: 'include',
-          });
-
-          if (!response.ok) {
-            const error = new Error(`${response.status}: ${response.statusText}`);
-            error.message = `${response.status}: ${response.statusText}`;
-            throw error;
-          }
-
-          return response.json();
-        } catch (error) {
-          console.error('Query error:', error);
-          throw error;
-        }
-      },
-      staleTime: 30 * 1000, // 30 seconds
-      retry: (failureCount, error) => {
-        // Don't retry on 401 errors (unauthorized)
-        if (error instanceof Error && error.message.includes('401')) {
-          return false;
-        }
-        return failureCount < 3;
-      },
-    },
-  },
-});
-
-// Export helper function for API requests
-export const apiRequest = async (url: string, options?: RequestInit) => {
+export async function apiRequest(
+  url: string,
+  options?: RequestInit
+): Promise<Response> {
   try {
     const response = await fetch(url, {
-      credentials: 'include',
       ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
     });
 
     if (!response.ok) {
-      throw new Error(`${response.status}: ${response.statusText}`);
+      let errorMessage = 'Request failed';
+      try {
+        const errorData = await response.text();
+        const parsed = JSON.parse(errorData);
+        errorMessage = parsed.message || errorData;
+      } catch (e) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
-    return response.json();
+    return response;
   } catch (error) {
-    console.error('API request error:', error);
+    console.error('API Request failed:', error);
     throw error;
   }
-};
+}
+
+type UnauthorizedBehavior = "returnNull" | "throw";
+export const getQueryFn: <T>(options: {
+  on401: UnauthorizedBehavior;
+}) => QueryFunction<T> =
+  ({ on401: unauthorizedBehavior }) =>
+  async ({ queryKey }) => {
+    const res = await fetch(queryKey[0] as string, {
+      credentials: "include",
+    });
+
+    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      return null;
+    }
+
+    await throwIfResNotOk(res);
+    return await res.json();
+  };
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      queryFn: getQueryFn({ on401: "throw" }),
+      refetchInterval: false,
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
+      retry: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});

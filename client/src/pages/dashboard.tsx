@@ -1,333 +1,130 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import Header from "@/components/layout/header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tv, List, Folder, Clock, Play, Eye, Settings, Plus, Monitor, Pause } from "lucide-react";
+
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Tv, List, Folder, Clock } from "lucide-react";
+import { PlaylistEditor } from "@/components/playlist/playlist-editor";
+import  LivePreview from "@/components/preview/live-preview";
+import  ContentLibrary  from "@/components/content/content-library";
+import { WidgetPanel } from "@/components/widgets/widget-panel";
 
 export default function Dashboard() {
-  const { toast } = useToast();
-  const [selectedScreen, setSelectedScreen] = useState<string>("");
-  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [activeScreens, setActiveScreens] = useState(0);
+  const [totalPlaylists, setTotalPlaylists] = useState(0);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [totalDuration, setTotalDuration] = useState(0);
 
-  // Fetch dashboard data with error handling
-  const { data: screens = [], error: screensError } = useQuery({
-    queryKey: ["/api/screens"],
-    retry: false,
-  });
-
-  const { data: playlists = [], error: playlistsError } = useQuery({
-    queryKey: ["/api/playlists"],
-    retry: false,
-  });
-
-  const { data: content = [], error: contentError } = useQuery({
-    queryKey: ["/api/content"],
-    retry: false,
-  });
-
-  // Log any errors for debugging
-  if (screensError) console.error('Screens query error:', screensError);
-  if (playlistsError) console.error('Playlists query error:', playlistsError);
-  if (contentError) console.error('Content query error:', contentError);
-
-  const { data: selectedScreenData } = useQuery({
-    queryKey: ["/api/screens", selectedScreen],
-    enabled: !!selectedScreen,
-    retry: false,
-  });
-
-  // Calculate stats
-  const activeScreens = Array.isArray(screens) ? screens.filter((s: any) => s.isOnline)?.length || 0 : 0;
-  const totalPlaylists = Array.isArray(playlists) ? playlists.length || 0 : 0;
-  const totalFiles = Array.isArray(content) ? content.length || 0 : 0;
-  const totalDuration = Array.isArray(playlists) ? playlists.reduce((acc: number, p: any) => acc + (p.totalDuration || 0), 0) || 0 : 0;
+  useEffect(() => {
+    // Simular datos para mostrar en el dashboard
+    setActiveScreens(5);
+    setTotalPlaylists(12);
+    setTotalFiles(48);
+    setTotalDuration(7200); // 2 horas en segundos
+  }, []);
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m`;
+    return `${hours}h ${minutes}m`;
   };
-
-  const togglePreview = () => {
-    if (!selectedScreen) {
-      toast({
-        title: "Selecciona una pantalla",
-        description: "Elige una pantalla para ver la vista previa.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsPreviewPlaying(!isPreviewPlaying);
-  };
-
-  const selectedScreenInfo = Array.isArray(screens) ? screens.find((s: any) => s.id === parseInt(selectedScreen)) : null;
 
   return (
-    <div className="space-y-6">
-      <Header 
-        title="Dashboard XcienTV" 
-        subtitle="Panel principal de control y gestión"
-        actions={
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => window.location.href = "/content"}>
-              <Plus className="h-4 w-4 mr-2" />
-              Contenido
-            </Button>
-            <Button size="sm" onClick={() => window.location.href = "/playlists"}>
-              <List className="h-4 w-4 mr-2" />
-              Playlists
-            </Button>
+    <SidebarInset>
+      <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        <div className="flex items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Vista General</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+      </header>
+
+      <div className="flex-1 px-6 py-6 overflow-auto">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="border-slate-200 dark:border-slate-700">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                  <Tv className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Pantallas Activas</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{activeScreens}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 dark:border-slate-700">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                  <List className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Playlists</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalPlaylists}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 dark:border-slate-700">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                  <Folder className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Archivos</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalFiles}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 dark:border-slate-700">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Tiempo Total</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatDuration(totalDuration)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Playlist Editor - Left Column */}
+          <div className="lg:col-span-2">
+            <PlaylistEditor />
           </div>
-        }
-      />
-      
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <Tv className="h-8 w-8 text-blue-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Pantallas Activas</p>
-                <p className="text-2xl font-bold">{activeScreens}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <List className="h-8 w-8 text-green-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Playlists</p>
-                <p className="text-2xl font-bold">{totalPlaylists}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <Folder className="h-8 w-8 text-orange-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Archivos</p>
-                <p className="text-2xl font-bold">{totalFiles}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <Clock className="h-8 w-8 text-purple-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Tiempo Total</p>
-                <p className="text-2xl font-bold">{formatDuration(totalDuration)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
+          {/* Preview and Widgets - Right Column */}
+          <div className="space-y-6">
+            <LivePreview />
+            <ContentLibrary />
+            <WidgetPanel />
+          </div>
+        </div>
       </div>
-
-      {/* Main Dashboard Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Screen Preview */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="h-5 w-5" />
-              Vista Previa de Pantalla
-            </CardTitle>
-            <CardDescription>
-              Monitorea el contenido en tiempo real
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <Select value={selectedScreen} onValueChange={setSelectedScreen}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar pantalla..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.isArray(screens) ? screens.map((screen: any) => (
-                      <SelectItem key={screen.id} value={screen.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${
-                            screen.isOnline ? 'bg-green-500' : 'bg-red-500'
-                          }`} />
-                          {screen.name} - {screen.location}
-                        </div>
-                      </SelectItem>
-                    )) : []}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={togglePreview} disabled={!selectedScreen}>
-                {isPreviewPlaying ? (
-                  <Pause className="h-4 w-4 mr-2" />
-                ) : (
-                  <Play className="h-4 w-4 mr-2" />
-                )}
-                {isPreviewPlaying ? "Pausar" : "Reproducir"}
-              </Button>
-            </div>
-
-            <div className="aspect-video bg-black rounded-lg flex items-center justify-center relative overflow-hidden">
-              {selectedScreen && isPreviewPlaying ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-blue-600 rounded-lg flex items-center justify-center">
-                      <Play className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-lg font-medium mb-2">
-                      {selectedScreenInfo?.name || "Pantalla"}
-                    </h3>
-                    <p className="text-sm opacity-75">
-                      Reproduciendo contenido en vivo
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center text-gray-400">
-                  <Monitor className="h-16 w-16 mx-auto mb-4 opacity-20" />
-                  <p className="text-lg">Vista Previa</p>
-                  <p className="text-sm">
-                    {selectedScreen ? "Presiona reproducir para comenzar" : "Selecciona una pantalla"}
-                  </p>
-                </div>
-              )}
-
-              {selectedScreen && (
-                <div className="absolute bottom-4 left-4 right-4">
-                  <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3">
-                    <div className="flex items-center justify-between text-white text-sm">
-                      <span>{selectedScreenInfo?.name || "Pantalla"}</span>
-                      <Badge variant={selectedScreenInfo?.isOnline ? "default" : "destructive"}>
-                        {selectedScreenInfo?.isOnline ? "En línea" : "Fuera de línea"}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Acciones Rápidas</CardTitle>
-            <CardDescription>
-              Gestiona tu contenido y pantallas
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col"
-                onClick={() => window.location.href = "/content"}
-              >
-                <Plus className="h-6 w-6 mb-2" />
-                Subir Contenido
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col"
-                onClick={() => window.location.href = "/playlists"}
-              >
-                <List className="h-6 w-6 mb-2" />
-                Nueva Playlist
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col"
-                onClick={() => window.location.href = "/screens"}
-              >
-                <Tv className="h-6 w-6 mb-2" />
-                Configurar Pantalla
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col"
-                onClick={() => window.location.href = "/scheduling"}
-              >
-                <Clock className="h-6 w-6 mb-2" />
-                Programar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Actividad Reciente</CardTitle>
-            <CardDescription>
-              Últimas acciones en el sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
-              <div>
-                <p className="text-sm">Sistema iniciado correctamente</p>
-                <p className="text-xs text-muted-foreground">Hace unos momentos</p>
-              </div>
-            </div>
-            {Array.isArray(playlists) ? playlists.slice(0, 3).map((playlist: any, index: number) => (
-              <div key={playlist.id} className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
-                <div>
-                  <p className="text-sm">Playlist "{playlist.name}" disponible</p>
-                  <p className="text-xs text-muted-foreground">
-                    {playlist.totalItems || 0} elementos
-                  </p>
-                </div>
-              </div>
-            )) : []}
-          </CardContent>
-        </Card>
-
-        {/* System Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Estado del Sistema</CardTitle>
-            <CardDescription>
-              Monitoreo en tiempo real
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Pantallas conectadas</span>
-              <Badge variant="default">{activeScreens} / {Array.isArray(screens) ? screens.length : 0}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Contenido total</span>
-              <Badge variant="secondary">{totalFiles} archivos</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Playlists activas</span>
-              <Badge variant="outline">{totalPlaylists}</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Estado del servidor</span>
-              <Badge variant="default">Óptimo</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    </SidebarInset>
   );
 }

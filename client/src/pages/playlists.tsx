@@ -1,100 +1,134 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { Switch } from "@/components/ui/switch";
 import { 
   Plus, 
   List, 
   Play, 
+  Pause, 
   Clock, 
   FileText,
   Trash2,
-  GripVertical,
-  X
+  Edit,
+  Copy
 } from "lucide-react";
 
 export default function Playlists() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [selectedPlaylist, setSelectedPlaylist] = useState<number | null>(null);
   const [newPlaylist, setNewPlaylist] = useState({
     name: "",
-    description: ""
+    description: "",
+    isActive: false
   });
   const { toast } = useToast();
 
-  const { data: playlists = [], isLoading } = useQuery({
+  const { data: playlists, isLoading } = useQuery({
     queryKey: ["/api/playlists"],
-  });
-
-  const { data: content = [] } = useQuery({
-    queryKey: ["/api/content"],
-  });
-
-  const { data: selectedPlaylistData } = useQuery({
-    queryKey: ["/api/playlists", selectedPlaylist],
-    enabled: !!selectedPlaylist,
+    retry: false,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("/api/playlists", {
+      const response = await apiRequest("/api/playlists", {
         method: "POST",
         body: JSON.stringify(data)
       });
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      setCreateModalOpen(false);
-      setNewPlaylist({ name: "", description: "" });
       toast({
         title: "Playlist creada",
-        description: "La playlist se ha creado exitosamente.",
+        description: "La playlist ha sido creada exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      setCreateModalOpen(false);
+      setNewPlaylist({ name: "", description: "", isActive: false });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear la playlist.",
+        variant: "destructive",
       });
     },
   });
 
-  const addItemMutation = useMutation({
-    mutationFn: async ({ playlistId, contentItemId }: { playlistId: number; contentItemId: number }) => {
-      return await apiRequest(`/api/playlists/${playlistId}/items`, {
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest(`/api/playlists/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Playlist eliminada",
+        description: "La playlist ha sido eliminada exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar la playlist.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
+      const response = await apiRequest(`/api/playlists/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ isActive })
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el estado de la playlist.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const copyMutation = useMutation({
+    mutationFn: async (playlist: any) => {
+      const response = await apiRequest("/api/playlists", {
         method: "POST",
-        body: JSON.stringify({ 
-          contentItemId,
-          order: (selectedPlaylistData && Array.isArray(selectedPlaylistData.items) ? selectedPlaylistData.items.length : 0) + 1
+        body: JSON.stringify({
+          name: `${playlist.name} (Copia)`,
+          description: playlist.description,
+          isActive: false
         })
       });
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
       toast({
-        title: "Elemento agregado",
-        description: "El contenido se ha agregado a la playlist.",
+        title: "Playlist copiada",
+        description: "La playlist ha sido copiada exitosamente.",
       });
-    },
-  });
-
-  const removeItemMutation = useMutation({
-    mutationFn: async (itemId: number) => {
-      return await apiRequest(`/api/playlist-items/${itemId}`, {
-        method: "DELETE"
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+    },
+    onError: (error: any) => {
       toast({
-        title: "Elemento eliminado",
-        description: "El contenido se ha removido de la playlist.",
+        title: "Error",
+        description: error.message || "No se pudo copiar la playlist.",
+        variant: "destructive",
       });
     },
   });
@@ -111,48 +145,50 @@ export default function Playlists() {
     createMutation.mutate(newPlaylist);
   };
 
-  const handleAddContent = (contentItemId: number) => {
-    if (!selectedPlaylist) {
-      toast({
-        title: "Error",
-        description: "Selecciona una playlist primero.",
-        variant: "destructive",
-      });
-      return;
-    }
-    addItemMutation.mutate({ playlistId: selectedPlaylist, contentItemId });
-  };
-
-  const handleRemoveItem = (itemId: number) => {
-    removeItemMutation.mutate(itemId);
+  const handleCopyPlaylist = (playlist: any) => {
+    copyMutation.mutate(playlist);
   };
 
   const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Header title="Playlists" subtitle="Gestiona tus listas de reproducción" />
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex flex-col h-full">
+        <Header title="Playlists" subtitle="Gestiona tus secuencias de contenido" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-slate-600">Cargando playlists...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full">
       <Header
         title="Playlists"
-        subtitle="Gestiona tus listas de reproducción"
+        subtitle="Gestiona tus secuencias de contenido"
         actions={
           <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Nueva Playlist
               </Button>
@@ -167,7 +203,7 @@ export default function Playlists() {
                   <Input
                     id="name"
                     value={newPlaylist.name}
-                    onChange={(e) => setNewPlaylist(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => setNewPlaylist({ ...newPlaylist, name: e.target.value })}
                     placeholder="Nombre de la playlist"
                   />
                 </div>
@@ -176,16 +212,27 @@ export default function Playlists() {
                   <Textarea
                     id="description"
                     value={newPlaylist.description}
-                    onChange={(e) => setNewPlaylist(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) => setNewPlaylist({ ...newPlaylist, description: e.target.value })}
                     placeholder="Descripción opcional"
                   />
                 </div>
-                <div className="flex justify-end gap-2">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="active"
+                    checked={newPlaylist.isActive}
+                    onCheckedChange={(checked) => setNewPlaylist({ ...newPlaylist, isActive: checked })}
+                  />
+                  <Label htmlFor="active">Activar inmediatamente</Label>
+                </div>
+                <div className="flex justify-end space-x-2">
                   <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button onClick={handleCreatePlaylist} disabled={createMutation.isPending}>
-                    {createMutation.isPending ? "Creando..." : "Crear"}
+                  <Button 
+                    onClick={handleCreatePlaylist}
+                    disabled={createMutation.isPending}
+                  >
+                    {createMutation.isPending ? "Creando..." : "Crear Playlist"}
                   </Button>
                 </div>
               </div>
@@ -194,141 +241,125 @@ export default function Playlists() {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Playlists List */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <List className="h-5 w-5" />
-              Playlists ({Array.isArray(playlists) ? playlists.length : 0})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {!Array.isArray(playlists) || playlists.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <List className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p>No hay playlists</p>
-                <p className="text-sm">Crea tu primera playlist</p>
+      <div className="flex-1 px-6 py-6 overflow-auto">
+        {!playlists || playlists.length === 0 ? (
+          <Card className="border-dashed border-2 border-slate-300">
+            <CardContent className="p-12 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <List className="w-8 h-8 text-slate-400" />
               </div>
-            ) : (
-              playlists.map((playlist: any) => (
-                <div
-                  key={playlist.id}
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-accent ${
-                    selectedPlaylist === playlist.id ? 'bg-accent border-primary' : ''
-                  }`}
-                  onClick={() => setSelectedPlaylist(playlist.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">{playlist.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {playlist.totalItems || 0} elementos
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant="secondary">
-                        {formatDuration(playlist.totalDuration || 0)}
-                      </Badge>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                No tienes playlists aún
+              </h3>
+              <p className="text-slate-600 mb-6">
+                Crea tu primera playlist para organizar y secuenciar tu contenido digital.
+              </p>
+              <Button 
+                onClick={() => setCreateModalOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Crear Primera Playlist
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {playlists.map((playlist: any) => (
+              <Card key={playlist.id} className="border-slate-200 hover:shadow-lg transition-shadow">
+                <CardContent className="p-0">
+                  <div className="p-4 border-b border-slate-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h4 className="font-semibold text-slate-900 truncate">
+                            {playlist.name}
+                          </h4>
+                          {playlist.isActive && (
+                            <Badge className="bg-green-100 text-green-800">
+                              Activa
+                            </Badge>
+                          )}
+                        </div>
+                        {playlist.description && (
+                          <p className="text-sm text-slate-600 line-clamp-2">
+                            {playlist.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="ml-2">
+                        <Switch
+                          checked={playlist.isActive}
+                          onCheckedChange={(checked) => 
+                            toggleActiveMutation.mutate({ id: playlist.id, isActive: checked })
+                          }
+                          disabled={toggleActiveMutation.isPending}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
 
-        {/* Playlist Content */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Play className="h-5 w-5" />
-              Contenido de Playlist
-            </CardTitle>
-            <CardDescription>
-              {selectedPlaylist ? 
-                `Elementos en "${Array.isArray(playlists) ? playlists.find((p: any) => p.id === selectedPlaylist)?.name : ''}"` :
-                "Selecciona una playlist para ver su contenido"
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!selectedPlaylist ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Play className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p>Selecciona una playlist</p>
-              </div>
-            ) : !selectedPlaylistData || !Array.isArray(selectedPlaylistData.items) || selectedPlaylistData.items.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p>Playlist vacía</p>
-                <p className="text-sm">Agrega contenido desde la biblioteca</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {selectedPlaylistData.items.map((item: any, index: number) => (
-                  <div key={item.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex-1">
-                      <h4 className="font-medium">{item.contentItem.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {item.contentItem.type} • {formatDuration(item.contentItem.duration || 0)}
-                      </p>
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-slate-900">
+                          {playlist.totalItems || 0}
+                        </div>
+                        <div className="text-xs text-slate-500">Elementos</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-slate-900">
+                          {formatDuration(playlist.totalDuration || 0)}
+                        </div>
+                        <div className="text-xs text-slate-500">Duración</div>
+                      </div>
                     </div>
-                    <Badge variant="outline">#{index + 1}</Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveItem(item.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )) || []}
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* Content Library */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Biblioteca de Contenido
-            </CardTitle>
-            <CardDescription>
-              Arrastra contenido para agregar a la playlist
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {!Array.isArray(content) || content.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p>No hay contenido</p>
-                <p className="text-sm">Sube archivos primero</p>
-              </div>
-            ) : (
-              content.map((item: any) => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent cursor-pointer"
-                  onClick={() => handleAddContent(item.id)}
-                >
-                  <div className="flex-1">
-                    <h4 className="font-medium">{item.name}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {item.type} • {formatDuration(item.duration || 0)}
-                    </p>
+                    <div className="space-y-2 text-xs text-slate-500 mb-4">
+                      <div className="flex items-center justify-between">
+                        <span>Creada:</span>
+                        <span>{formatDate(playlist.createdAt)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Modificada:</span>
+                        <span>{formatDate(playlist.updatedAt)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-2"
+                          onClick={() => handleCopyPlaylist(playlist)}
+                          disabled={copyMutation.isPending}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-2 text-red-600 hover:text-red-700"
+                          onClick={() => deleteMutation.mutate(playlist.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <Link href={`/playlist/${playlist.id}`}>
+                        <Button size="sm" className="h-8 px-3 text-xs">
+                          <Edit className="w-3 h-3 mr-1" />
+                          Editar
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

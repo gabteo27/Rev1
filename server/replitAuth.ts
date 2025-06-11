@@ -128,39 +128,30 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  const user = req.user as any;
+
+  if (!req.isAuthenticated() || !user.expires_at) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (now <= user.expires_at) {
+    return next();
+  }
+
+  const refreshToken = user.refresh_token;
+  if (!refreshToken) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
   try {
-    const user = req.user as any;
-
-    if (!req.isAuthenticated() || !user || !user.expires_at) {
-      console.log('User not authenticated or missing data');
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    if (now <= user.expires_at) {
-      return next();
-    }
-
-    const refreshToken = user.refresh_token;
-    if (!refreshToken) {
-      console.log('No refresh token available');
-      res.status(401).json({ message: "Unauthorized" });
-      return;
-    }
-
-    try {
-      const config = await getOidcConfig();
-      const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-      updateUserSession(user, tokenResponse);
-      return next();
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      res.status(401).json({ message: "Unauthorized" });
-      return;
-    }
+    const config = await getOidcConfig();
+    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+    updateUserSession(user, tokenResponse);
+    return next();
   } catch (error) {
-    console.error('Authentication middleware error:', error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(401).json({ message: "Unauthorized" });
     return;
   }
 };

@@ -1,94 +1,50 @@
-type WebSocketMessage = {
-  type: string;
-  payload?: any;
-  id?: string;
-};
-
-type EventHandler = (data: any) => void;
+import { queryClient } from "./queryClient";
 
 class WebSocketManager {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
-  private eventHandlers = new Map<string, EventHandler[]>();
-  private isConnecting = false;
-
-  constructor() {
-    this.connect();
-  }
-
-  private getWebSocketURL(): string {
-    if (typeof window === 'undefined') return '';
-
-    try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      return `${protocol}//${host}/ws`;
-    } catch (error) {
-      console.error('Error creating WebSocket URL:', error);
-      return '';
-    }
-  }
+  private listeners: Map<string, Set<(data: any) => void>> = new Map();
 
   connect() {
-    if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
-      return;
-    }
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        return;
+      }
 
-    this.isConnecting = true;
-    const wsUrl = this.getWebSocketURL();
+      try {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        // --- CORRECCIÓN ---
+        // Usar window.location.host, que incluye el host y el puerto correctamente 
+        // en la mayoría de los entornos, incluido Replit.
+        const wsUrl = `<span class="math-inline">\{protocol\}//</span>{window.location.host}/ws`;
 
-    if (!wsUrl) {
-      console.error('Could not create WebSocket URL');
-      this.isConnecting = false;
-      return;
-    }
-
-    try {
-      console.log('Connecting to WebSocket:', wsUrl);
-      this.ws = new WebSocket(wsUrl);
-
+        this.ws = new WebSocket(wsUrl);
+      
       this.ws.onopen = () => {
-        console.log('WebSocket connected');
-        this.isConnecting = false;
+        console.log("WebSocket connected");
         this.reconnectAttempts = 0;
-        this.emit('connection_established', { connected: true });
       };
-
+      
       this.ws.onmessage = (event) => {
         try {
-          const data: WebSocketMessage = JSON.parse(event.data);
-          console.log('WebSocket message received:', data);
-          this.emit('message', data);
-          if (data.type) {
-            this.emit(data.type, data.payload || data);
-          }
+          const message = JSON.parse(event.data);
+          this.handleMessage(message);
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error("Failed to parse WebSocket message:", error);
         }
       };
-
+      
       this.ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
-        this.isConnecting = false;
-        this.ws = null;
-        this.emit('close', { code: event.code, reason: event.reason });
-
-        if (!event.wasClean) {
-          this.scheduleReconnect();
-        }
+        console.log("WebSocket disconnected:", event.code, event.reason);
+        this.scheduleReconnect();
       };
-
+      
       this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        this.isConnecting = false;
-        this.emit('error', error);
+        console.error("WebSocket error:", error);
       };
-
     } catch (error) {
-      console.error('Error creating WebSocket connection:', error);
-      this.isConnecting = false;
+      console.error("Failed to create WebSocket connection:", error);
       this.scheduleReconnect();
     }
   }
@@ -96,62 +52,109 @@ class WebSocketManager {
   private scheduleReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      const delay = Math.min(this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1), 10000);
-
-      console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+      
+      console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
+      
       setTimeout(() => {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-          this.connect();
-        }
+        this.connect();
       }, delay);
     } else {
-      console.warn("Max reconnection attempts reached. Will retry in 30 seconds...");
-      setTimeout(() => {
-        this.reconnectAttempts = 0;
-        this.connect();
-      }, 30000);
+      console.error("Max reconnection attempts reached");
     }
   }
 
-  send(message: WebSocketMessage) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        this.ws.send(JSON.stringify(message));
-      } catch (error) {
-        console.error('Error sending WebSocket message:', error);
-      }
-    } else {
-      console.warn('WebSocket is not connected. Cannot send message:', message);
+  private handleMessage(message: any) {
+    const { type, data } = message;
+    
+    switch (type) {
+      case "alert":
+        this.handleAlert(data);
+        break;
+      case "playlist_update":
+        this.handlePlaylistUpdate(data);
+        break;
+      case "content_update":
+        this.handleContentUpdate(data);
+        break;
+      case "screen_status":
+        this.handleScreenStatus(data);
+        break;
+      default:
+        console.log("Unknown message type:", type);
     }
-  }
 
-  on(event: string, handler: EventHandler) {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, []);
-    }
-    this.eventHandlers.get(event)!.push(handler);
-  }
-
-  off(event: string, handler: EventHandler) {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      const index = handlers.indexOf(handler);
-      if (index > -1) {
-        handlers.splice(index, 1);
-      }
-    }
-  }
-
-  private emit(event: string, data: any) {
-    const handlers = this.eventHandlers.get(event);
-    if (handlers) {
-      handlers.forEach(handler => {
+    // Notify listeners
+    const typeListeners = this.listeners.get(type);
+    if (typeListeners) {
+      typeListeners.forEach(listener => {
         try {
-          handler(data);
+          listener(data);
         } catch (error) {
-          console.error(`Error in WebSocket event handler for ${event}:`, error);
+          console.error("Error in WebSocket listener:", error);
         }
       });
+    }
+  }
+
+  private handleAlert(alert: any) {
+    // Invalidate alerts cache to refresh the UI
+    queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+    
+    // Show alert notification in UI if needed
+    if (alert.isActive) {
+      this.showAlertNotification(alert);
+    }
+  }
+
+  private handlePlaylistUpdate(data: any) {
+    // Invalidate playlist-related caches
+    queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+    if (data.playlistId) {
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", data.playlistId.toString()] });
+    }
+  }
+
+  private handleContentUpdate(data: any) {
+    // Invalidate content cache
+    queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+  }
+
+  private handleScreenStatus(data: any) {
+    // Invalidate screens cache
+    queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+  }
+
+  private showAlertNotification(alert: any) {
+    // Create a visual notification for urgent alerts
+    // This could be a toast notification or overlay
+    console.log("New alert received:", alert);
+  }
+
+  // Public methods for subscribing to specific message types
+  subscribe(type: string, listener: (data: any) => void) {
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, new Set());
+    }
+    this.listeners.get(type)!.add(listener);
+
+    // Return unsubscribe function
+    return () => {
+      const typeListeners = this.listeners.get(type);
+      if (typeListeners) {
+        typeListeners.delete(listener);
+        if (typeListeners.size === 0) {
+          this.listeners.delete(type);
+        }
+      }
+    };
+  }
+
+  send(message: any) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.warn("WebSocket is not connected. Message not sent:", message);
     }
   }
 
@@ -160,15 +163,24 @@ class WebSocketManager {
       this.ws.close();
       this.ws = null;
     }
+    this.listeners.clear();
   }
 
-  get readyState() {
+  getConnectionState() {
     return this.ws?.readyState || WebSocket.CLOSED;
   }
 
-  get isConnected() {
+  isConnected() {
     return this.ws?.readyState === WebSocket.OPEN;
   }
 }
 
-export const websocketManager = new WebSocketManager();
+// Create singleton instance
+export const wsManager = new WebSocketManager();
+
+// Auto-connect when module is imported
+if (typeof window !== "undefined") {
+  wsManager.connect();
+}
+
+export default wsManager;
