@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -171,17 +170,7 @@ export default function Playlists() {
     }
     createMutation.mutate(newPlaylist);
   };
-  
-  function AvailableContentLibrary({ playlistId, onAdd }: { playlistId: number, onAdd: (contentId: number) => void }) {
-    const { data: allContent = [] } = useQuery({ queryKey: ['/api/content'] });
-    const { data: playlistData } = useQuery({ 
-      queryKey: ['/api/playlists', playlistId],
-      enabled: !!playlistId 
-    });
 
-    const contentInPlaylist = new Set(playlistData?.items?.map((item: any) => item.contentItemId) || []);
-    
-    const availableContent = allContent.filter((item: any) => !contentInPlaylist.has(item.id));
   const handleEditPlaylist = (playlist: any) => {
     setEditingPlaylist({ ...playlist });
     setEditModalOpen(true);
@@ -264,6 +253,31 @@ export default function Playlists() {
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
+
+  function AvailableContentLibrary({ playlistId, onAdd }: { playlistId: number, onAdd: (contentId: number) => void }) {
+    const { data: allContent = [] } = useQuery({ queryKey: ['/api/content'] });
+    const { data: playlistData } = useQuery({ 
+      queryKey: ['/api/playlists', playlistId],
+      enabled: !!playlistId 
+    });
+
+    const contentInPlaylist = new Set(playlistData?.items?.map((item: any) => item.contentItemId) || []);
+
+    const availableContent = allContent.filter((item: any) => !contentInPlaylist.has(item.id));
+
+    return (
+      <div className="space-y-2">
+        {availableContent.map((item: any) => (
+          <div key={item.id} className="flex items-center justify-between p-2 hover:bg-accent rounded">
+            <span className="text-sm">{item.title || item.name}</span>
+            <Button size="sm" onClick={() => onAdd(item.id)}>
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (playlistsLoading) {
     return (
@@ -454,7 +468,7 @@ export default function Playlists() {
                       {selectedPlaylistData.items.map((item: any, index: number) => {
                         const IconComponent = getFileIcon(item.contentItem?.type);
                         const iconColor = getFileColor(item.contentItem?.type);
-                        
+
                         return (
                           <Draggable
                             key={item.id}
@@ -517,7 +531,7 @@ export default function Playlists() {
               </DragDropContext>
             )}
           </CardContent>
-          
+
           {selectedPlaylist && selectedPlaylistData?.items?.length > 0 && (
             <div className="px-6 py-4 bg-muted/50 border-t">
               <div className="flex items-center justify-between text-sm">
@@ -561,7 +575,7 @@ export default function Playlists() {
                 const IconComponent = getFileIcon(item.type);
                 const iconColor = getFileColor(item.type);
                 const isInPlaylist = selectedPlaylistData?.items?.some((pItem: any) => pItem.contentItemId === item.id);
-                
+
                 return (
                   <div
                     key={item.id}
@@ -660,4 +674,4 @@ export default function Playlists() {
       </Dialog>
     </div>
   );
-
+}
