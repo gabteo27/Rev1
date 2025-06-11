@@ -50,8 +50,11 @@ async function startApplication() {
   wss = new WebSocketServer({ 
     server: httpServer,
     path: '/ws',
+    port: undefined, // Use the same port as HTTP server
+    perMessageDeflate: false,
+    maxPayload: 16 * 1024 * 1024, // 16MB max payload
     verifyClient: (info) => {
-      // Accept all connections for now
+      console.log('WebSocket connection attempt from:', info.origin);
       return true;
     }
   });

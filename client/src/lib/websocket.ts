@@ -23,21 +23,11 @@ class WebSocketManager {
       }
 
       try {
-        // Get the base URL from the current window location
-        const isHttps = window.location.protocol === 'https:';
-        const protocol = isHttps ? 'wss:' : 'ws:';
+        // Simple URL construction for Replit environment
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
 
-        // For Replit, use the same host as the current page
-        let wsUrl: string;
-        if (window.location.hostname.includes('replit.dev')) {
-          // In Replit environment, use the same domain with WebSocket protocol
-          wsUrl = `${protocol}//${window.location.host}/ws`;
-        } else {
-          // For local development
-          wsUrl = `${protocol}//${window.location.hostname}:5000/ws`;
-        }
-
-        console.log("Attempting WebSocket connection to:", wsUrl);
+        console.log("Connecting to WebSocket:", wsUrl);
         this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
@@ -99,15 +89,21 @@ class WebSocketManager {
   private scheduleReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+      const delay = Math.min(this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1), 10000);
 
-      console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
+      console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
       setTimeout(() => {
-        this.connect();
+        if (this.ws?.readyState !== WebSocket.OPEN) {
+          this.connect();
+        }
       }, delay);
     } else {
-      console.error("Max reconnection attempts reached");
+      console.warn("Max reconnection attempts reached. Will retry in 30 seconds...");
+      setTimeout(() => {
+        this.reconnectAttempts = 0;
+        this.connect();
+      }, 30000);
     }
   }
 
