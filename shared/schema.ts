@@ -281,6 +281,7 @@ export const insertPlaylistSchema = createInsertSchema(playlists).omit({
 export const insertPlaylistItemSchema = createInsertSchema(playlistItems).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export const insertScreenSchema = createInsertSchema(screens).omit({
@@ -341,3 +342,12 @@ export type InsertScreenGroup = z.infer<typeof insertScreenGroupSchema>;
 export type SyncStatus = typeof syncStatus.$inferSelect;
 export type Deployment = typeof deployments.$inferSelect;
 export type InsertDeployment = z.infer<typeof insertDeploymentSchema>;
+export const playlistSchema = z.object({
+  id: z.number(),
+  userId: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  layout: z.string().default('single_zone'),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});

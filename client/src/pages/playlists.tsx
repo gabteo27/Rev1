@@ -277,7 +277,7 @@ export default function Playlists() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen overflow-hidden">
       <Header 
         title="Editor de Playlists" 
         subtitle="Crea y gestiona layouts y secuencias de contenido"
@@ -341,7 +341,7 @@ export default function Playlists() {
         }
       />
       
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6 p-6 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6 p-6 min-h-0">
 
         {/* COLUMNA 1: LISTA DE PLAYLISTS */}
         <Card className="lg:col-span-1 flex flex-col">
@@ -351,7 +351,7 @@ export default function Playlists() {
               Playlists ({Array.isArray(playlists) ? playlists.length : 0})
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto space-y-3">
+          <CardContent className="flex-1 overflow-y-auto space-y-3 min-h-0">
             {!Array.isArray(playlists) || playlists.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <List className="h-12 w-12 mx-auto mb-4 opacity-20" />
@@ -468,7 +468,7 @@ export default function Playlists() {
               </Card>
 
               {/* Editor de Zonas */}
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto min-h-0">
                 {selectedItems.size > 0 && (
                   <div className="p-3 bg-primary/10 rounded-md mb-4 flex items-center gap-3 sticky top-0 z-10 border border-primary/20">
                     <Checkbox 
@@ -603,7 +603,7 @@ export default function Playlists() {
             </CardTitle>
             <CardDescription>Arrastra o haz clic para agregar</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto space-y-2">
+          <CardContent className="flex-1 overflow-y-auto space-y-2 min-h-0">
             {!Array.isArray(availableContent) || availableContent.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
