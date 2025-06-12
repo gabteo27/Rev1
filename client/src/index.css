@@ -301,10 +301,37 @@ input:checked + .slider:before {
   @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6;
 }
 
-/* Ensure proper scrolling */
-html, body, #root {
+/* Global Styles */
+html, body {
+  margin: 0;
+  padding: 0;
   height: 100%;
-  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Layout container */
+.layout-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Main content area that should scroll */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Ensure all page containers allow scrolling */
+.page-container {
+  height: 100%;
+  overflow-y: auto;
 }
 
 /* Custom scrollbar */

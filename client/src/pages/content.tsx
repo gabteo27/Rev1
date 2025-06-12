@@ -43,15 +43,17 @@ export default function Content() {
           throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
         const data = await response.json();
+        console.log('Content loaded:', data);
         return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error('Error fetching content:', error);
-        throw error;
+        return [];
       }
     },
-    retry: 1,
+    retry: 2,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
+    staleTime: 30000,
   });
 
   const deleteMutation = useMutation({

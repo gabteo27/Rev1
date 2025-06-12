@@ -35,6 +35,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
   const [tags, setTags] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [duration, setDuration] = useState(30);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
