@@ -626,22 +626,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         wssInstance.clients.forEach((client: WebSocket) => {
           const clientWithId = client as any;
-          if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === id) {
-            console.log(`Sending playlist change to player for screen ${id}`);
-            clientWithId.send(JSON.stringify({
-              type: 'playlist-change',
-              data: { 
-                playlistId: updates.playlistId,
-                screenId: id,
-                timestamp: new Date().toISOString()
-              }
-            }));
-            playerNotified = true;
+          if (clientWithId.readyState === WebSocket.OPEN) {
+            // Send to player connections for this specific screen
+            if (clientWithId.screenId === id) {
+              console.log(`Sending playlist change to player for screen ${id}`);
+              clientWithId.send(JSON.stringify({
+                type: 'playlist-change',
+                data: { 
+                  playlistId: updates.playlistId,
+                  screenId: id,
+                  timestamp: new Date().toISOString()
+                }
+              }));
+              playerNotified = true;
+            }
+            // Also send to admin clients for this user
+            else if (clientWithId.userId === userId) {
+              console.log(`Sending playlist change notification to admin user ${userId}`);
+              clientWithId.send(JSON.stringify({
+                type: 'playlist-change',
+                data: { 
+                  playlistId: updates.playlistId,
+                  screenId: id,
+                  timestamp: new Date().toISOString()
+                }
+              }));
+            }
           }
         });
         
         if (!playerNotified) {
-          console.log(`No active player connection found for screen ${id}`);
+          console.log(`No active player connection found for screen ${id}, but admin was notified`);
         }
       }
 

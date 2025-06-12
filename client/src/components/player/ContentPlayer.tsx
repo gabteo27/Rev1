@@ -500,17 +500,39 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             if (message.type === 'playlist-change') {
               console.log('Playlist change detected for player:', message.data);
               
-              // Force refresh of playlist data regardless of playlist ID
-              queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
-              queryClient.invalidateQueries({ queryKey: ['/api/playlists', playlistId] });
-              
-              // If playlist ID changed, we need to handle it differently
-              if (message.data?.playlistId && message.data.playlistId !== playlistId) {
-                console.log(`Playlist changed from ${playlistId} to ${message.data.playlistId}`);
-                // For actual player, we might need to notify parent component or reload
-                setTimeout(() => {
-                  window.location.reload();
-                }, 1000);
+              // Get current screen info to check if this change affects us
+              const authToken = localStorage.getItem('authToken');
+              if (authToken) {
+                fetch('/api/player/validate-token', {
+                  headers: {
+                    'Authorization': `Bearer ${authToken}`
+                  }
+                }).then(res => res.json()).then(data => {
+                  if (data.valid && data.screen) {
+                    const newPlaylistId = message.data?.playlistId;
+                    const currentScreenId = data.screen.id;
+                    const messageScreenId = message.data?.screenId;
+                    
+                    console.log(`Current screen: ${currentScreenId}, Message screen: ${messageScreenId}, New playlist: ${newPlaylistId}`);
+                    
+                    // Check if this change is for our screen
+                    if (messageScreenId === currentScreenId) {
+                      console.log(`Playlist change is for our screen! New playlist: ${newPlaylistId}, Current: ${playlistId}`);
+                      
+                      // Force refresh all playlist queries
+                      queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
+                      queryClient.invalidateQueries({ queryKey: ['/api/playlists'] });
+                      
+                      // Reload the page to get the new playlist
+                      setTimeout(() => {
+                        console.log('Reloading player to apply playlist change...');
+                        window.location.reload();
+                      }, 500);
+                    }
+                  }
+                }).catch(error => {
+                  console.error('Failed to validate token during playlist change:', error);
+                });
               }
             }
           } catch (error) {
@@ -551,7 +573,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         ws.close();
       }
     };
-  }, [isPreview, playlistId]);
+  }, [isPreview]);
 
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 

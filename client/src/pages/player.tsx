@@ -156,9 +156,52 @@ export default function PlayerPage() {
 
   // Si el estado es 'paired', renderizamos el reproductor de contenido
   if (status === 'paired') {
-    const playlistId = localStorage.getItem('playlistId');
-    return <ContentPlayer playlistId={playlistId ? parseInt(playlistId) : undefined} />;
+    // Get playlistId from URL params or from screen validation
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlPlaylistId = urlParams.get('playlistId') ? parseInt(urlParams.get('playlistId')!) : undefined;
+
+    const [currentPlaylistId, setCurrentPlaylistId] = useState<number | undefined>(urlPlaylistId);
+    // Validate token and get screen info
+    const { data: screenInfo, isLoading: isValidating } = useQuery({
+      queryKey: ['/api/player/validate-token'],
+      queryFn: async () => {
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+          throw new Error('No auth token found');
+        }
+
+        const response = await fetch('/api/player/validate-token', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Token validation failed');
+        }
+
+        return response.json();
+      },
+      retry: 3,
+      refetchInterval: 30000, // Check token validity every 30 seconds
+    });
+
+    // Update current playlist ID when screen info changes
+    useEffect(() => {
+      if (screenInfo?.valid && screenInfo.screen?.playlistId) {
+        console.log(`Screen playlist ID: ${screenInfo.screen.playlistId}, Current: ${currentPlaylistId}`);
+        if (screenInfo.screen.playlistId !== currentPlaylistId) {
+          console.log(`Updating playlist ID from ${currentPlaylistId} to ${screenInfo.screen.playlistId}`);
+          setCurrentPlaylistId(screenInfo.screen.playlistId);
+        }
+      } else if (urlPlaylistId && !currentPlaylistId) {
+        setCurrentPlaylistId(urlPlaylistId);
+      }
+    }, [screenInfo, urlPlaylistId, currentPlaylistId]);
+    return <ContentPlayer playlistId={currentPlaylistId} isPreview={false} />;
   }
 
   return null; // No renderizar nada en otros casos
 }
+
+import { useQuery } from "react-query";
