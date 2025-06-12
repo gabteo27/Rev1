@@ -1,0 +1,33 @@
+2chunk-WERSD76P.js?v=f8e994e9:11678 Uncaught Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (chunk-WERSD76P.js?v=f8e994e9:11678:21)
+    at updateReducer (chunk-WERSD76P.js?v=f8e994e9:11727:22)
+    at updateState (chunk-WERSD76P.js?v=f8e994e9:12021:18)
+    at Object.useState (chunk-WERSD76P.js?v=f8e994e9:12753:24)
+    at useState (chunk-3TFVT2CW.js?v=f8e994e9:1066:29)
+    at PlayerPage (player.tsx:163:55)
+    at renderWithHooks (chunk-WERSD76P.js?v=f8e994e9:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=f8e994e9:14582:28)
+    at beginWork (chunk-WERSD76P.js?v=f8e994e9:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=f8e994e9:3674:22)Understand this error
+chunk-WERSD76P.js?v=f8e994e9:14032 The above error occurred in the <PlayerPage> component:
+
+    at PlayerPage (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/player.tsx:56:31)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=f8e994e9:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=f8e994e9:62:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=f8e994e9:2932:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-WERSD76P.js?v=f8e994e9:14032Understand this error
+chunk-WERSD76P.js?v=f8e994e9:19413 Uncaught Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (chunk-WERSD76P.js?v=f8e994e9:11678:21)
+    at updateReducer (chunk-WERSD76P.js?v=f8e994e9:11727:22)
+    at updateState (chunk-WERSD76P.js?v=f8e994e9:12021:18)
+    at Object.useState (chunk-WERSD76P.js?v=f8e994e9:12753:24)
+    at useState (chunk-3TFVT2CW.js?v=f8e994e9:1066:29)
+    at PlayerPage (player.tsx:163:55)
+    at renderWithHooks (chunk-WERSD76P.js?v=f8e994e9:11548:26)
+    at updateFunctionComponent (chunk-WERSD76P.js?v=f8e994e9:14582:28)
+    at beginWork (chunk-WERSD76P.js?v=f8e994e9:15924:22)
+    at beginWork$1 (chunk-WERSD76P.js?v=f8e994e9:19753:22)Understand this error
