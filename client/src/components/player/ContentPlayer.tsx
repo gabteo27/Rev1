@@ -22,9 +22,21 @@ const WebpagePlayer = ({ src }: { src: string }) => <iframe src={src} style={{ .
 const YouTubePlayer = ({ url }: { url: string }) => {
   // Extract YouTube video ID from URL
   const getYouTubeID = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
+    // Handle various YouTube URL formats
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^#\&\?]*)/,
+      /youtube\.com\/watch\?.*v=([^#\&\?]*)/,
+      /youtu\.be\/([^#\&\?]*)/,
+      /youtube\.com\/embed\/([^#\&\?]*)/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1] && match[1].length === 11) {
+        return match[1];
+      }
+    }
+    return null;
   };
 
   const videoId = getYouTubeID(url);
@@ -37,24 +49,49 @@ const YouTubePlayer = ({ url }: { url: string }) => {
         alignItems: 'center', 
         justifyContent: 'center', 
         color: 'rgba(255,255,255,0.7)',
-        fontSize: '18px' 
+        fontSize: '18px',
+        backgroundColor: '#1a1a1a'
       }}>
-        URL de YouTube no válida
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📺</div>
+          <div>URL de YouTube no válida</div>
+          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{url}</div>
+        </div>
       </div>
     );
   }
 
-  // Build embed URL with autoplay, mute, loop, and minimal controls for kiosk mode
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&iv_load_policy=3&modestbranding=1&rel=0&fs=0&disablekb=1`;
+  // Build embed URL with all kiosk mode parameters
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?` + [
+    'autoplay=1',           // Auto-start video
+    'mute=1',              // Muted (required for autoplay)
+    'loop=1',              // Loop the video
+    `playlist=${videoId}`,  // Required for loop to work
+    'controls=0',          // Hide player controls
+    'showinfo=0',          // Hide video info
+    'iv_load_policy=3',    // Hide annotations
+    'modestbranding=1',    // Minimal YouTube branding
+    'rel=0',               // Don't show related videos
+    'fs=0',                // Disable fullscreen
+    'disablekb=1',         // Disable keyboard controls
+    'cc_load_policy=0',    // Disable closed captions
+    'playsinline=1',       // Play inline on mobile
+    'enablejsapi=1'        // Enable JavaScript API
+  ].join('&');
 
   return (
     <iframe
-      key={embedUrl}
+      key={`youtube-${videoId}-${Date.now()}`}
       src={embedUrl}
-      style={{ ...styles.media, border: 'none' }}
-      title="YouTube video player"
+      style={{ 
+        ...styles.media, 
+        border: 'none',
+        background: '#000'
+      }}
+      title={`YouTube video player - ${videoId}`}
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      allowFullScreen
+      allowFullScreen={false}
+      loading="eager"
     />
   );
 };
@@ -437,6 +474,8 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     let ws: WebSocket | null = null;
     let reconnectTimeout: NodeJS.Timeout;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
 
     const connectWebSocket = () => {
       try {
@@ -446,6 +485,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
         ws.onopen = () => {
           console.log('Player WebSocket connected for real-time updates');
+          reconnectAttempts = 0;
           const authToken = localStorage.getItem('authToken');
           if (authToken) {
             ws!.send(JSON.stringify({ type: 'player-auth', token: authToken }));
@@ -458,19 +498,19 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             console.log('WebSocket message received:', message);
             
             if (message.type === 'playlist-change') {
-              console.log('Playlist change detected:', message.data);
+              console.log('Playlist change detected for player:', message.data);
               
-              // If the playlist ID changed, update localStorage and reload
+              // Force refresh of playlist data regardless of playlist ID
+              queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+              queryClient.invalidateQueries({ queryKey: ['/api/playlists', playlistId] });
+              
+              // If playlist ID changed, we need to handle it differently
               if (message.data?.playlistId && message.data.playlistId !== playlistId) {
-                console.log(`Switching from playlist ${playlistId} to ${message.data.playlistId}`);
-                localStorage.setItem('playlistId', message.data.playlistId.toString());
-                // Force a complete reload to get the new playlist
-                window.location.reload();
-              } else {
-                // Same playlist but content might have changed, just refresh data
-                console.log('Refreshing current playlist data');
-                queryClient.invalidateQueries({ queryKey: ['/api/playlists', playlistId] });
-                queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+                console.log(`Playlist changed from ${playlistId} to ${message.data.playlistId}`);
+                // For actual player, we might need to notify parent component or reload
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1000);
               }
             }
           } catch (error) {
@@ -480,8 +520,12 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
         ws.onclose = (event) => {
           console.log('Player WebSocket disconnected:', event.code, event.reason);
-          // Reconnect after 3 seconds
-          reconnectTimeout = setTimeout(connectWebSocket, 3000);
+          if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
+            console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+            reconnectTimeout = setTimeout(connectWebSocket, delay);
+          }
         };
 
         ws.onerror = (error) => {
@@ -490,7 +534,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
       } catch (error) {
         console.error('Failed to connect to WebSocket:', error);
-        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+        if (reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          reconnectTimeout = setTimeout(connectWebSocket, 3000);
+        }
       }
     };
 
@@ -504,7 +551,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         ws.close();
       }
     };
-  }, [isPreview, playlistId, queryClient]);
+  }, [isPreview, playlistId]);
 
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 
@@ -530,7 +577,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   // 1. Inicializa o actualiza los trackers cuando la playlist cambia
   useEffect(() => {
     if (playlist?.items && Array.isArray(playlist.items)) {
-      console.log('Playlist items:', playlist.items);
+      console.log('Playlist changed, updating trackers:', playlist.items);
       console.log('Playlist layout:', playlist.layout);
       
       const zones: Record<string, PlaylistItem[]> = {};
@@ -581,10 +628,13 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         };
       }
       
-      console.log('Zone trackers created:', newTrackers);
+      console.log('Zone trackers updated:', newTrackers);
       setZoneTrackers(newTrackers);
+    } else {
+      console.log('No playlist items, clearing trackers');
+      setZoneTrackers({});
     }
-  }, [playlist]);
+  }, [playlist?.id, playlist?.items, playlist?.layout]); // More specific dependencies
 
   // 2. Lógica de temporizadores para cada zona
   useEffect(() => {
@@ -617,25 +667,65 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
   // --- Función para renderizar el contenido de un item ---
   const renderContentItem = (item: PlaylistItem) => {
-    if (!item?.contentItem) return null;
-    const { type, url } = item.contentItem;
+    if (!item?.contentItem) {
+      console.warn('No content item found for playlist item:', item);
+      return (
+        <div style={{ 
+          ...styles.media, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          color: 'rgba(255,255,255,0.5)',
+          backgroundColor: '#1a1a1a'
+        }}>
+          Sin contenido disponible
+        </div>
+      );
+    }
+
+    const { type, url, title } = item.contentItem;
+    console.log(`Rendering content item: ${title} (${type}) - ${url}`);
 
     // Detect YouTube URLs for special handling
     const isYouTubeURL = (url: string) => {
-      return url.includes('youtube.com') || url.includes('youtu.be');
+      return url && (
+        url.includes('youtube.com/watch') || 
+        url.includes('youtu.be/') || 
+        url.includes('youtube.com/embed/') ||
+        url.includes('youtube.com/v/')
+      );
     };
 
     // Handle YouTube URLs with special player
-    if (type === 'webpage' && isYouTubeURL(url)) {
+    if (isYouTubeURL(url)) {
+      console.log('Detected YouTube URL, using YouTubePlayer:', url);
       return <YouTubePlayer url={url} />;
     }
 
     switch (type) {
-      case 'image': return <ImagePlayer src={url} />;
-      case 'video': return <VideoPlayer src={url} />;
+      case 'image': 
+        return <ImagePlayer src={url} />;
+      case 'video': 
+        return <VideoPlayer src={url} />;
       case 'pdf':
-      case 'webpage': return <WebpagePlayer src={url} />;
-      default: return <div>Tipo de contenido no soportado</div>;
+      case 'webpage': 
+        return <WebpagePlayer src={url} />;
+      default: 
+        return (
+          <div style={{ 
+            ...styles.media, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            color: 'rgba(255,255,255,0.5)',
+            backgroundColor: '#1a1a1a'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', marginBottom: '10px' }}>❓</div>
+              <div>Tipo de contenido no soportado: {type}</div>
+            </div>
+          </div>
+        );
     }
   };
 
