@@ -347,10 +347,30 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
 
   const { data: playlist, isLoading } = useQuery<Playlist & { items: PlaylistItem[] }>({
-    queryKey: ['/api/playlists', playlistId],
-    queryFn: () => apiRequest(`/api/playlists/${playlistId}`).then(res => res.json()),
+    queryKey: isPreview ? ['/api/playlists', playlistId] : ['/api/player/playlists', playlistId],
+    queryFn: () => {
+      const endpoint = isPreview ? `/api/playlists/${playlistId}` : `/api/player/playlists/${playlistId}`;
+      if (isPreview) {
+        return apiRequest(endpoint).then(res => res.json());
+      } else {
+        // For player, use direct fetch with auth token
+        const authToken = localStorage.getItem('authToken');
+        return fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        }).then(res => {
+          if (!res.ok) {
+            throw new Error(`Failed to fetch playlist: ${res.status}`);
+          }
+          return res.json();
+        });
+      }
+    },
     enabled: !!playlistId,
-    refetchInterval: isPreview ? 5000 : 60000, // Más frecuente en preview
+    refetchInterval: isPreview ? 5000 : 30000, // More frequent checks for player
+    staleTime: isPreview ? 30000 : 10000, // Consider data stale sooner for player
   });
 
   // Query para obtener alertas activas
@@ -415,68 +435,76 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   useEffect(() => {
     if (isPreview) return;
 
-    const handlePlaylistChange = (event: MessageEvent) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.type === 'playlist-change') {
-          console.log('Playlist change received:', message.data);
-          // Instead of reloading, invalidate queries to get fresh data
-          const authToken = localStorage.getItem('authToken');
-          if (authToken) {
-            // Update localStorage with new playlist ID if provided
-            if (message.data?.playlistId) {
-              localStorage.setItem('playlistId', message.data.playlistId.toString());
-              // Force re-render by updating the URL
-              const currentUrl = new URL(window.location.href);
-              currentUrl.searchParams.set('t', Date.now().toString());
-              window.history.replaceState({}, '', currentUrl.toString());
-              // Trigger a re-render by forcing a state change
-              window.location.reload();
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: NodeJS.Timeout;
 
-    // Try to connect to WebSocket if we're in player mode
     const connectWebSocket = () => {
       try {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws`;
-        const ws = new WebSocket(wsUrl);
+        ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
-          console.log('Player WebSocket connected');
+          console.log('Player WebSocket connected for real-time updates');
           const authToken = localStorage.getItem('authToken');
           if (authToken) {
-            ws.send(JSON.stringify({ type: 'player-auth', token: authToken }));
+            ws!.send(JSON.stringify({ type: 'player-auth', token: authToken }));
           }
         };
 
-        ws.onmessage = handlePlaylistChange;
-
-        ws.onclose = () => {
-          console.log('Player WebSocket disconnected, attempting to reconnect...');
-          setTimeout(connectWebSocket, 5000);
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            console.log('WebSocket message received:', message);
+            
+            if (message.type === 'playlist-change') {
+              console.log('Playlist change detected:', message.data);
+              
+              // If the playlist ID changed, update localStorage and reload
+              if (message.data?.playlistId && message.data.playlistId !== playlistId) {
+                console.log(`Switching from playlist ${playlistId} to ${message.data.playlistId}`);
+                localStorage.setItem('playlistId', message.data.playlistId.toString());
+                // Force a complete reload to get the new playlist
+                window.location.reload();
+              } else {
+                // Same playlist but content might have changed, just refresh data
+                console.log('Refreshing current playlist data');
+                queryClient.invalidateQueries({ queryKey: ['/api/playlists', playlistId] });
+                queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+          }
         };
 
-        return ws;
+        ws.onclose = (event) => {
+          console.log('Player WebSocket disconnected:', event.code, event.reason);
+          // Reconnect after 3 seconds
+          reconnectTimeout = setTimeout(connectWebSocket, 3000);
+        };
+
+        ws.onerror = (error) => {
+          console.error('Player WebSocket error:', error);
+        };
+
       } catch (error) {
         console.error('Failed to connect to WebSocket:', error);
-        setTimeout(connectWebSocket, 5000);
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
       }
     };
 
-    const ws = connectWebSocket();
+    connectWebSocket();
 
     return () => {
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
       if (ws) {
         ws.close();
       }
     };
-  }, [isPreview]);
+  }, [isPreview, playlistId, queryClient]);
 
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 

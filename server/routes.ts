@@ -617,19 +617,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast screen update via WebSocket
       broadcastToUser(userId, 'screen-update', screen);
 
-      // If playlist changed, also broadcast playlist change to connected players
+      // If playlist changed, broadcast playlist change to connected players
       if (updates.playlistId !== undefined) {
+        console.log(`Broadcasting playlist change to screen ${id}: playlist ${updates.playlistId}`);
+        
         const wssInstance = app.get('wss') as WebSocketServer;
+        let playerNotified = false;
+        
         wssInstance.clients.forEach((client: WebSocket) => {
-          const clientWithId = client as WebSocketWithId;
-          if (clientWithId.readyState === WebSocket.OPEN && 
-              (clientWithId as any).screenId === id) {
+          const clientWithId = client as any;
+          if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === id) {
+            console.log(`Sending playlist change to player for screen ${id}`);
             clientWithId.send(JSON.stringify({
               type: 'playlist-change',
-              data: { playlistId: updates.playlistId }
+              data: { 
+                playlistId: updates.playlistId,
+                screenId: id,
+                timestamp: new Date().toISOString()
+              }
             }));
+            playerNotified = true;
           }
         });
+        
+        if (!playerNotified) {
+          console.log(`No active player connection found for screen ${id}`);
+        }
       }
 
       res.json(screen);
