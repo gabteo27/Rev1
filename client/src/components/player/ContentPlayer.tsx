@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import type { Playlist, PlaylistItem, Widget } from '@shared/schema';
+import { AlertOverlay } from './AlertOverlay';
+import type { Playlist, PlaylistItem, Widget, Alert } from '@shared/schema';
 
 // --- Estilos para el reproductor ---
 const styles = {
@@ -302,6 +303,8 @@ interface ZoneTracker {
 }
 
 export default function ContentPlayer({ playlistId, isPreview = false }: { playlistId?: number, isPreview?: boolean }) {
+  const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
+
   const { data: playlist, isLoading } = useQuery<Playlist & { items: PlaylistItem[] }>({
     queryKey: ['/api/playlists', playlistId],
     queryFn: () => apiRequest(`/api/playlists/${playlistId}`).then(res => res.json()),
@@ -309,18 +312,84 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     refetchInterval: isPreview ? 5000 : 60000, // Más frecuente en preview
   });
 
+  // Query para obtener alertas activas
+  const { data: alerts = [] } = useQuery<Alert[]>({
+    queryKey: [isPreview ? '/api/alerts/active' : '/api/player/alerts'],
+    queryFn: () => {
+      const endpoint = isPreview ? '/api/alerts/active' : '/api/player/alerts';
+      if (isPreview) {
+        return apiRequest(endpoint).then(res => res.json());
+      } else {
+        const authToken = localStorage.getItem('authToken');
+        return fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }).then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to fetch alerts');
+          }
+          return res.json();
+        });
+      }
+    },
+    refetchInterval: 5000, // Verificar alertas cada 5 segundos
+    enabled: !!playlistId,
+  });
+
+  // Actualizar alertas activas cuando cambian
+  useEffect(() => {
+    if (alerts) {
+      setActiveAlerts(alerts.filter(alert => alert.isActive));
+    }
+  }, [alerts]);
+
   // Query para obtener widgets activos
   const { data: widgets = [] } = useQuery<Widget[]>({
     queryKey: [isPreview ? '/api/widgets' : '/api/player/widgets'],
     queryFn: () => {
       const endpoint = isPreview ? '/api/widgets' : '/api/player/widgets';
-      return apiRequest(endpoint).then(res => res.json());
+      if (isPreview) {
+        return apiRequest(endpoint).then(res => res.json());
+      } else {
+        // Para el player, necesitamos pasar el token de autenticación
+        const authToken = localStorage.getItem('authToken');
+        return fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }).then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to fetch widgets');
+          }
+          return res.json();
+        });
+      }
     },
     refetchInterval: isPreview ? 10000 : 120000, // Actualiza widgets
     enabled: !!playlistId, // Solo ejecutar si hay playlist
   });
 
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
+
+  // Manejar la expiración de alertas
+  const handleAlertExpired = (alertId: number) => {
+    setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+    
+    // Si no es preview, marcar la alerta como inactiva en el servidor
+    if (!isPreview) {
+      const authToken = localStorage.getItem('authToken');
+      fetch(`/api/player/alerts/${alertId}/expire`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      }).catch(error => {
+        console.error('Failed to expire alert:', error);
+      });
+    }
+  };
 
   // 1. Inicializa o actualiza los trackers cuando la playlist cambia
   useEffect(() => {
@@ -587,6 +656,15 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
+          
+          {/* Alerts Overlay */}
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
         </div>
       );
     case 'single_zone':
@@ -605,6 +683,15 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {/* Widgets Overlay */}
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+          
+          {/* Alerts Overlay */}
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
           ))}
         </div>
       );

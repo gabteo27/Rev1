@@ -44,16 +44,40 @@ export default function AlertModal({ open, onClose }: AlertModalProps) {
 
   const createAlertMutation = useMutation({
     mutationFn: async (alertData: any) => {
-      await apiRequest("/api/alerts", {
+      const response = await apiRequest("/api/alerts", {
         method: "POST",
         body: JSON.stringify(alertData),
       });
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (alertData) => {
       toast({
         title: "Alerta creada",
-        description: "La alerta ha sido enviada a las pantallas seleccionadas.",
+        description: `La alerta ha sido enviada a las pantallas seleccionadas. ${
+          alertData.duration > 0 
+            ? `Se eliminará automáticamente en ${alertData.duration} segundos.`
+            : 'Permanecerá hasta ser cerrada manualmente.'
+        }`,
       });
+      
+      // Si la alerta tiene duración, programar auto-eliminación en el frontend también
+      if (alertData.duration > 0) {
+        setTimeout(() => {
+          // Auto-eliminar después de la duración especificada
+          fetch(`/api/alerts/${alertData.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ isActive: false }),
+          }).then(() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+          }).catch(error => {
+            console.error('Failed to auto-delete alert:', error);
+          });
+        }, alertData.duration * 1000);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
       handleClose();
     },
