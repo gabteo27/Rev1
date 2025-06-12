@@ -301,7 +301,7 @@ interface ZoneTracker {
   items: PlaylistItem[];
 }
 
-export default function ContentPlayer({ playlistId, isPreview = false }: { playlistId: number, isPreview?: boolean }) {
+export default function ContentPlayer({ playlistId, isPreview = false }: { playlistId?: number, isPreview?: boolean }) {
   const { data: playlist, isLoading } = useQuery<Playlist & { items: PlaylistItem[] }>({
     queryKey: ['/api/playlists', playlistId],
     queryFn: () => apiRequest(`/api/playlists/${playlistId}`).then(res => res.json()),
@@ -436,6 +436,24 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     console.log(`Zone ${zoneId} current item:`, currentItem);
     return renderContentItem(currentItem);
   };
+
+  // Si no hay playlistId, mostrar mensaje de espera
+  if (!playlistId) {
+    return (
+      <div style={styles.container}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', marginBottom: '15px' }}>⏳ Esperando configuración</div>
+            <div style={{ fontSize: '16px', opacity: 0.8, maxWidth: '600px', lineHeight: '1.5' }}>
+              Esta pantalla está emparejada pero no tiene una playlist asignada.
+              <br />
+              Asigna una playlist desde el panel de administración para comenzar la reproducción.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) return (
     <div style={styles.container}>

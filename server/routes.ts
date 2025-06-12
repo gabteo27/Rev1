@@ -56,6 +56,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route to initiate pairing for a device
+  app.post("/api/screens/initiate-pairing", async (req, res) => {
+    try {
+      const { deviceHardwareId } = req.body;
+      
+      if (!deviceHardwareId) {
+        return res.status(400).json({ message: "Device hardware ID is required" });
+      }
+
+      console.log(`Initiating pairing for device: ${deviceHardwareId}`);
+
+      // Check if device already exists
+      let screen = await storage.getScreenByDeviceHardwareId(deviceHardwareId);
+      
+      if (!screen) {
+        // Generate a new pairing code
+        const pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Create a new screen entry with pairing code
+        const screenData = {
+          deviceHardwareId,
+          pairingCode,
+          pairingCodeExpiresAt: expiresAt,
+          name: `Device ${deviceHardwareId.slice(-6)}`,
+          userId: null, // Will be set when pairing is completed
+          authToken: null,
+          isOnline: false,
+          playlistId: null
+        };
+
+        screen = await storage.createScreenForPairing(screenData);
+        console.log(`Created new screen for pairing:`, screen);
+      } else if (!screen.authToken) {
+        // Device exists but not paired yet, generate new pairing code
+        const pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await storage.updateScreenById(screen.id, {
+          pairingCode,
+          pairingCodeExpiresAt: expiresAt
+        });
+
+        screen.pairingCode = pairingCode;
+        console.log(`Updated pairing code for existing screen:`, screen.id);
+      } else {
+        // Device is already paired
+        return res.json({ 
+          status: 'already_paired',
+          message: 'Device is already paired'
+        });
+      }
+
+      res.json({ 
+        pairingCode: screen.pairingCode,
+        status: 'pairing_initiated'
+      });
+
+    } catch (error) {
+      console.error("Error initiating pairing:", error);
+      res.status(500).json({ message: "Failed to initiate pairing", error: error.message });
+    }
+  });
+
   app.get("/api/screens/pairing-status/:deviceHardwareId", async (req, res) => {
     try {
       const { deviceHardwareId } = req.params;
@@ -88,6 +152,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error checking pairing status:", error);
       res.status(500).json({ message: "Failed to check pairing status", error: error.message });
+    }
+  });
+
+  // Complete pairing endpoint
+  app.post("/api/screens/complete-pairing", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { pairingCode, name, location, playlistId } = req.body;
+
+      if (!pairingCode) {
+        return res.status(400).json({ message: "Pairing code is required" });
+      }
+
+      console.log(`Completing pairing with code: ${pairingCode} for user: ${userId}`);
+
+      // Find screen by pairing code
+      const screen = await storage.getScreenByPairingCode(pairingCode);
+
+      if (!screen) {
+        return res.status(404).json({ message: "Invalid pairing code" });
+      }
+
+      // Check if pairing code is expired
+      if (screen.pairingCodeExpiresAt && new Date() > screen.pairingCodeExpiresAt) {
+        return res.status(400).json({ message: "Pairing code has expired" });
+      }
+
+      // Generate auth token and complete pairing
+      const authToken = randomBytes(32).toString('hex');
+
+      const updatedScreen = await storage.updateScreenById(screen.id, {
+        userId,
+        name: name || screen.name,
+        location,
+        playlistId: playlistId || null,
+        authToken,
+        pairingCode: null,
+        pairingCodeExpiresAt: null,
+        isOnline: true,
+        lastSeen: new Date()
+      });
+
+      console.log(`Pairing completed for screen: ${updatedScreen?.id}`);
+
+      res.json({
+        message: "Pairing completed successfully",
+        screen: updatedScreen
+      });
+
+    } catch (error) {
+      console.error("Error completing pairing:", error);
+      res.status(500).json({ message: "Failed to complete pairing", error: error.message });
     }
   });
 

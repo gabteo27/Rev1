@@ -430,7 +430,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(playlistItems.id, id));
 
     const success = (result.rowCount ?? 0) > 0;
-    
+
     if (success) {
       // Recalculate total duration
       await this.updatePlaylistDuration(playlistId);
@@ -486,7 +486,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(screens.id, id));
     return screen;
   }
-  
+
   async createScreen(screen: InsertScreen): Promise<Screen> {
     const [item] = await db.insert(screens).values(screen).returning();
     return item;

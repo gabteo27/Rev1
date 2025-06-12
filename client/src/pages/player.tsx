@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import ContentPlayer from '@/components/player/ContentPlayer';
+import { useState, useEffect } from "react";
+import ContentPlayer from "@/components/player/ContentPlayer";
 
 // Estilos (sin cambios)
 const playerStyles: React.CSSProperties = {
