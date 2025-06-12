@@ -1,4 +1,6 @@
+
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import ContentPlayer from "@/components/player/ContentPlayer";
 
 // Estilos (sin cambios)
@@ -32,6 +34,47 @@ export default function PlayerPage() {
   const [status, setStatus] = useState<PlayerStatus>('initializing');
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentPlaylistId, setCurrentPlaylistId] = useState<number | undefined>(undefined);
+
+  // Validate token and get screen info - ALWAYS call this hook
+  const { data: screenInfo, isLoading: isValidating, error: validationError } = useQuery({
+    queryKey: ['/api/player/validate-token'],
+    queryFn: async () => {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('No auth token found');
+      }
+
+      const response = await fetch('/api/player/validate-token', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Token validation failed');
+      }
+
+      return response.json();
+    },
+    retry: (failureCount, error) => {
+      // Don't retry if it's an auth error
+      if (error.message.includes('Token validation failed')) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+    refetchInterval: 30000, // Check token validity every 30 seconds
+    enabled: status === 'paired', // Only run when paired
+    onError: (error) => {
+      console.error('Token validation error:', error);
+      // Clear invalid token and restart pairing process
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('screenName');
+      localStorage.removeItem('playlistId');
+      setStatus('initializing');
+    }
+  });
 
   useEffect(() => {
     // Validar si el token es válido antes de ir a 'paired'
@@ -129,6 +172,24 @@ export default function PlayerPage() {
     return () => clearInterval(intervalId);
   }, [status]); // El useEffect se re-ejecuta si el 'status' cambia
 
+  // Update current playlist ID when screen info changes
+  useEffect(() => {
+    if (screenInfo?.valid && screenInfo.screen?.playlistId) {
+      console.log(`Screen playlist ID: ${screenInfo.screen.playlistId}, Current: ${currentPlaylistId}`);
+      if (screenInfo.screen.playlistId !== currentPlaylistId) {
+        console.log(`Updating playlist ID from ${currentPlaylistId} to ${screenInfo.screen.playlistId}`);
+        setCurrentPlaylistId(screenInfo.screen.playlistId);
+      }
+    } else {
+      // Get playlistId from URL params if available
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlPlaylistId = urlParams.get('playlistId') ? parseInt(urlParams.get('playlistId')!) : undefined;
+      if (urlPlaylistId && !currentPlaylistId) {
+        setCurrentPlaylistId(urlPlaylistId);
+      }
+    }
+  }, [screenInfo, currentPlaylistId]);
+
   // --- RENDERIZADO BASADO EN EL ESTADO ---
 
   if (status === 'error') {
@@ -156,63 +217,6 @@ export default function PlayerPage() {
 
   // Si el estado es 'paired', renderizamos el reproductor de contenido
   if (status === 'paired') {
-    // Get playlistId from URL params or from screen validation
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlPlaylistId = urlParams.get('playlistId') ? parseInt(urlParams.get('playlistId')!) : undefined;
-
-    const [currentPlaylistId, setCurrentPlaylistId] = useState<number | undefined>(urlPlaylistId);
-    // Validate token and get screen info
-    const { data: screenInfo, isLoading: isValidating, error: validationError } = useQuery({
-      queryKey: ['/api/player/validate-token'],
-      queryFn: async () => {
-        const authToken = localStorage.getItem('authToken');
-        if (!authToken) {
-          throw new Error('No auth token found');
-        }
-
-        const response = await fetch('/api/player/validate-token', {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Token validation failed');
-        }
-
-        return response.json();
-      },
-      retry: (failureCount, error) => {
-        // Don't retry if it's an auth error
-        if (error.message.includes('Token validation failed')) {
-          return false;
-        }
-        return failureCount < 3;
-      },
-      refetchInterval: 30000, // Check token validity every 30 seconds
-      onError: (error) => {
-        console.error('Token validation error:', error);
-        // Clear invalid token and restart pairing process
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('screenName');
-        localStorage.removeItem('playlistId');
-        setStatus('initializing');
-      }
-    });
-
-    // Update current playlist ID when screen info changes
-    useEffect(() => {
-      if (screenInfo?.valid && screenInfo.screen?.playlistId) {
-        console.log(`Screen playlist ID: ${screenInfo.screen.playlistId}, Current: ${currentPlaylistId}`);
-        if (screenInfo.screen.playlistId !== currentPlaylistId) {
-          console.log(`Updating playlist ID from ${currentPlaylistId} to ${screenInfo.screen.playlistId}`);
-          setCurrentPlaylistId(screenInfo.screen.playlistId);
-        }
-      } else if (urlPlaylistId && !currentPlaylistId) {
-        setCurrentPlaylistId(urlPlaylistId);
-      }
-    }, [screenInfo, urlPlaylistId, currentPlaylistId]);
-
     // Handle validation errors
     if (validationError) {
       console.error('Screen validation failed:', validationError);
@@ -233,10 +237,9 @@ export default function PlayerPage() {
         </div>
       );
     }
+
     return <ContentPlayer playlistId={currentPlaylistId} isPreview={false} />;
   }
 
   return null; // No renderizar nada en otros casos
 }
-
-import { useQuery } from "@tanstack/react-query";
