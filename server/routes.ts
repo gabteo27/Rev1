@@ -896,7 +896,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (parsed.type === 'auth' && parsed.userId) {
           (ws as any).userId = parsed.userId;
           console.log(`WebSocket client authenticated for user: ${(ws as any).userId}`);
-          
+
           // Send authentication success response
           ws.send(JSON.stringify({ 
             type: 'auth_success', 
@@ -913,7 +913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               (ws as any).userId = screen.userId;
               (ws as any).screenId = screen.id;
               console.log(`Player WebSocket authenticated for screen ${screen.id} (user: ${screen.userId})`);
-              
+
               // Send authentication success response
               ws.send(JSON.stringify({ 
                 type: 'auth_success', 
@@ -990,16 +990,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analytics", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const timeRange = req.query.timeRange || "7d";
 
-      // Mock analytics data - in production you'd query real metrics
+      // Mock data for analytics
       const analytics = {
-        totalViews: Math.floor(Math.random() * 10000) + 5000,
-        activeScreens: await storage.getScreens(userId).then(screens => screens.filter(s => s.isOnline).length),
-        totalScreens: await storage.getScreens(userId).then(screens => screens.length),
-        averageUptime: 95.5,
-        totalPlaytime: Math.floor(Math.random() * 1000000) + 500000,
-        lastWeekGrowth: 12.5
+        activeScreens: Math.floor(Math.random() * 10) + 1,
+        totalViews: Math.floor(Math.random() * 10000) + 1000,
+        avgPlaytime: Math.floor(Math.random() * 60) + 30,
+        contentItems: Math.floor(Math.random() * 50) + 10,
+        usageData: [],
+        recentActivity: []
       };
+
+      // Generate usage data
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        analytics.usageData.push({
+          date: date.toISOString().split('T')[0],
+          screens: Math.floor(Math.random() * 20) + 5,
+          views: Math.floor(Math.random() * 500) + 100
+        });
+      }
+
+      // Generate recent activity
+      for (let i = 0; i < 5; i++) {
+        analytics.recentActivity.push({
+          description: `Actividad ${i + 1}`,
+          timestamp: new Date(Date.now() - i * 1000 * 60 * 60).toISOString()
+        });
+      }
 
       res.json(analytics);
     } catch (error) {

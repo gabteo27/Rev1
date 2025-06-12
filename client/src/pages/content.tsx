@@ -233,7 +233,7 @@ export default function Content() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-screen overflow-hidden">
       <Header
         title="Contenido"
         subtitle="Gestiona tus archivos multimedia"
@@ -248,7 +248,7 @@ export default function Content() {
         }
       />
 
-      <div className="flex-1 px-6 py-6 overflow-auto">
+      <div className="flex-1 px-6 py-6 overflow-y-auto min-h-0">
         {/* Category Filter */}
         <div className="mb-6">
           <div className="flex flex-wrap gap-2">
@@ -298,7 +298,7 @@ export default function Content() {
             </CardContent>
           </Card>
         ) : (
-          <div className="content-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredContent.map((item: any) => (
               <Card key={item.id} className="border-slate-200 hover:shadow-lg transition-shadow">
                 <CardContent className="p-0">

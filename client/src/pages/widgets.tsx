@@ -378,7 +378,8 @@ export default function Widgets() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 space-y-6 p-6 overflow-y-auto min-h-0">
       <Header
         title="Widgets Interactivos"
         subtitle="Elementos dinámicos con APIs en tiempo real para pantallas"
@@ -627,6 +628,7 @@ export default function Widgets() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

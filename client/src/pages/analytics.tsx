@@ -91,7 +91,8 @@ export default function Analytics() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 space-y-6 p-6 overflow-y-auto min-h-0">
       <Header
         title="Analíticas y Métricas"
         subtitle="Monitorea el rendimiento y uso de tu sistema de señalización"
@@ -416,6 +417,7 @@ export default function Analytics() {
             )}
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
