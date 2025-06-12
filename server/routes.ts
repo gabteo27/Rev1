@@ -60,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/screens/initiate-pairing", async (req, res) => {
     try {
       const { deviceHardwareId } = req.body;
-      
+
       if (!deviceHardwareId) {
         return res.status(400).json({ message: "Device hardware ID is required" });
       }
@@ -69,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if device already exists
       let screen = await storage.getScreenByDeviceHardwareId(deviceHardwareId);
-      
+
       if (!screen) {
         // Generate a new pairing code
         const pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -756,7 +756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             await storage.deleteAlert(alert.id, userId);
             console.log(`Alert ${alert.id} auto-deleted after ${alert.duration} seconds`);
-            
+
             // Notificar a los clientes que la alerta fue eliminada
             broadcastToUser(userId, 'alert-deleted', { alertId: alert.id });
           } catch (error) {
@@ -827,7 +827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/player/widgets", isPlayerAuthenticated, async (req: any, res) => {
     try {
       const userId = req.screen.userId;
-      
+
       if (!userId) {
         return res.status(403).json({ message: "Screen is not associated with a user." });
       }
@@ -844,7 +844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/player/alerts", isPlayerAuthenticated, async (req: any, res) => {
     try {
       const userId = req.screen.userId;
-      
+
       if (!userId) {
         return res.status(403).json({ message: "Screen is not associated with a user." });
       }
@@ -862,7 +862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.screen.userId;
       const alertId = parseInt(req.params.id);
-      
+
       if (!userId) {
         return res.status(403).json({ message: "Screen is not associated with a user." });
       }

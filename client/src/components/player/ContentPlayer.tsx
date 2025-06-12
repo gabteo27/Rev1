@@ -18,6 +18,47 @@ const ImagePlayer = ({ src }: { src: string }) => <img src={src} style={styles.m
 const VideoPlayer = ({ src }: { src: string }) => <video src={src} style={styles.media} autoPlay muted loop playsInline />;
 const WebpagePlayer = ({ src }: { src: string }) => <iframe src={src} style={{ ...styles.media, border: 'none' }} title="web-content" />;
 
+// YouTube Player Component with autoplay and loop
+const YouTubePlayer = ({ url }: { url: string }) => {
+  // Extract YouTube video ID from URL
+  const getYouTubeID = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const videoId = getYouTubeID(url);
+
+  if (!videoId) {
+    return (
+      <div style={{ 
+        ...styles.media, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: '18px' 
+      }}>
+        URL de YouTube no válida
+      </div>
+    );
+  }
+
+  // Build embed URL with autoplay, mute, loop, and minimal controls for kiosk mode
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&iv_load_policy=3&modestbranding=1&rel=0&fs=0&disablekb=1`;
+
+  return (
+    <iframe
+      key={embedUrl}
+      src={embedUrl}
+      style={{ ...styles.media, border: 'none' }}
+      title="YouTube video player"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowFullScreen
+    />
+  );
+};
+
 // Widget Components
 const ClockWidget = ({ config, position }: { config: any, position: string }) => {
   const [time, setTime] = useState(new Date());
@@ -379,8 +420,20 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         const message = JSON.parse(event.data);
         if (message.type === 'playlist-change') {
           console.log('Playlist change received:', message.data);
-          // Force reload the page to get the new playlist
-          window.location.reload();
+          // Instead of reloading, invalidate queries to get fresh data
+          const authToken = localStorage.getItem('authToken');
+          if (authToken) {
+            // Update localStorage with new playlist ID if provided
+            if (message.data?.playlistId) {
+              localStorage.setItem('playlistId', message.data.playlistId.toString());
+              // Force re-render by updating the URL
+              const currentUrl = new URL(window.location.href);
+              currentUrl.searchParams.set('t', Date.now().toString());
+              window.history.replaceState({}, '', currentUrl.toString());
+              // Trigger a re-render by forcing a state change
+              window.location.reload();
+            }
+          }
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -538,6 +591,16 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   const renderContentItem = (item: PlaylistItem) => {
     if (!item?.contentItem) return null;
     const { type, url } = item.contentItem;
+
+    // Detect YouTube URLs for special handling
+    const isYouTubeURL = (url: string) => {
+      return url.includes('youtube.com') || url.includes('youtu.be');
+    };
+
+    // Handle YouTube URLs with special player
+    if (type === 'webpage' && isYouTubeURL(url)) {
+      return <YouTubePlayer url={url} />;
+    }
 
     switch (type) {
       case 'image': return <ImagePlayer src={url} />;
