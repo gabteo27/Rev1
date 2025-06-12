@@ -182,6 +182,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate auth token and complete pairing
       const authToken = randomBytes(32).toString('hex');
 
+      console.log(`Completing pairing for screen ID: ${screen.id} with user: ${userId}`);
+
       const updatedScreen = await storage.updateScreenById(screen.id, {
         userId,
         name: name || screen.name,
@@ -193,6 +195,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isOnline: true,
         lastSeen: new Date()
       });
+
+      console.log(`Screen updated successfully:`, updatedScreen);
 
       console.log(`Pairing completed for screen: ${updatedScreen?.id}`);
 
@@ -516,7 +520,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/screens", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log(`Fetching screens for user: ${userId}`);
       const screens = await storage.getScreens(userId);
+      console.log(`Found ${screens.length} screens for user ${userId}:`, screens.map(s => ({ id: s.id, name: s.name, userId: s.userId })));
       res.json(screens);
     } catch (error) {
       console.error("Error fetching screens:", error);
@@ -1120,6 +1126,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
   }
+
+  // Debug endpoint to check all screens (remove in production)
+  app.get("/api/debug/screens", isAuthenticated, async (req: any, res) => {
+    try {
+      const allScreens = await db.select().from(screens);
+      console.log("All screens in database:", allScreens);
+      res.json(allScreens);
+    } catch (error) {
+      console.error("Error fetching all screens:", error);
+      res.status(500).json({ message: "Failed to fetch all screens" });
+    }
+  });
 
   // Analytics routes
   app.get("/api/analytics", isAuthenticated, async (req: any, res) => {

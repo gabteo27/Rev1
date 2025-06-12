@@ -723,6 +723,21 @@ export class DatabaseStorage implements IStorage {
         );
     }
   }
+  async getScreenByPairingCode(code: string): Promise<Screen | undefined> {
+    const [screen] = await db
+      .select()
+      .from(screens)
+      .where(eq(screens.pairingCode, code));
+    return screen;
+  }
+
+  async createScreenForPairing(data: any): Promise<Screen> {
+    const [screen] = await db
+      .insert(screens)
+      .values(data)
+      .returning();
+    return screen;
+  }
 }
 
 export const storage = new DatabaseStorage();
