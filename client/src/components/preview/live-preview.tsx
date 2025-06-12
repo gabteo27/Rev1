@@ -154,3 +154,133 @@ export default function LivePreview() {
     </>
   );
 }
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Eye, Monitor, Play, Pause, Square } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import ContentPlayer from "@/components/player/ContentPlayer";
+
+export default function LivePreview() {
+  const [selectedPlaylist, setSelectedPlaylist] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const { data: playlists = [] } = useQuery({
+    queryKey: ["/api/playlists"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/playlists");
+      return response.json();
+    },
+  });
+
+  const selectedPlaylistData = playlists.find((p: any) => p.id.toString() === selectedPlaylist);
+
+  const togglePreview = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  const stopPreview = () => {
+    setIsPlaying(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Eye className="h-5 w-5" />
+          Vista Previa en Vivo
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Playlist selector */}
+        <div className="space-y-2">
+          <Select value={selectedPlaylist} onValueChange={setSelectedPlaylist}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar playlist..." />
+            </SelectTrigger>
+            <SelectContent>
+              {playlists.map((playlist: any) => (
+                <SelectItem key={playlist.id} value={playlist.id.toString()}>
+                  <div className="flex items-center gap-2">
+                    <Monitor className="w-4 h-4" />
+                    <span>{playlist.name}</span>
+                    <Badge variant="secondary" className="ml-auto">
+                      {playlist.items?.length || 0} items
+                    </Badge>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Preview controls */}
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={togglePreview}
+            disabled={!selectedPlaylist}
+            size="sm"
+            className="flex-1"
+          >
+            {isPlaying ? (
+              <>
+                <Pause className="w-4 h-4 mr-2" />
+                Pausar
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 mr-2" />
+                Reproducir
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={stopPreview}
+            disabled={!selectedPlaylist}
+            size="sm"
+          >
+            <Square className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Preview area */}
+        <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+          {selectedPlaylist && isPlaying ? (
+            <div className="absolute inset-0">
+              <ContentPlayer 
+                playlistId={parseInt(selectedPlaylist)} 
+                isPreview={true}
+              />
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-white">
+              <div className="text-center">
+                <Monitor className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm opacity-75">
+                  {selectedPlaylist ? "Presiona reproducir para ver la vista previa" : "Selecciona una playlist"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Playlist info */}
+        {selectedPlaylistData && (
+          <div className="p-3 bg-muted rounded-lg">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm">{selectedPlaylistData.name}</h4>
+              <Badge variant="outline">
+                {selectedPlaylistData.items?.length || 0} elementos
+              </Badge>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
