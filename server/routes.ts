@@ -623,7 +623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         wssInstance.clients.forEach((client: WebSocket) => {
           const clientWithId = client as WebSocketWithId;
           if (clientWithId.readyState === WebSocket.OPEN && 
-              clientWithId.screenId === id) {
+              (clientWithId as any).screenId === id) {
             clientWithId.send(JSON.stringify({
               type: 'playlist-change',
               data: { playlistId: updates.playlistId }
@@ -749,6 +749,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // ✅ Usa la nueva función para notificar solo a los clientes del usuario
       broadcastToUser(userId, 'alert', alert);
+
+      // Si la alerta tiene duración, programar auto-eliminación
+      if (alert.duration > 0) {
+        setTimeout(async () => {
+          try {
+            await storage.deleteAlert(alert.id, userId);
+            console.log(`Alert ${alert.id} auto-deleted after ${alert.duration} seconds`);
+            
+            // Notificar a los clientes que la alerta fue eliminada
+            broadcastToUser(userId, 'alert-deleted', { alertId: alert.id });
+          } catch (error) {
+            console.error(`Failed to auto-delete alert ${alert.id}:`, error);
+          }
+        }, alert.duration * 1000);
+      }
 
       res.json(alert);
     } catch (error) {

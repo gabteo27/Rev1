@@ -60,24 +60,6 @@ export default function AlertModal({ open, onClose }: AlertModalProps) {
         }`,
       });
       
-      // Si la alerta tiene duración, programar auto-eliminación en el frontend también
-      if (alertData.duration > 0) {
-        setTimeout(() => {
-          // Auto-eliminar después de la duración especificada
-          fetch(`/api/alerts/${alertData.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ isActive: false }),
-          }).then(() => {
-            queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-          }).catch(error => {
-            console.error('Failed to auto-delete alert:', error);
-          });
-        }, alertData.duration * 1000);
-      }
-      
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
       handleClose();
     },

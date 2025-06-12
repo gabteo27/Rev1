@@ -370,6 +370,61 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     enabled: !!playlistId, // Solo ejecutar si hay playlist
   });
 
+  // WebSocket listener for playlist changes (only for actual player, not preview)
+  useEffect(() => {
+    if (isPreview) return;
+
+    const handlePlaylistChange = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'playlist-change') {
+          console.log('Playlist change received:', message.data);
+          // Force reload the page to get the new playlist
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    // Try to connect to WebSocket if we're in player mode
+    const connectWebSocket = () => {
+      try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          console.log('Player WebSocket connected');
+          const authToken = localStorage.getItem('authToken');
+          if (authToken) {
+            ws.send(JSON.stringify({ type: 'player-auth', token: authToken }));
+          }
+        };
+
+        ws.onmessage = handlePlaylistChange;
+
+        ws.onclose = () => {
+          console.log('Player WebSocket disconnected, attempting to reconnect...');
+          setTimeout(connectWebSocket, 5000);
+        };
+
+        return ws;
+      } catch (error) {
+        console.error('Failed to connect to WebSocket:', error);
+        setTimeout(connectWebSocket, 5000);
+      }
+    };
+
+    const ws = connectWebSocket();
+
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, [isPreview]);
+
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 
   // Manejar la expiración de alertas

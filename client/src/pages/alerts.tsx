@@ -1,242 +1,210 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Header from "@/components/layout/header";
-import AlertModal from "@/components/alerts/alert-modal";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { 
-  Plus, 
-  AlertTriangle, 
-  Clock, 
-  Monitor,
-  Trash2,
-  Edit,
-  Send
-} from "lucide-react";
+import { AlertTriangle, Bell, Eye, EyeOff, Edit, Trash2, Plus } from "lucide-react";
+import AlertModal from "@/components/alerts/alert-modal";
 
 export default function Alerts() {
-  const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: alerts, isLoading } = useQuery({
+  const { data: alerts = [], isLoading } = useQuery({
     queryKey: ["/api/alerts"],
-    retry: false,
+    queryFn: () => apiRequest("/api/alerts").then(res => res.json()),
   });
 
-  const deleteMutation = useMutation({
+  const deleteAlertMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/alerts/${id}`);
+      await apiRequest(`/api/alerts/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
-      toast({
-        title: "Alerta eliminada",
-        description: "La alerta ha sido eliminada exitosamente.",
-      });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar la alerta.",
-        variant: "destructive",
-      });
+      toast({ title: "Alerta eliminada" });
     },
   });
 
-  const toggleActiveMutation = useMutation({
+  const toggleAlertMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const response = await apiRequest("PUT", `/api/alerts/${id}`, { isActive });
-      return response.json();
+      await apiRequest(`/api/alerts/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ isActive }),
+      });
     },
     onSuccess: () => {
-      toast({
-        title: "Estado actualizado",
-        description: "El estado de la alerta ha sido actualizado.",
-      });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el estado de la alerta.",
-        variant: "destructive",
-      });
+      toast({ title: "Estado de alerta actualizado" });
     },
   });
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
+  // Auto-delete alerts when their duration expires
+  useEffect(() => {
+    const activeAlerts = alerts.filter((alert: any) => alert.isActive && alert.duration > 0);
+
+    activeAlerts.forEach((alert: any) => {
+      const createdTime = new Date(alert.createdAt).getTime();
+      const currentTime = Date.now();
+      const elapsedTime = (currentTime - createdTime) / 1000;
+      const remainingTime = Math.max(0, alert.duration - elapsedTime);
+
+      if (remainingTime > 0) {
+        const timeoutId = setTimeout(() => {
+          // Auto-delete the alert
+          deleteAlertMutation.mutate(alert.id);
+        }, remainingTime * 1000);
+
+        return () => clearTimeout(timeoutId);
+      } else if (elapsedTime >= alert.duration) {
+        // Alert should have already expired, delete it immediately
+        deleteAlertMutation.mutate(alert.id);
+      }
     });
-  };
+  }, [alerts, deleteAlertMutation]);
 
   const formatDuration = (seconds: number) => {
-    if (seconds < 60) {
-      return `${seconds}s`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) {
-      return `${minutes}m`;
-    }
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ${minutes % 60}m`;
+    if (seconds === 0) return "Manual";
+    if (seconds < 60) return `${seconds}s`;
+    return `${Math.floor(seconds / 60)}m`;
+  };
+
+  const getRemainingTime = (alert: any) => {
+    if (!alert.isActive || alert.duration === 0) return null;
+
+    const createdTime = new Date(alert.createdAt).getTime();
+    const currentTime = Date.now();
+    const elapsedTime = (currentTime - createdTime) / 1000;
+    const remainingTime = Math.max(0, alert.duration - elapsedTime);
+
+    if (remainingTime <= 0) return "Expirando...";
+
+    if (remainingTime < 60) return `${Math.ceil(remainingTime)}s restantes`;
+    return `${Math.ceil(remainingTime / 60)}m restantes`;
   };
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col h-full">
-        <Header title="Alertas" subtitle="Gestiona notificaciones urgentes" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-slate-600">Cargando alertas...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <div className="p-6">Cargando alertas...</div>;
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <Header
-        title="Alertas"
-        subtitle="Gestiona notificaciones urgentes"
-        actions={
-          <Button 
-            onClick={() => setAlertModalOpen(true)}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Alerta Urgente
-          </Button>
-        }
-      />
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Alertas</h1>
+          <p className="text-muted-foreground">
+            Gestiona las alertas que se muestran en tus pantallas
+          </p>
+        </div>
+        <Button onClick={() => setCreateModalOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Nueva Alerta
+        </Button>
+      </div>
 
-      <div className="flex-1 px-6 py-6 overflow-auto">
-        {!alerts || alerts.length === 0 ? (
-          <Card className="border-dashed border-2 border-slate-300">
-            <CardContent className="p-12 text-center">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-8 h-8 text-slate-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                No tienes alertas creadas
-              </h3>
-              <p className="text-slate-600 mb-6">
-                Las alertas te permiten mostrar mensajes urgentes que se superponen al contenido actual en todas las pantallas.
+      <div className="grid gap-4">
+        {alerts.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Bell className="w-12 h-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No hay alertas</h3>
+              <p className="text-muted-foreground text-center mb-4">
+                Las alertas te permiten mostrar mensajes importantes en todas tus pantallas de forma inmediata.
               </p>
-              <Button 
-                onClick={() => setAlertModalOpen(true)}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                <AlertTriangle className="w-4 h-4 mr-2" />
+              <Button onClick={() => setCreateModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
                 Crear Primera Alerta
               </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {alerts.map((alert: any) => (
-              <Card key={alert.id} className="border-slate-200">
-                <CardContent className="p-6">
+          alerts.map((alert: any) => {
+            const remainingTime = getRemainingTime(alert);
+            return (
+              <Card key={alert.id} className="relative">
+                <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div 
-                          className="w-4 h-4 rounded-full border-2"
-                          style={{ 
-                            backgroundColor: alert.backgroundColor,
-                            borderColor: alert.backgroundColor 
-                          }}
-                        ></div>
-                        <div className="flex items-center space-x-2">
-                          {alert.isActive && (
-                            <Badge className="bg-red-100 text-red-800">
-                              Activa
-                            </Badge>
-                          )}
-                          <Badge variant="outline">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {formatDuration(alert.duration)}
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-4 h-4 rounded"
+                        style={{ backgroundColor: alert.backgroundColor }}
+                      />
+                      <div>
+                        <CardTitle className="text-lg">{alert.message}</CardTitle>
+                        <CardDescription className="flex items-center gap-4 mt-1">
+                          <span>Duración: {formatDuration(alert.duration)}</span>
+                          <Badge variant={alert.isActive ? "default" : "secondary"}>
+                            {alert.isActive ? "Activa" : "Inactiva"}
                           </Badge>
-                        </div>
+                          {remainingTime && (
+                            <Badge variant="outline">{remainingTime}</Badge>
+                          )}
+                        </CardDescription>
                       </div>
-
-                      <div 
-                        className="p-4 rounded-lg mb-4"
-                        style={{ 
-                          backgroundColor: alert.backgroundColor,
-                          color: alert.textColor 
-                        }}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleAlertMutation.mutate({ 
+                          id: alert.id, 
+                          isActive: !alert.isActive 
+                        })}
+                        disabled={toggleAlertMutation.isPending}
                       >
-                        <p className="font-medium">{alert.message}</p>
-                      </div>
-
-                      <div className="flex items-center space-x-6 text-sm text-slate-600">
-                        <div className="flex items-center">
-                          <Monitor className="w-4 h-4 mr-1" />
-                          <span>
-                            {alert.targetScreens?.length > 0 
-                              ? `${alert.targetScreens.length} pantallas`
-                              : "Todas las pantallas"
-                            }
-                          </span>
-                        </div>
-                        <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>Creada: {formatDate(alert.createdAt)}</span>
-                        </div>
-                      </div>
+                        {alert.isActive ? (
+                          <>
+                            <EyeOff className="w-4 h-4 mr-1" />
+                            Desactivar
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-4 h-4 mr-1" />
+                            Activar
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteAlertMutation.mutate(alert.id)}
+                        disabled={deleteAlertMutation.isPending}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Eliminar
+                      </Button>
                     </div>
+                  </div>
+                </CardHeader>
 
-                    <div className="flex items-center space-x-4 ml-6">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-slate-600">
-                          {alert.isActive ? "Activa" : "Inactiva"}
-                        </span>
-                        <Switch
-                          checked={alert.isActive}
-                          onCheckedChange={(checked) => 
-                            toggleActiveMutation.mutate({ id: alert.id, isActive: checked })
-                          }
-                          disabled={toggleActiveMutation.isPending}
-                        />
-                      </div>
-                      
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => deleteMutation.mutate(alert.id)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+                <CardContent>
+                  <div
+                    className="p-4 rounded-lg text-center font-medium"
+                    style={{
+                      backgroundColor: alert.backgroundColor,
+                      color: alert.textColor,
+                    }}
+                  >
+                    {alert.message}
+                  </div>
+
+                  <div className="mt-4 text-sm text-muted-foreground">
+                    <p>Creada: {new Date(alert.createdAt).toLocaleString()}</p>
+                    {alert.targetScreens?.length > 0 && (
+                      <p>Pantallas objetivo: {alert.targetScreens.length}</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+            );
+          })
         )}
       </div>
 
-      <AlertModal 
-        open={alertModalOpen}
-        onClose={() => setAlertModalOpen(false)}
+      <AlertModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
       />
     </div>
   );
