@@ -22,6 +22,14 @@ async function runCommand(command: string, cwd: string) {
 }
 
 export async function buildApk(version: string): Promise<string> {
+  // Check if Android SDK is available
+  try {
+    await execAsync("which android", { cwd: process.cwd() });
+  } catch (error) {
+    console.log("Android SDK not found. Skipping APK build in this environment.");
+    throw new Error("Android SDK not available. APK build requires Android development environment.");
+  }
+
   // 1. Build the React frontend
   console.log("Building React app...");
   await runCommand("npm run build", process.cwd());

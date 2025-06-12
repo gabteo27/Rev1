@@ -83,10 +83,14 @@ export default function Deployment() {
         description: "La compilación de la aplicación ha comenzado.",
       });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      const message = error?.response?.data?.requiresAndroidSdk 
+        ? "APK generation requires Android SDK. This feature is not available in the current environment."
+        : "Failed to create deployment";
+
       toast({
-        title: "Error al crear despliegue",
-        description: error.message,
+        title: "Error",
+        description: message,
         variant: "destructive",
       });
     },
