@@ -1099,6 +1099,3 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
-```
-
-Applying the change to ensure the zone is correctly saved in playlist items.
