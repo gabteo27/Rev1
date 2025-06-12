@@ -162,7 +162,7 @@ export default function PlayerPage() {
 
     const [currentPlaylistId, setCurrentPlaylistId] = useState<number | undefined>(urlPlaylistId);
     // Validate token and get screen info
-    const { data: screenInfo, isLoading: isValidating } = useQuery({
+    const { data: screenInfo, isLoading: isValidating, error: validationError } = useQuery({
       queryKey: ['/api/player/validate-token'],
       queryFn: async () => {
         const authToken = localStorage.getItem('authToken');
@@ -182,8 +182,22 @@ export default function PlayerPage() {
 
         return response.json();
       },
-      retry: 3,
+      retry: (failureCount, error) => {
+        // Don't retry if it's an auth error
+        if (error.message.includes('Token validation failed')) {
+          return false;
+        }
+        return failureCount < 3;
+      },
       refetchInterval: 30000, // Check token validity every 30 seconds
+      onError: (error) => {
+        console.error('Token validation error:', error);
+        // Clear invalid token and restart pairing process
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('screenName');
+        localStorage.removeItem('playlistId');
+        setStatus('initializing');
+      }
     });
 
     // Update current playlist ID when screen info changes
@@ -198,10 +212,31 @@ export default function PlayerPage() {
         setCurrentPlaylistId(urlPlaylistId);
       }
     }, [screenInfo, urlPlaylistId, currentPlaylistId]);
+
+    // Handle validation errors
+    if (validationError) {
+      console.error('Screen validation failed:', validationError);
+      return (
+        <div style={playerStyles}>
+          <h1 style={{ color: '#ef4444' }}>Error de Validación</h1>
+          <p style={{ fontSize: '1.5vw', marginTop: '1rem' }}>
+            La pantalla no está correctamente emparejada. Reiniciando...
+          </p>
+        </div>
+      );
+    }
+
+    if (isValidating) {
+      return (
+        <div style={playerStyles}>
+          <h1>Validando Pantalla...</h1>
+        </div>
+      );
+    }
     return <ContentPlayer playlistId={currentPlaylistId} isPreview={false} />;
   }
 
   return null; // No renderizar nada en otros casos
 }
 
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";

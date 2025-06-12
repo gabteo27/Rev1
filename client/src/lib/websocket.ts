@@ -1,4 +1,3 @@
-
 import { queryClient } from './queryClient';
 
 interface WebSocketMessage {
@@ -118,6 +117,10 @@ class WebSocketManager {
           this.ws.onerror = (error) => {
             clearTimeout(connectionTimeout);
             console.error('WebSocket error:', error);
+            // Prevent unhandled promise rejections
+            if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+              this.ws.close();
+            }
             this.isConnecting = false;
             this.connectionPromise = null;
             reject(error);
@@ -178,7 +181,7 @@ class WebSocketManager {
 
       if (userData && typeof userData === 'object' && 'id' in userData) {
         this.authUser = userData;
-        
+
         // Send authentication message
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           this.send({
@@ -292,7 +295,7 @@ class WebSocketManager {
     if (!this.subscribers.has(eventType)) {
       this.subscribers.set(eventType, []);
     }
-    
+
     const callbacks = this.subscribers.get(eventType);
     callbacks?.push(callback);
 
@@ -316,12 +319,12 @@ class WebSocketManager {
     this.stopHeartbeat();
     this.isReconnecting = false;
     this.connectionPromise = null;
-    
+
     if (this.ws) {
       this.ws.close(1000, 'Client disconnecting');
       this.ws = null;
     }
-    
+
     this.subscribers.clear();
     console.log('WebSocket disconnected and cleaned up');
   }

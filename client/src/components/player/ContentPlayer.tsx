@@ -552,13 +552,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
         ws.onerror = (error) => {
           console.error('Player WebSocket error:', error);
+          // Don't attempt reconnection immediately on error
+          if (ws) {
+            ws.close();
+          }
         };
 
       } catch (error) {
         console.error('Failed to connect to WebSocket:', error);
         if (reconnectAttempts < maxReconnectAttempts) {
           reconnectAttempts++;
-          reconnectTimeout = setTimeout(connectWebSocket, 3000);
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
+          console.log(`WebSocket connection failed, retrying in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+          reconnectTimeout = setTimeout(connectWebSocket, delay);
+        } else {
+          console.error('Max WebSocket reconnection attempts reached, stopping reconnection');
         }
       }
     };
