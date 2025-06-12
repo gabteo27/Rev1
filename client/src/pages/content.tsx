@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -33,22 +34,22 @@ export default function Content() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { data: content, isLoading, error, refetch } = useQuery({
+  const { data: content = [], isLoading, error, refetch } = useQuery({
     queryKey: ["/api/content"],
     queryFn: async () => {
-      const response = await apiRequest("/api/content");
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      try {
+        const response = await apiRequest("/api/content");
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Error fetching content:', error);
+        throw error;
       }
-      return response.json();
     },
-    retry: (failureCount, error: any) => {
-      // Retry network errors but not auth/permission errors
-      if (error?.status === 401 || error?.status === 403) {
-        return false;
-      }
-      return failureCount < 2;
-    },
+    retry: 1,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
   });
@@ -58,6 +59,9 @@ export default function Content() {
       const response = await apiRequest(`/api/content/${id}`, {
         method: "DELETE",
       });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
       return response;
     },
     onSuccess: () => {
@@ -78,7 +82,6 @@ export default function Content() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      // Remove duration from update data since it will be managed in playlists
       const { duration, ...updateData } = data;
       const response = await apiRequest(`/api/content/${data.id}`, {
         method: "PUT",
@@ -108,36 +111,37 @@ export default function Content() {
   });
 
   const getContentIcon = (type: string) => {
+    const iconProps = { className: "w-5 h-5" };
     switch (type) {
       case "image":
-        return <Image className="w-5 h-5 text-blue-600" />;
+        return <Image {...iconProps} style={{ color: '#2563eb' }} />;
       case "video":
-        return <Video className="w-5 h-5 text-green-600" />;
+        return <Video {...iconProps} style={{ color: '#16a34a' }} />;
       case "pdf":
-        return <FileText className="w-5 h-5 text-purple-600" />;
+        return <FileText {...iconProps} style={{ color: '#9333ea' }} />;
       case "webpage":
-        return <Globe className="w-5 h-5 text-orange-600" />;
+        return <Globe {...iconProps} style={{ color: '#ea580c' }} />;
       case "text":
-        return <Type className="w-5 h-5 text-yellow-600" />;
+        return <Type {...iconProps} style={{ color: '#ca8a04' }} />;
       default:
-        return <FileText className="w-5 h-5 text-slate-600" />;
+        return <FileText {...iconProps} style={{ color: '#64748b' }} />;
     }
   };
 
   const getContentBadgeColor = (type: string) => {
     switch (type) {
       case "image":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-800 border-blue-200";
       case "video":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 border-green-200";
       case "pdf":
-        return "bg-purple-100 text-purple-800";
+        return "bg-purple-100 text-purple-800 border-purple-200";
       case "webpage":
-        return "bg-orange-100 text-orange-800";
+        return "bg-orange-100 text-orange-800 border-orange-200";
       case "text":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
       default:
-        return "bg-slate-100 text-slate-800";
+        return "bg-slate-100 text-slate-800 border-slate-200";
     }
   };
 
@@ -161,7 +165,7 @@ export default function Content() {
   const categories = ["Promociones", "Institucional", "Noticias", "Entretenimiento", "Información"];
 
   const filteredContent = selectedCategory 
-    ? content?.filter((item: any) => item.category === selectedCategory)
+    ? content.filter((item: any) => item.category === selectedCategory)
     : content;
 
   const handleEdit = (item: any) => {
@@ -196,12 +200,12 @@ export default function Content() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-screen overflow-hidden">
         <Header title="Contenido" subtitle="Gestiona tus archivos multimedia" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-slate-600">Cargando contenido...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Cargando contenido...</p>
           </div>
         </div>
       </div>
@@ -210,20 +214,20 @@ export default function Content() {
 
   if (error) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-screen overflow-hidden">
         <Header title="Contenido" subtitle="Gestiona tus archivos multimedia" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <FileText className="w-8 h-8 text-red-600" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Error al cargar contenido
             </h3>
-            <p className="text-slate-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               {error.message || "No se pudo cargar el contenido. Por favor, intenta nuevamente."}
             </p>
-            <Button onClick={() => refetch()} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => refetch()}>
               Reintentar
             </Button>
           </div>
@@ -238,10 +242,7 @@ export default function Content() {
         title="Contenido"
         subtitle="Gestiona tus archivos multimedia"
         actions={
-          <Button 
-            onClick={() => setUploadModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
+          <Button onClick={() => setUploadModalOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Contenido
           </Button>
@@ -274,24 +275,21 @@ export default function Content() {
 
         {/* Content Grid */}
         {!filteredContent || filteredContent.length === 0 ? (
-          <Card className="border-dashed border-2 border-slate-300">
+          <Card className="border-dashed border-2">
             <CardContent className="p-12 text-center">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Folder className="w-8 h-8 text-slate-400" />
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <Folder className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              <h3 className="text-lg font-semibold mb-2">
                 {selectedCategory ? `No hay contenido en ${selectedCategory}` : "No tienes contenido aún"}
               </h3>
-              <p className="text-slate-600 mb-6">
+              <p className="text-muted-foreground mb-6">
                 {selectedCategory 
                   ? "Intenta seleccionar otra categoría o sube nuevo contenido."
                   : "Comienza subiendo imágenes, videos, PDFs o agregando páginas web."
                 }
               </p>
-              <Button 
-                onClick={() => setUploadModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
+              <Button onClick={() => setUploadModalOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Subir Contenido
               </Button>
@@ -300,15 +298,18 @@ export default function Content() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredContent.map((item: any) => (
-              <Card key={item.id} className="border-slate-200 hover:shadow-lg transition-shadow">
+              <Card key={item.id} className="hover:shadow-lg transition-shadow">
                 <CardContent className="p-0">
                   {/* Content Preview */}
-                  <div className="aspect-video bg-slate-100 relative overflow-hidden rounded-t-lg">
+                  <div className="aspect-video bg-muted relative overflow-hidden rounded-t-lg">
                     {item.type === "image" && item.url && (
                       <img 
                         src={item.url} 
                         alt={item.title}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
                       />
                     )}
                     {item.type === "video" && item.url && (
@@ -316,10 +317,14 @@ export default function Content() {
                         src={item.url} 
                         className="w-full h-full object-cover"
                         muted
+                        onError={(e) => {
+                          (e.target as HTMLVideoElement).style.display = 'none';
+                        }}
                       />
                     )}
-                    {(item.type === "pdf" || item.type === "webpage" || item.type === "text") && (
-                      <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                    {(item.type === "pdf" || item.type === "webpage" || item.type === "text" || 
+                      (!item.url || item.type === "image" || item.type === "video")) && (
+                      <div className="w-full h-full flex items-center justify-center">
                         {getContentIcon(item.type)}
                       </div>
                     )}
@@ -341,17 +346,17 @@ export default function Content() {
 
                   {/* Content Info */}
                   <div className="p-4">
-                    <h4 className="font-semibold text-slate-900 mb-1 truncate">
+                    <h4 className="font-semibold mb-1 truncate">
                       {item.title}
                     </h4>
                     {item.description && (
-                      <p className="text-sm text-slate-600 mb-3 line-clamp-2">
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                         {item.description}
                       </p>
                     )}
 
                     {/* Meta Info */}
-                    <div className="space-y-2 text-xs text-slate-500">
+                    <div className="space-y-2 text-xs text-muted-foreground">
                       <div className="flex items-center">
                         <Calendar className="w-3 h-3 mr-1" />
                         {formatDate(item.createdAt)}
@@ -476,7 +481,7 @@ export default function Content() {
                   onChange={(e) => setEditingContent({...editingContent, tags: e.target.value})}
                   placeholder="promoción, verano, descuento"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Separa las etiquetas con comas
                 </p>
               </div>

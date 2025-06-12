@@ -49,24 +49,73 @@ export default function Playlists() {
   // --- QUERIES ---
   const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
     queryKey: ["/api/playlists"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("/api/playlists");
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Error fetching playlists:', error);
+        return [];
+      }
+    },
+    retry: 1,
   });
 
   const { data: allContent = [] } = useQuery({
     queryKey: ["/api/content"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("/api/content");
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Error fetching content:', error);
+        return [];
+      }
+    },
+    retry: 1,
   });
 
   const { data: playlistData, isLoading: playlistLoading, refetch: refetchPlaylist } = useQuery({
     queryKey: ["/api/playlists", selectedPlaylistId],
     enabled: !!selectedPlaylistId,
+    queryFn: async () => {
+      if (!selectedPlaylistId) return null;
+      try {
+        const response = await apiRequest(`/api/playlists/${selectedPlaylistId}`);
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching playlist:', error);
+        throw error;
+      }
+    },
+    retry: 1,
   });
 
   // --- MUTATIONS ---
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("/api/playlists", {
+      const response = await apiRequest("/api/playlists", {
         method: "POST",
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
@@ -77,14 +126,28 @@ export default function Playlists() {
         description: "La playlist se ha creado exitosamente.",
       });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear la playlist.",
+        variant: "destructive",
+      });
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/playlists/${data.id}`, {
+      const response = await apiRequest(`/api/playlists/${data.id}`, {
         method: "PUT",
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
@@ -95,14 +158,28 @@ export default function Playlists() {
         description: "Los cambios se han guardado correctamente.",
       });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la playlist.",
+        variant: "destructive",
+      });
+    },
   });
 
   const updateLayoutMutation = useMutation({
     mutationFn: async (layout: string) => {
-      return await apiRequest(`/api/playlists/${selectedPlaylistId}`, {
+      const response = await apiRequest(`/api/playlists/${selectedPlaylistId}`, {
         method: "PUT",
-        body: JSON.stringify({ layout })
+        body: JSON.stringify({ layout }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
@@ -111,19 +188,33 @@ export default function Playlists() {
         description: "El layout de la playlist se ha cambiado.",
       });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el layout.",
+        variant: "destructive",
+      });
+    },
   });
 
   const addItemMutation = useMutation({
     mutationFn: async ({ contentItemId, zone }: { contentItemId: number, zone: string }) => {
       const currentItems = playlistData?.items?.filter((item: any) => item.zone === zone) || [];
-      return await apiRequest(`/api/playlists/${selectedPlaylistId}/items`, {
+      const response = await apiRequest(`/api/playlists/${selectedPlaylistId}/items`, {
         method: "POST",
         body: JSON.stringify({ 
           contentItemId, 
           order: currentItems.length,
           zone: zone || 'main'
-        })
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
     },
     onSuccess: () => {
       refetchPlaylist();
@@ -133,13 +224,24 @@ export default function Playlists() {
         description: "El elemento se ha agregado a la playlist.",
       });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo agregar el contenido.",
+        variant: "destructive",
+      });
+    },
   });
 
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: number) => {
-      return await apiRequest(`/api/playlist-items/${itemId}`, {
+      const response = await apiRequest(`/api/playlist-items/${itemId}`, {
         method: "DELETE"
       });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response;
     },
     onSuccess: () => {
       refetchPlaylist();
@@ -149,11 +251,24 @@ export default function Playlists() {
         description: "El elemento se ha eliminado de la playlist.",
       });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el elemento.",
+        variant: "destructive",
+      });
+    },
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (itemIds: number[]) => {
-      await Promise.all(itemIds.map(id => apiRequest(`/api/playlist-items/${id}`, { method: "DELETE" })));
+      await Promise.all(itemIds.map(async id => {
+        const response = await apiRequest(`/api/playlist-items/${id}`, { method: "DELETE" });
+        if (!response.ok) {
+          throw new Error(`Error deleting item ${id}`);
+        }
+        return response;
+      }));
     },
     onSuccess: () => {
       toast({ title: "Elementos eliminados" });
@@ -161,13 +276,24 @@ export default function Playlists() {
       refetchPlaylist();
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron eliminar algunos elementos.",
+        variant: "destructive",
+      });
+    },
   });
 
   const deletePlaylistMutation = useMutation({
     mutationFn: async (playlistId: number) => {
-      return await apiRequest(`/api/playlists/${playlistId}`, {
+      const response = await apiRequest(`/api/playlists/${playlistId}`, {
         method: "DELETE"
       });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
@@ -175,6 +301,13 @@ export default function Playlists() {
       toast({
         title: "Playlist eliminada",
         description: "La playlist se ha eliminado correctamente.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar la playlist.",
+        variant: "destructive",
       });
     },
   });
@@ -267,9 +400,9 @@ export default function Playlists() {
 
   if (playlistsLoading) {
     return (
-      <div className="space-y-6">
+      <div className="flex flex-col h-screen overflow-hidden">
         <Header title="Playlists" subtitle="Gestión de listas de reproducción" />
-        <div className="flex justify-center">
+        <div className="flex-1 flex justify-center items-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </div>
@@ -348,11 +481,11 @@ export default function Playlists() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <List className="h-5 w-5" />
-              Playlists ({Array.isArray(playlists) ? playlists.length : 0})
+              Playlists ({playlists.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto space-y-3 min-h-0">
-            {!Array.isArray(playlists) || playlists.length === 0 ? (
+            {playlists.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <List className="h-12 w-12 mx-auto mb-4 opacity-20" />
                 <p>No hay playlists</p>
@@ -426,7 +559,7 @@ export default function Playlists() {
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         <Layout className="h-5 w-5" />
-                        Layout: {playlistData?.name}
+                        Layout: {playlistData?.name || 'Cargando...'}
                       </CardTitle>
                       <CardDescription>Selecciona la distribución de zonas para la pantalla</CardDescription>
                     </div>
@@ -469,123 +602,131 @@ export default function Playlists() {
 
               {/* Editor de Zonas */}
               <div className="flex-1 overflow-y-auto min-h-0">
-                {selectedItems.size > 0 && (
-                  <div className="p-3 bg-primary/10 rounded-md mb-4 flex items-center gap-3 sticky top-0 z-10 border border-primary/20">
-                    <Checkbox 
-                      checked={selectedItems.size > 0}
-                      onCheckedChange={() => setSelectedItems(new Set())}
-                    />
-                    <p className="text-sm font-medium">{selectedItems.size} elementos seleccionados</p>
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      onClick={() => bulkDeleteMutation.mutate([...selectedItems])}
-                      disabled={bulkDeleteMutation.isPending}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2"/> 
-                      Eliminar
-                    </Button>
+                {playlistLoading ? (
+                  <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
-                )}
-                
-                <DragDropContext onDragEnd={handleDragEnd}>
-                  <div className={`grid gap-4 ${
-                    currentLayout === 'split_vertical' ? 'grid-cols-2' : 
-                    currentLayout === 'split_horizontal' ? 'grid-rows-2' : 
-                    'grid-cols-1'
-                  }`}>
-                    {zones.map(zone => (
-                      <Droppable key={zone.id} droppableId={zone.id}>
-                        {(provided, snapshot) => (
-                          <Card className={`${
-                            snapshot.isDraggingOver ? 'border-primary bg-primary/5' : ''
-                          }`}>
-                            <CardHeader className="pb-3">
-                              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-primary/20"></div>
-                                {zone.title}
-                                <Badge variant="secondary" className="ml-auto text-xs">
-                                  {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
-                                </Badge>
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent ref={provided.innerRef} {...provided.droppableProps} className="min-h-[200px]">
-                              <div className="space-y-2">
-                                {playlistData?.items?.filter((item: any) => item.zone === zone.id)
-                                  .sort((a: any, b: any) => a.order - b.order)
-                                  .map((item: any, index: number) => {
-                                    const IconComponent = getContentIcon(item.contentItem.type);
-                                    const iconColor = getFileColor(item.contentItem.type);
-                                    
-                                    return (
-                                      <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
-                                        {(provided, snapshot) => (
-                                          <div
-                                            ref={provided.innerRef}
-                                            {...provided.draggableProps}
-                                            className={`flex items-center gap-3 p-3 bg-background border rounded-lg transition-all ${
-                                              snapshot.isDragging ? 'shadow-lg bg-accent' : 'hover:bg-accent/50'
-                                            }`}
-                                          >
-                                            <Checkbox 
-                                              checked={selectedItems.has(item.id)} 
-                                              onCheckedChange={() => toggleItemSelected(item.id)} 
-                                            />
-                                            <div
-                                              {...provided.dragHandleProps}
-                                              className="flex items-center justify-center w-6 h-6 text-muted-foreground hover:text-foreground cursor-grab"
-                                            >
-                                              <GripVertical className="w-4 h-4" />
-                                            </div>
-                                            <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                                              {React.cloneElement(IconComponent, { className: `w-5 h-5 ${iconColor}` })}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                              <h4 className="font-medium text-sm truncate">{item.contentItem.title}</h4>
-                                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                                <Badge variant="outline" className="text-xs px-2 py-0">
-                                                  {item.contentItem.type}
-                                                </Badge>
-                                                <span>{formatDuration(item.customDuration || item.contentItem.duration || 0)}</span>
-                                              </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <span className="text-xs text-muted-foreground font-mono">#{index + 1}</span>
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => removeItemMutation.mutate(item.id)}
-                                                disabled={removeItemMutation.isPending}
-                                                className="text-red-500 hover:text-red-600 p-2"
+                ) : (
+                  <>
+                    {selectedItems.size > 0 && (
+                      <div className="p-3 bg-primary/10 rounded-md mb-4 flex items-center gap-3 sticky top-0 z-10 border border-primary/20">
+                        <Checkbox 
+                          checked={selectedItems.size > 0}
+                          onCheckedChange={() => setSelectedItems(new Set())}
+                        />
+                        <p className="text-sm font-medium">{selectedItems.size} elementos seleccionados</p>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => bulkDeleteMutation.mutate([...selectedItems])}
+                          disabled={bulkDeleteMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2"/> 
+                          Eliminar
+                        </Button>
+                      </div>
+                    )}
+                    
+                    <DragDropContext onDragEnd={handleDragEnd}>
+                      <div className={`grid gap-4 ${
+                        currentLayout === 'split_vertical' ? 'grid-cols-2' : 
+                        currentLayout === 'split_horizontal' ? 'grid-rows-2' : 
+                        'grid-cols-1'
+                      }`}>
+                        {zones.map(zone => (
+                          <Droppable key={zone.id} droppableId={zone.id}>
+                            {(provided, snapshot) => (
+                              <Card className={`${
+                                snapshot.isDraggingOver ? 'border-primary bg-primary/5' : ''
+                              }`}>
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-primary/20"></div>
+                                    {zone.title}
+                                    <Badge variant="secondary" className="ml-auto text-xs">
+                                      {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
+                                    </Badge>
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent ref={provided.innerRef} {...provided.droppableProps} className="min-h-[200px]">
+                                  <div className="space-y-2">
+                                    {playlistData?.items?.filter((item: any) => item.zone === zone.id)
+                                      .sort((a: any, b: any) => a.order - b.order)
+                                      .map((item: any, index: number) => {
+                                        const IconComponent = getContentIcon(item.contentItem?.type || 'unknown');
+                                        const iconColor = getFileColor(item.contentItem?.type || 'unknown');
+                                        
+                                        return (
+                                          <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
+                                            {(provided, snapshot) => (
+                                              <div
+                                                ref={provided.innerRef}
+                                                {...provided.draggableProps}
+                                                className={`flex items-center gap-3 p-3 bg-background border rounded-lg transition-all ${
+                                                  snapshot.isDragging ? 'shadow-lg bg-accent' : 'hover:bg-accent/50'
+                                                }`}
                                               >
-                                                <Trash2 className="w-4 h-4" />
-                                              </Button>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </Draggable>
-                                    );
-                                  })}
-                                {provided.placeholder}
-                                {(!playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length) && (
-                                  <div className="text-center py-8 text-muted-foreground">
-                                    <Play className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                                    <p className="text-sm">Arrastra contenido aquí</p>
+                                                <Checkbox 
+                                                  checked={selectedItems.has(item.id)} 
+                                                  onCheckedChange={() => toggleItemSelected(item.id)} 
+                                                />
+                                                <div
+                                                  {...provided.dragHandleProps}
+                                                  className="flex items-center justify-center w-6 h-6 text-muted-foreground hover:text-foreground cursor-grab"
+                                                >
+                                                  <GripVertical className="w-4 h-4" />
+                                                </div>
+                                                <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                                                  {React.cloneElement(IconComponent, { className: `w-5 h-5 ${iconColor}` })}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <h4 className="font-medium text-sm truncate">{item.contentItem?.title || 'Sin título'}</h4>
+                                                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                                    <Badge variant="outline" className="text-xs px-2 py-0">
+                                                      {item.contentItem?.type || 'unknown'}
+                                                    </Badge>
+                                                    <span>{formatDuration(item.customDuration || item.contentItem?.duration || 0)}</span>
+                                                  </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-xs text-muted-foreground font-mono">#{index + 1}</span>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removeItemMutation.mutate(item.id)}
+                                                    disabled={removeItemMutation.isPending}
+                                                    className="text-red-500 hover:text-red-600 p-2"
+                                                  >
+                                                    <Trash2 className="w-4 h-4" />
+                                                  </Button>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </Draggable>
+                                        );
+                                      })}
+                                    {provided.placeholder}
+                                    {(!playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length) && (
+                                      <div className="text-center py-8 text-muted-foreground">
+                                        <Play className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                        <p className="text-sm">Arrastra contenido aquí</p>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
-                      </Droppable>
-                    ))}
-                  </div>
-                </DragDropContext>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </Droppable>
+                        ))}
+                      </div>
+                    </DragDropContext>
+                  </>
+                )}
               </div>
             </>
           ) : (
             <Card className="flex items-center justify-center h-full">
-              <div className="text-center text-slate-500">
+              <div className="text-center text-muted-foreground">
                 <List className="mx-auto h-12 w-12 opacity-50 mb-4" />
                 <p className="text-lg font-medium mb-2">Selecciona una playlist</p>
                 <p className="text-sm">Elige una playlist para comenzar a editar su contenido y layout.</p>
@@ -604,7 +745,7 @@ export default function Playlists() {
             <CardDescription>Arrastra o haz clic para agregar</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto space-y-2 min-h-0">
-            {!Array.isArray(availableContent) || availableContent.length === 0 ? (
+            {availableContent.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
                 <p>No hay contenido disponible</p>
@@ -692,7 +833,7 @@ export default function Playlists() {
           {selectedPlaylistId && (
             <div className="aspect-video bg-black rounded-lg overflow-hidden">
               <iframe 
-                src={`/screen-player?playlistId=${selectedPlaylistId}`} 
+                src={`/screen-player?playlistId=${selectedPlaylistId}&preview=true`} 
                 className="w-full h-full" 
                 frameBorder="0"
                 title="Vista previa de la playlist"
