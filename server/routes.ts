@@ -686,6 +686,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public widget endpoint for players
+  app.get("/api/player/widgets", isPlayerAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.screen.userId;
+      
+      if (!userId) {
+        return res.status(403).json({ message: "Screen is not associated with a user." });
+      }
+
+      const widgets = await storage.getWidgets(userId);
+      res.json(widgets);
+    } catch (error) {
+      console.error("Error fetching widgets for player:", error);
+      res.status(500).json({ message: "Failed to fetch widgets" });
+    }
+  });
+
   app.post("/api/widgets", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

@@ -322,7 +322,7 @@ export default function Widgets() {
     createMutation.mutate({
       ...newWidget,
       config: JSON.stringify(config),
-      isActive: true
+      isEnabled: true
     });
   };
 
@@ -586,13 +586,13 @@ export default function Widgets() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline">{widget.position}</Badge>
-                            <Badge variant={widget.isActive ? "default" : "secondary"}>
-                              {widget.isActive ? "Activo" : "Inactivo"}
+                            <Badge variant={widget.isEnabled ? "default" : "secondary"}>
+                              {widget.isEnabled ? "Activo" : "Inactivo"}
                             </Badge>
                           </div>
                           
                           {/* Live Widget Preview */}
-                          {WidgetComponent && widget.isActive && (
+                          {WidgetComponent && widget.isEnabled && (
                             <div className="border-t pt-3">
                               <p className="text-xs text-muted-foreground mb-2">Vista previa en vivo:</p>
                               <WidgetComponent config={config} />

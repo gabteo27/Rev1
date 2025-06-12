@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import type { Playlist, PlaylistItem } from '@shared/schema';
+import type { Playlist, PlaylistItem, Widget } from '@shared/schema';
 
 // --- Estilos para el reproductor ---
 const styles = {
@@ -17,6 +17,285 @@ const ImagePlayer = ({ src }: { src: string }) => <img src={src} style={styles.m
 const VideoPlayer = ({ src }: { src: string }) => <video src={src} style={styles.media} autoPlay muted loop playsInline />;
 const WebpagePlayer = ({ src }: { src: string }) => <iframe src={src} style={{ ...styles.media, border: 'none' }} title="web-content" />;
 
+// Widget Components
+const ClockWidget = ({ config, position }: { config: any, position: string }) => {
+  const [time, setTime] = useState(new Date());
+  
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const format = config?.format || '24h';
+  const timezone = config?.timezone || 'America/Mexico_City';
+  
+  const formatTime = (date: Date) => {
+    try {
+      return new Intl.DateTimeFormat('es-ES', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: format === '12h'
+      }).format(date);
+    } catch (error) {
+      return date.toLocaleTimeString('es-ES');
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    try {
+      return new Intl.DateTimeFormat('es-ES', {
+        timeZone: timezone,
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }).format(date);
+    } catch (error) {
+      return date.toLocaleDateString('es-ES');
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'absolute',
+      ...getPositionStyles(position),
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      color: 'white',
+      padding: '15px 20px',
+      borderRadius: '8px',
+      zIndex: 1000,
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '5px' }}>
+        {formatTime(time)}
+      </div>
+      <div style={{ fontSize: '14px', opacity: 0.8 }}>
+        {formatDate(time)}
+      </div>
+    </div>
+  );
+};
+
+const WeatherWidget = ({ config, position }: { config: any, position: string }) => {
+  const [weather, setWeather] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  
+  useEffect(() => {
+    const fetchWeather = async () => {
+      setLoading(true);
+      try {
+        const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
+        const city = config?.city || 'Mexico City';
+        
+        if (apiKey) {
+          const response = await fetch(
+            `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}&aqi=no`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setWeather(data);
+          }
+        } else {
+          setWeather({
+            location: { name: city },
+            current: { temp_c: 22, condition: { text: 'Soleado' } }
+          });
+        }
+      } catch (error) {
+        console.error('Weather API error:', error);
+        setWeather({
+          location: { name: config?.city || 'Ciudad' },
+          current: { temp_c: 22, condition: { text: 'No disponible' } }
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchWeather();
+    const interval = setInterval(fetchWeather, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [config]);
+
+  if (loading) {
+    return (
+      <div style={{
+        position: 'absolute',
+        ...getPositionStyles(position),
+        backgroundColor: 'rgba(59, 130, 246, 0.9)',
+        color: 'white',
+        padding: '15px 20px',
+        borderRadius: '8px',
+        zIndex: 1000,
+        fontFamily: 'Arial, sans-serif'
+      }}>
+        <div style={{ fontSize: '16px' }}>Cargando clima...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      position: 'absolute',
+      ...getPositionStyles(position),
+      backgroundColor: 'rgba(59, 130, 246, 0.9)',
+      color: 'white',
+      padding: '15px 20px',
+      borderRadius: '8px',
+      zIndex: 1000,
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '5px' }}>
+        {weather?.location?.name || 'Ciudad'}
+      </div>
+      <div style={{ fontSize: '16px' }}>
+        {weather?.current?.temp_c}°C - {weather?.current?.condition?.text || 'Sin datos'}
+      </div>
+    </div>
+  );
+};
+
+const NewsWidget = ({ config, position }: { config: any, position: string }) => {
+  const [news, setNews] = useState<any[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        const rssUrl = config?.rssUrl || 'https://feeds.bbci.co.uk/mundo/rss.xml';
+        const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+        
+        const response = await fetch(proxyUrl);
+        if (response.ok) {
+          const data = await response.json();
+          setNews(data.items?.slice(0, config?.maxItems || 3) || []);
+        }
+      } catch (error) {
+        console.error('News API error:', error);
+        setNews([
+          { title: 'Noticias en tiempo real', description: 'Configure la URL RSS para mostrar noticias actualizadas' }
+        ]);
+      }
+    };
+    
+    fetchNews();
+    const interval = setInterval(fetchNews, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [config]);
+
+  useEffect(() => {
+    if (news.length > 1) {
+      const timer = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % news.length);
+      }, 10000); // Cambia cada 10 segundos
+      return () => clearInterval(timer);
+    }
+  }, [news.length]);
+
+  if (news.length === 0) return null;
+
+  const currentNews = news[currentIndex];
+
+  return (
+    <div style={{
+      position: 'absolute',
+      ...getPositionStyles(position),
+      backgroundColor: 'rgba(249, 115, 22, 0.9)',
+      color: 'white',
+      padding: '15px 20px',
+      borderRadius: '8px',
+      zIndex: 1000,
+      fontFamily: 'Arial, sans-serif',
+      maxWidth: '300px'
+    }}>
+      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>
+        📰 Últimas Noticias
+      </div>
+      <div style={{ fontSize: '13px', lineHeight: '1.4' }}>
+        {currentNews?.title}
+      </div>
+      {news.length > 1 && (
+        <div style={{ fontSize: '10px', marginTop: '5px', opacity: 0.7 }}>
+          {currentIndex + 1} de {news.length}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const TextWidget = ({ config, position }: { config: any, position: string }) => {
+  const text = config?.text || 'Texto personalizado';
+  const fontSize = config?.fontSize || '16px';
+  const color = config?.color || '#ffffff';
+  const backgroundColor = config?.backgroundColor || 'rgba(0, 0, 0, 0.8)';
+
+  return (
+    <div style={{
+      position: 'absolute',
+      ...getPositionStyles(position),
+      backgroundColor,
+      color,
+      padding: '15px 20px',
+      borderRadius: '8px',
+      zIndex: 1000,
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <div style={{ fontSize, fontWeight: 'medium' }}>
+        {text}
+      </div>
+    </div>
+  );
+};
+
+// Función para obtener estilos de posición
+const getPositionStyles = (position: string) => {
+  switch (position) {
+    case 'top-left':
+      return { top: '20px', left: '20px' };
+    case 'top-right':
+      return { top: '20px', right: '20px' };
+    case 'bottom-left':
+      return { bottom: '20px', left: '20px' };
+    case 'bottom-right':
+      return { bottom: '20px', right: '20px' };
+    case 'center':
+      return { 
+        top: '50%', 
+        left: '50%', 
+        transform: 'translate(-50%, -50%)' 
+      };
+    default:
+      return { bottom: '20px', right: '20px' };
+  }
+};
+
+// Componente para renderizar widgets
+const WidgetRenderer = ({ widget }: { widget: Widget }) => {
+  if (!widget.isEnabled) return null;
+
+  let config = {};
+  try {
+    config = JSON.parse(widget.settings || "{}");
+  } catch (e) {
+    config = {};
+  }
+
+  switch (widget.type) {
+    case 'clock':
+      return <ClockWidget config={config} position={widget.position || 'bottom-right'} />;
+    case 'weather':
+      return <WeatherWidget config={config} position={widget.position || 'top-right'} />;
+    case 'news':
+      return <NewsWidget config={config} position={widget.position || 'top-left'} />;
+    case 'text':
+      return <TextWidget config={config} position={widget.position || 'center'} />;
+    default:
+      return null;
+  }
+};
+
 interface ZoneTracker {
   currentIndex: number;
   items: PlaylistItem[];
@@ -28,6 +307,17 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     queryFn: () => apiRequest(`/api/playlists/${playlistId}`).then(res => res.json()),
     enabled: !!playlistId,
     refetchInterval: isPreview ? 5000 : 60000, // Más frecuente en preview
+  });
+
+  // Query para obtener widgets activos
+  const { data: widgets = [] } = useQuery<Widget[]>({
+    queryKey: [isPreview ? '/api/widgets' : '/api/player/widgets'],
+    queryFn: () => {
+      const endpoint = isPreview ? '/api/widgets' : '/api/player/widgets';
+      return apiRequest(endpoint).then(res => res.json());
+    },
+    refetchInterval: isPreview ? 10000 : 120000, // Actualiza widgets
+    enabled: !!playlistId, // Solo ejecutar si hay playlist
   });
 
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
@@ -203,6 +493,11 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               </div>
             )}
           </div>
+          
+          {/* Widgets Overlay */}
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
         </div>
       );
     case 'split_horizontal':
@@ -228,6 +523,11 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               </div>
             )}
           </div>
+          
+          {/* Widgets Overlay */}
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
         </div>
       );
     case 'pip_bottom_right':
@@ -264,6 +564,11 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               </div>
             )}
           </div>
+          
+          {/* Widgets Overlay */}
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
         </div>
       );
     case 'single_zone':
@@ -278,6 +583,11 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               Sin contenido
             </div>
           )}
+          
+          {/* Widgets Overlay */}
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
         </div>
       );
   }
