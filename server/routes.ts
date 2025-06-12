@@ -1151,7 +1151,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const screen = await storage.getScreenByAuthToken(token);
 
       if (screen && screen.userId) {
-        res.json({ valid: true, screen: { id: screen.id, name: screen.name, playlistId: screen.playlistId } });
+        res.json({ 
+          valid: true, 
+          screen: { 
+            id: screen.id, 
+            name: screen.name, 
+            playlistId: screen.playlistId 
+          } 
+        });
       } else {
         res.status(401).json({ valid: false });
       }

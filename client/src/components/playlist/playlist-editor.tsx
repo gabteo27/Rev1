@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
@@ -174,7 +173,7 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
             <DialogHeader>
               <DialogTitle>Biblioteca de Contenido</DialogTitle>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               {/* Búsqueda */}
               <Input

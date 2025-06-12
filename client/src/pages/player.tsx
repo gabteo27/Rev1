@@ -156,7 +156,8 @@ export default function PlayerPage() {
 
   // Si el estado es 'paired', renderizamos el reproductor de contenido
   if (status === 'paired') {
-    return <ContentPlayer />;
+    const playlistId = localStorage.getItem('playlistId');
+    return <ContentPlayer playlistId={playlistId ? parseInt(playlistId) : undefined} />;
   }
 
   return null; // No renderizar nada en otros casos
