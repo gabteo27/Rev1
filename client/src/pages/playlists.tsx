@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
@@ -533,7 +532,7 @@ export default function Playlists() {
           </Dialog>
         }
       />
-      
+
       <div className="flex-1 grid grid-cols-1 xl:grid-cols-6 gap-4 p-4 min-h-0">
 
         {/* COLUMNA 1: LISTA DE PLAYLISTS */}
@@ -676,7 +675,7 @@ export default function Playlists() {
                         </Button>
                       </div>
                     )}
-                    
+
                     <DragDropContext onDragEnd={handleDragEnd}>
                       <div className={`grid gap-3 ${
                         currentLayout === 'split_vertical' ? 'grid-cols-2' : 
@@ -709,7 +708,7 @@ export default function Playlists() {
                                     .map((item: any, index: number) => {
                                       const IconComponent = getContentIcon(item.contentItem?.type || 'unknown');
                                       const iconColor = getFileColor(item.contentItem?.type || 'unknown');
-                                      
+
                                       return (
                                         <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
                                           {(provided, snapshot) => (
@@ -822,7 +821,7 @@ export default function Playlists() {
               allContent.map((item: any) => {
                 const IconComponent = getContentIcon(item.type);
                 const iconColor = getFileColor(item.type);
-                
+
                 return (
                   <div
                     key={item.id}
@@ -842,7 +841,7 @@ export default function Playlists() {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Zone Selection Buttons */}
                     {selectedPlaylistId && (
                       <div className="border-t p-1 space-y-1">

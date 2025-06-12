@@ -322,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const playlistId = parseInt(req.params.id);
-      const { contentItemId, order } = req.body;
+      const { contentItemId, order, zone, customDuration } = req.body;
 
       // First verify the playlist belongs to the user
       const playlist = await storage.getPlaylistWithItems(playlistId, userId);
@@ -334,7 +334,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const itemData = {
         playlistId,
         contentItemId: parseInt(contentItemId),
-        order: order || (playlist.items?.length || 0) + 1
+        order: order || (playlist.items?.length || 0) + 1,
+        zone: zone || 'main',
+        customDuration: customDuration || null,
       };
 
       const validatedData = insertPlaylistItemSchema.parse(itemData);
@@ -1097,3 +1099,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
+```
+
+Applying the change to ensure the zone is correctly saved in playlist items.

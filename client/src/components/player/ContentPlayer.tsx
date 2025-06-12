@@ -40,17 +40,38 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       
       const zones: Record<string, PlaylistItem[]> = {};
 
+      // Inicializa las zonas según el layout
+      const layout = playlist.layout || 'single_zone';
+      switch (layout) {
+        case 'split_vertical':
+          zones['left'] = [];
+          zones['right'] = [];
+          break;
+        case 'split_horizontal':
+          zones['top'] = [];
+          zones['bottom'] = [];
+          break;
+        case 'pip_bottom_right':
+          zones['main'] = [];
+          zones['pip'] = [];
+          break;
+        case 'single_zone':
+        default:
+          zones['main'] = [];
+          break;
+      }
+
       // Agrupa items por zona
       for (const item of playlist.items) {
         const zone = item.zone || 'main';
-        console.log(`Item ${item.id} assigned to zone: ${zone}`);
+        console.log(`Item ${item.id} assigned to zone: ${zone}, item:`, item);
         if (!zones[zone]) {
           zones[zone] = [];
         }
         zones[zone].push(item);
       }
 
-      // Ordena los items dentro de cada zona
+      // Ordena los items dentro de cada zona por el campo order
       for(const zone in zones) {
         zones[zone].sort((a,b) => (a.order || 0) - (b.order || 0));
       }
@@ -65,7 +86,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         };
       }
       
-      console.log('Zone trackers:', newTrackers);
+      console.log('Zone trackers created:', newTrackers);
       setZoneTrackers(newTrackers);
     }
   }, [playlist]);
@@ -116,8 +137,13 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   // --- Función para renderizar una zona específica ---
   const renderZone = (zoneId: string) => {
     const tracker = zoneTrackers[zoneId];
-    if (!tracker || tracker.items.length === 0) return null;
+    console.log(`Rendering zone ${zoneId}:`, tracker);
+    if (!tracker || tracker.items.length === 0) {
+      console.log(`Zone ${zoneId} has no content`);
+      return null;
+    }
     const currentItem = tracker.items[tracker.currentIndex];
+    console.log(`Zone ${zoneId} current item:`, currentItem);
     return renderContentItem(currentItem);
   };
 
