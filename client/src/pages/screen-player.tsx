@@ -63,10 +63,8 @@ export default function ScreenPlayerPage() {
   return (
     <div className="w-screen h-screen bg-black">
       <ContentPlayer 
-        screenId={screen?.id || parseInt(screenId || '0')}
         playlistId={effectivePlaylistId}
         isPreview={isPreview}
-        className="w-full h-full"
       />
     </div>
   );

@@ -375,15 +375,49 @@ export default function Playlists() {
     }
   };
 
+  const moveItemMutation = useMutation({
+    mutationFn: async ({ itemId, newZone, newOrder }: { itemId: number, newZone: string, newOrder: number }) => {
+      const response = await apiRequest(`/api/playlist-items/${itemId}`, {
+        method: "PUT",
+        body: JSON.stringify({ zone: newZone, order: newOrder }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      refetchPlaylist();
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      toast({
+        title: "Elemento movido",
+        description: "El elemento se ha movido correctamente.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo mover el elemento.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDragEnd = (result: DropResult) => {
-    const { source, destination } = result;
+    const { source, destination, draggableId } = result;
     if (!destination) return;
 
-    // Por ahora, solo mostramos un mensaje de que la funcionalidad está en desarrollo
-    toast({ 
-      title: "Funcionalidad en desarrollo", 
-      description: "El reordenamiento entre zonas estará disponible pronto."
-    });
+    const itemId = parseInt(draggableId);
+    const newZone = destination.droppableId;
+    const newOrder = destination.index;
+
+    // Solo mover si cambió la zona o el orden
+    if (source.droppableId !== destination.droppableId || source.index !== destination.index) {
+      moveItemMutation.mutate({ itemId, newZone, newOrder });
+    }
   };
 
   const toggleItemSelected = (itemId: number) => {
