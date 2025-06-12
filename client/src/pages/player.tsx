@@ -34,9 +34,31 @@ export default function PlayerPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Si ya tenemos un token, pasamos directamente al estado 'paired'.
-    if (localStorage.getItem('authToken')) {
-      setStatus('paired');
+    // Validar si el token es válido antes de ir a 'paired'
+    const authToken = localStorage.getItem('authToken');
+    if (authToken) {
+      // Verificar si la pantalla realmente existe en el servidor
+      fetch('/api/player/validate-token', {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      })
+      .then(response => {
+        if (response.ok) {
+          setStatus('paired');
+        } else {
+          // Token inválido, limpiar localStorage y empezar de nuevo
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('screenName');
+          localStorage.removeItem('playlistId');
+          setStatus('initializing');
+        }
+      })
+      .catch(() => {
+        // Error de red, limpiar y empezar de nuevo
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('screenName');
+        localStorage.removeItem('playlistId');
+        setStatus('initializing');
+      });
       return;
     }
 

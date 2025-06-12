@@ -738,6 +738,14 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return screen;
   }
+
+  async getScreenByAuthToken(token: string): Promise<Screen | undefined> {
+    const [screen] = await db
+      .select()
+      .from(screens)
+      .where(eq(screens.authToken, token));
+    return screen;
+  }
 }
 
 export const storage = new DatabaseStorage();

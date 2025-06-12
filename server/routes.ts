@@ -1139,6 +1139,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Player token validation endpoint
+  app.get("/api/player/validate-token", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ valid: false });
+      }
+
+      const token = authHeader.split(' ')[1];
+      const screen = await storage.getScreenByAuthToken(token);
+
+      if (screen && screen.userId) {
+        res.json({ valid: true, screen: { id: screen.id, name: screen.name, playlistId: screen.playlistId } });
+      } else {
+        res.status(401).json({ valid: false });
+      }
+    } catch (error) {
+      console.error("Error validating token:", error);
+      res.status(500).json({ valid: false });
+    }
+  });
+
   // Analytics routes
   app.get("/api/analytics", isAuthenticated, async (req: any, res) => {
     try {
