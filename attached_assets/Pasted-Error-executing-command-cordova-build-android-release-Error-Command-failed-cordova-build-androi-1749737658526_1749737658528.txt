@@ -1,0 +1,45 @@
+Error executing command: cordova build android --release Error: Command failed: cordova build android --release
+Failed to find 'ANDROID_HOME' environment variable. Try setting it manually.
+Failed to find 'android' command in your 'PATH'. Try update your 'PATH' to include path to valid SDK directory.
+
+    at genericNodeError (node:internal/errors:984:15)
+    at wrappedFn (node:internal/errors:538:14)
+    at ChildProcess.exithandler (node:child_process:422:12)
+    at ChildProcess.emit (node:events:518:28)
+    at maybeClose (node:internal/child_process:1104:16)
+    at ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 1,
+  killed: false,
+  signal: null,
+  cmd: 'cordova build android --release',
+  stdout: '\n' +
+    'You have been opted out of telemetry. To change this, run: cordova telemetry on.\n' +
+    'Checking Java JDK and Android SDK versions\n' +
+    'ANDROID_HOME=undefined (recommended setting)\n' +
+    'ANDROID_SDK_ROOT=undefined (DEPRECATED)\n',
+  stderr: "Failed to find 'ANDROID_HOME' environment variable. Try setting it manually.\n" +
+    "Failed to find 'android' command in your 'PATH'. Try update your 'PATH' to include path to valid SDK directory.\n"
+}
+APK Build failed Error: Command failed: cordova build android --release
+Failed to find 'ANDROID_HOME' environment variable. Try setting it manually.
+Failed to find 'android' command in your 'PATH'. Try update your 'PATH' to include path to valid SDK directory.
+
+    at genericNodeError (node:internal/errors:984:15)
+    at wrappedFn (node:internal/errors:538:14)
+    at ChildProcess.exithandler (node:child_process:422:12)
+    at ChildProcess.emit (node:events:518:28)
+    at maybeClose (node:internal/child_process:1104:16)
+    at ChildProcess._handle.onexit (node:internal/child_process:304:5) {
+  code: 1,
+  killed: false,
+  signal: null,
+  cmd: 'cordova build android --release',
+  stdout: '\n' +
+    'You have been opted out of telemetry. To change this, run: cordova telemetry on.\n' +
+    'Checking Java JDK and Android SDK versions\n' +
+    'ANDROID_HOME=undefined (recommended setting)\n' +
+    'ANDROID_SDK_ROOT=undefined (DEPRECATED)\n',
+  stderr: "Failed to find 'ANDROID_HOME' environment variable. Try setting it manually.\n" +
+    "Failed to find 'android' command in your 'PATH'. Try update your 'PATH' to include path to valid SDK directory.\n"
+}
+2:14:01 PM [express] GET /api/deployments 200 in 49ms :: [{"id":9,"userId":"38813652","version":"1.0…
