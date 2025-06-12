@@ -285,6 +285,33 @@ export default function Playlists() {
     },
   });
 
+  const updateItemDurationMutation = useMutation({
+    mutationFn: async ({ itemId, duration }: { itemId: number, duration: number }) => {
+      const response = await apiRequest(`/api/playlist-items/${itemId}`, {
+        method: "PUT",
+        body: JSON.stringify({ customDuration: duration }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      refetchPlaylist();
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la duración.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deletePlaylistMutation = useMutation({
     mutationFn: async (playlistId: number) => {
       const response = await apiRequest(`/api/playlists/${playlistId}`, {
@@ -393,8 +420,7 @@ export default function Playlists() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const contentInPlaylist = new Set(playlistData?.items?.map((item: any) => item.contentItemId) || []);
-  const availableContent = allContent.filter((item: any) => !contentInPlaylist.has(item.id));
+  // Allow content to be used multiple times in different zones
   const currentLayout = playlistData?.layout || 'single_zone';
   const zones = LAYOUT_ZONES[currentLayout as keyof typeof LAYOUT_ZONES] || [];
 
@@ -474,50 +500,40 @@ export default function Playlists() {
         }
       />
       
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6 p-6 min-h-0">
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-6 gap-4 p-4 min-h-0">
 
         {/* COLUMNA 1: LISTA DE PLAYLISTS */}
-        <Card className="lg:col-span-1 flex flex-col">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <List className="h-5 w-5" />
+        <Card className="xl:col-span-1 flex flex-col max-h-full">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <List className="h-4 w-4" />
               Playlists ({playlists.length})
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto space-y-3 min-h-0">
+          <CardContent className="flex-1 overflow-y-auto space-y-2 min-h-0">
             {playlists.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <List className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p>No hay playlists</p>
-                <p className="text-sm">Crea tu primera playlist</p>
+              <div className="text-center py-6 text-muted-foreground">
+                <List className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                <p className="text-xs">No hay playlists</p>
               </div>
             ) : (
               playlists.map((playlist: any) => (
                 <div
                   key={playlist.id}
-                  className={`p-3 border rounded-lg cursor-pointer transition-all hover:shadow-md ${
-                    selectedPlaylistId === playlist.id ? 'bg-primary/10 border-primary shadow-sm' : 'hover:bg-accent'
+                  className={`p-2 border rounded-md cursor-pointer transition-all text-xs ${
+                    selectedPlaylistId === playlist.id ? 'bg-primary/10 border-primary' : 'hover:bg-accent'
                   }`}
                   onClick={() => setSelectedPlaylistId(playlist.id)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{playlist.name}</h3>
-                      {playlist.description && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{playlist.description}</p>
-                      )}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          {playlist.totalItems || 0} elementos
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {Math.floor((playlist.totalDuration || 0) / 60)}m
-                        </span>
+                      <h3 className="font-medium truncate text-sm">{playlist.name}</h3>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <span>{playlist.totalItems || 0} items</span>
+                        <span>{Math.floor((playlist.totalDuration || 0) / 60)}m</span>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-1 ml-2">
+                    <div className="flex gap-1 ml-1">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -525,7 +541,7 @@ export default function Playlists() {
                           e.stopPropagation();
                           handleEditPlaylist(playlist);
                         }}
-                        className="h-6 w-6 p-0"
+                        className="h-5 w-5 p-0"
                       >
                         <Edit className="h-3 w-3" />
                       </Button>
@@ -536,7 +552,7 @@ export default function Playlists() {
                           e.stopPropagation();
                           handleDeletePlaylist(playlist.id);
                         }}
-                        className="h-6 w-6 p-0 text-red-500 hover:text-red-600"
+                        className="h-5 w-5 p-0 text-red-500 hover:text-red-600"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -549,19 +565,19 @@ export default function Playlists() {
         </Card>
 
         {/* COLUMNAS 2-4: EDITOR VISUAL */}
-        <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden">
+        <div className="xl:col-span-4 flex flex-col gap-4 overflow-hidden">
           {selectedPlaylistId ? (
             <>
               {/* Controles de Layout */}
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Layout className="h-5 w-5" />
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Layout className="h-4 w-4" />
                         Layout: {playlistData?.name || 'Cargando...'}
                       </CardTitle>
-                      <CardDescription>Selecciona la distribución de zonas para la pantalla</CardDescription>
+                      <CardDescription className="text-xs">Selecciona la distribución de zonas</CardDescription>
                     </div>
                     <Button 
                       variant="outline" 
@@ -573,27 +589,27 @@ export default function Playlists() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pb-3">
                   <ToggleGroup 
                     type="single" 
                     value={currentLayout} 
                     onValueChange={(val) => val && updateLayoutMutation.mutate(val)}
-                    className="justify-start"
+                    className="justify-start gap-1"
                   >
-                    <ToggleGroupItem value="single_zone" aria-label="Pantalla completa">
-                      <Layout className="h-4 w-4 mr-2"/>
+                    <ToggleGroupItem value="single_zone" aria-label="Pantalla completa" className="text-xs px-2 py-1">
+                      <Layout className="h-3 w-3 mr-1"/>
                       Completa
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="split_vertical" aria-label="División vertical">
-                      <SplitSquareVertical className="h-4 w-4 mr-2"/>
+                    <ToggleGroupItem value="split_vertical" aria-label="División vertical" className="text-xs px-2 py-1">
+                      <SplitSquareVertical className="h-3 w-3 mr-1"/>
                       Vertical
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="split_horizontal" aria-label="División horizontal">
-                      <SplitSquareHorizontal className="h-4 w-4 mr-2"/>
+                    <ToggleGroupItem value="split_horizontal" aria-label="División horizontal" className="text-xs px-2 py-1">
+                      <SplitSquareHorizontal className="h-3 w-3 mr-1"/>
                       Horizontal
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="pip_bottom_right" aria-label="Picture-in-Picture">
-                      <PictureInPicture className="h-4 w-4 mr-2"/>
+                    <ToggleGroupItem value="pip_bottom_right" aria-label="Picture-in-Picture" className="text-xs px-2 py-1">
+                      <PictureInPicture className="h-3 w-3 mr-1"/>
                       PiP
                     </ToggleGroupItem>
                   </ToggleGroup>
@@ -628,91 +644,109 @@ export default function Playlists() {
                     )}
                     
                     <DragDropContext onDragEnd={handleDragEnd}>
-                      <div className={`grid gap-4 ${
+                      <div className={`grid gap-3 ${
                         currentLayout === 'split_vertical' ? 'grid-cols-2' : 
-                        currentLayout === 'split_horizontal' ? 'grid-rows-2' : 
+                        currentLayout === 'split_horizontal' ? 'grid-rows-2 h-96' : 
+                        currentLayout === 'pip_bottom_right' ? 'grid-cols-3 grid-rows-2' :
                         'grid-cols-1'
                       }`}>
-                        {zones.map(zone => (
+                        {zones.map((zone, zoneIndex) => (
                           <Droppable key={zone.id} droppableId={zone.id}>
                             {(provided, snapshot) => (
                               <Card className={`${
                                 snapshot.isDraggingOver ? 'border-primary bg-primary/5' : ''
+                              } ${
+                                currentLayout === 'pip_bottom_right' && zone.id === 'main' ? 'col-span-3 row-span-1' :
+                                currentLayout === 'pip_bottom_right' && zone.id === 'pip' ? 'col-span-1 row-span-1' :
+                                ''
                               }`}>
-                                <CardHeader className="pb-3">
-                                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-primary/20"></div>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-xs font-medium flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${zone.id === 'main' ? 'bg-blue-500' : zone.id === 'left' ? 'bg-green-500' : zone.id === 'right' ? 'bg-orange-500' : zone.id === 'top' ? 'bg-purple-500' : zone.id === 'bottom' ? 'bg-pink-500' : 'bg-red-500'}`}></div>
                                     {zone.title}
-                                    <Badge variant="secondary" className="ml-auto text-xs">
+                                    <Badge variant="secondary" className="ml-auto text-xs px-1 py-0">
                                       {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
                                     </Badge>
                                   </CardTitle>
                                 </CardHeader>
-                                <CardContent ref={provided.innerRef} {...provided.droppableProps} className="min-h-[200px]">
-                                  <div className="space-y-2">
-                                    {playlistData?.items?.filter((item: any) => item.zone === zone.id)
-                                      .sort((a: any, b: any) => a.order - b.order)
-                                      .map((item: any, index: number) => {
-                                        const IconComponent = getContentIcon(item.contentItem?.type || 'unknown');
-                                        const iconColor = getFileColor(item.contentItem?.type || 'unknown');
-                                        
-                                        return (
-                                          <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
-                                            {(provided, snapshot) => (
+                                <CardContent ref={provided.innerRef} {...provided.droppableProps} className="min-h-[120px] space-y-1">
+                                  {playlistData?.items?.filter((item: any) => item.zone === zone.id)
+                                    .sort((a: any, b: any) => a.order - b.order)
+                                    .map((item: any, index: number) => {
+                                      const IconComponent = getContentIcon(item.contentItem?.type || 'unknown');
+                                      const iconColor = getFileColor(item.contentItem?.type || 'unknown');
+                                      
+                                      return (
+                                        <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
+                                          {(provided, snapshot) => (
+                                            <div
+                                              ref={provided.innerRef}
+                                              {...provided.draggableProps}
+                                              className={`flex items-center gap-2 p-2 bg-background border rounded-md transition-all text-xs ${
+                                                snapshot.isDragging ? 'shadow-lg bg-accent' : 'hover:bg-accent/50'
+                                              }`}
+                                            >
+                                              <Checkbox 
+                                                checked={selectedItems.has(item.id)} 
+                                                onCheckedChange={() => toggleItemSelected(item.id)} 
+                                                className="scale-75"
+                                              />
                                               <div
-                                                ref={provided.innerRef}
-                                                {...provided.draggableProps}
-                                                className={`flex items-center gap-3 p-3 bg-background border rounded-lg transition-all ${
-                                                  snapshot.isDragging ? 'shadow-lg bg-accent' : 'hover:bg-accent/50'
-                                                }`}
+                                                {...provided.dragHandleProps}
+                                                className="flex items-center justify-center w-4 h-4 text-muted-foreground hover:text-foreground cursor-grab"
                                               >
-                                                <Checkbox 
-                                                  checked={selectedItems.has(item.id)} 
-                                                  onCheckedChange={() => toggleItemSelected(item.id)} 
-                                                />
-                                                <div
-                                                  {...provided.dragHandleProps}
-                                                  className="flex items-center justify-center w-6 h-6 text-muted-foreground hover:text-foreground cursor-grab"
-                                                >
-                                                  <GripVertical className="w-4 h-4" />
-                                                </div>
-                                                <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                                                  {React.cloneElement(IconComponent, { className: `w-5 h-5 ${iconColor}` })}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                  <h4 className="font-medium text-sm truncate">{item.contentItem?.title || 'Sin título'}</h4>
-                                                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                                    <Badge variant="outline" className="text-xs px-2 py-0">
-                                                      {item.contentItem?.type || 'unknown'}
-                                                    </Badge>
-                                                    <span>{formatDuration(item.customDuration || item.contentItem?.duration || 0)}</span>
-                                                  </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                  <span className="text-xs text-muted-foreground font-mono">#{index + 1}</span>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => removeItemMutation.mutate(item.id)}
-                                                    disabled={removeItemMutation.isPending}
-                                                    className="text-red-500 hover:text-red-600 p-2"
-                                                  >
-                                                    <Trash2 className="w-4 h-4" />
-                                                  </Button>
+                                                <GripVertical className="w-3 h-3" />
+                                              </div>
+                                              <div className="w-6 h-6 bg-muted rounded flex items-center justify-center flex-shrink-0">
+                                                {React.cloneElement(IconComponent, { className: `w-3 h-3 ${iconColor}` })}
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <h4 className="font-medium text-xs truncate">{item.contentItem?.title || 'Sin título'}</h4>
+                                                <div className="flex items-center gap-1 mt-0.5">
+                                                  <Badge variant="outline" className="text-xs px-1 py-0 h-4">
+                                                    {item.contentItem?.type || 'unknown'}
+                                                  </Badge>
                                                 </div>
                                               </div>
-                                            )}
-                                          </Draggable>
-                                        );
-                                      })}
-                                    {provided.placeholder}
-                                    {(!playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length) && (
-                                      <div className="text-center py-8 text-muted-foreground">
-                                        <Play className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                                        <p className="text-sm">Arrastra contenido aquí</p>
-                                      </div>
-                                    )}
-                                  </div>
+                                              <div className="flex items-center gap-1">
+                                                <Input
+                                                  type="number"
+                                                  value={item.customDuration || item.contentItem?.duration || 0}
+                                                  onChange={(e) => {
+                                                    const newDuration = parseInt(e.target.value) || 0;
+                                                    if (newDuration > 0) {
+                                                      updateItemDurationMutation.mutate({ 
+                                                        itemId: item.id, 
+                                                        duration: newDuration 
+                                                      });
+                                                    }
+                                                  }}
+                                                  className="w-12 text-xs h-6 px-1 text-center"
+                                                  min="1"
+                                                />
+                                                <span className="text-xs text-muted-foreground">s</span>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => removeItemMutation.mutate(item.id)}
+                                                  disabled={removeItemMutation.isPending}
+                                                  className="text-red-500 hover:text-red-600 h-6 w-6 p-0"
+                                                >
+                                                  <Trash2 className="w-3 h-3" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </Draggable>
+                                      );
+                                    })}
+                                  {provided.placeholder}
+                                  {(!playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length) && (
+                                    <div className="text-center py-4 text-muted-foreground">
+                                      <Play className="h-6 w-6 mx-auto mb-1 opacity-20" />
+                                      <p className="text-xs">Arrastra aquí</p>
+                                    </div>
+                                  )}
                                 </CardContent>
                               </Card>
                             )}
@@ -735,46 +769,63 @@ export default function Playlists() {
           )}
         </div>
 
-        {/* COLUMNA 5: BIBLIOTECA DE CONTENIDO */}
-        <Card className="lg:col-span-1 flex flex-col">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+        {/* COLUMNA 6: BIBLIOTECA DE CONTENIDO */}
+        <Card className="xl:col-span-1 flex flex-col max-h-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FileText className="h-4 w-4" />
               Biblioteca
             </CardTitle>
-            <CardDescription>Arrastra o haz clic para agregar</CardDescription>
+            <CardDescription className="text-xs">Haz clic para agregar a zona específica</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto space-y-2 min-h-0">
-            {availableContent.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p>No hay contenido disponible</p>
-                <p className="text-sm">Todo el contenido está en uso</p>
+          <CardContent className="flex-1 overflow-y-auto space-y-1 min-h-0">
+            {allContent.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground">
+                <FileText className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                <p className="text-xs">No hay contenido</p>
               </div>
             ) : (
-              availableContent.map((item: any) => {
+              allContent.map((item: any) => {
                 const IconComponent = getContentIcon(item.type);
                 const iconColor = getFileColor(item.type);
                 
                 return (
                   <div
                     key={item.id}
-                    className="group flex items-center gap-3 p-3 border rounded-lg transition-all hover:bg-accent cursor-pointer hover:shadow-sm"
-                    onClick={() => selectedPlaylistId && addItemMutation.mutate({ contentItemId: item.id, zone: 'main' })}
+                    className="group border rounded-lg transition-all hover:shadow-sm"
                   >
-                    <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                      {React.cloneElement(IconComponent, { className: `w-5 h-5 ${iconColor}` })}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm truncate">{item.title}</h4>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <span>{formatDuration(item.duration || 0)}</span>
+                    <div className="flex items-center gap-2 p-2">
+                      <div className="w-6 h-6 bg-muted rounded flex items-center justify-center flex-shrink-0">
+                        {React.cloneElement(IconComponent, { className: `w-3 h-3 ${iconColor}` })}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-xs truncate">{item.title}</h4>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Badge variant="outline" className="text-xs px-1 py-0 h-3">
+                            {item.type}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">{formatDuration(item.duration || 0)}</span>
+                        </div>
                       </div>
                     </div>
-                    {selectedPlaylistId ? (
-                      <Plus className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
-                    ) : (
-                      <div className="w-4 h-4" />
+                    
+                    {/* Zone Selection Buttons */}
+                    {selectedPlaylistId && (
+                      <div className="border-t p-1 space-y-1">
+                        {zones.map(zone => (
+                          <Button
+                            key={zone.id}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => addItemMutation.mutate({ contentItemId: item.id, zone: zone.id })}
+                            disabled={addItemMutation.isPending}
+                            className="w-full justify-start h-6 text-xs px-2"
+                          >
+                            <div className={`w-2 h-2 rounded-full mr-1 ${zone.id === 'main' ? 'bg-blue-500' : zone.id === 'left' ? 'bg-green-500' : zone.id === 'right' ? 'bg-orange-500' : zone.id === 'top' ? 'bg-purple-500' : zone.id === 'bottom' ? 'bg-pink-500' : 'bg-red-500'}`}></div>
+                            {zone.title}
+                          </Button>
+                        ))}
+                      </div>
                     )}
                   </div>
                 );

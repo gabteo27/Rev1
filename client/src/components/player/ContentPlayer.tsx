@@ -123,18 +123,45 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     case 'split_vertical':
       return (
         <div style={{ ...styles.container, display: 'flex' }}>
-          <div style={{ ...styles.zone, width: '50%' }}>{renderZone('left')}</div>
-          <div style={{ ...styles.zone, width: '50%' }}>{renderZone('right')}</div>
+          <div style={{ ...styles.zone, width: '50%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('left')}
+          </div>
+          <div style={{ ...styles.zone, width: '50%' }}>
+            {renderZone('right')}
+          </div>
         </div>
       );
-    // ... puedes añadir más layouts aquí ...
+    case 'split_horizontal':
+      return (
+        <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ ...styles.zone, height: '50%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('top')}
+          </div>
+          <div style={{ ...styles.zone, height: '50%' }}>
+            {renderZone('bottom')}
+          </div>
+        </div>
+      );
     case 'pip_bottom_right':
       return (
-        <div style={{...styles.container }}>
-            <div style={{...styles.zone}}>{renderZone('main')}</div>
-            <div style={{position: 'absolute', bottom: '20px', right: '20px', width: '25%', height: '25%', border: '4px solid white', zIndex: 10}}>
-                {renderZone('pip')}
-            </div>
+        <div style={{...styles.container, position: 'relative' }}>
+          <div style={{...styles.zone}}>
+            {renderZone('main')}
+          </div>
+          <div style={{
+            position: 'absolute', 
+            bottom: '20px', 
+            right: '20px', 
+            width: '25%', 
+            height: '25%', 
+            border: '3px solid rgba(255,255,255,0.8)', 
+            borderRadius: '8px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            zIndex: 10
+          }}>
+            {renderZone('pip')}
+          </div>
         </div>
       );
     case 'single_zone':
