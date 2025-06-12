@@ -1,18 +1,7 @@
-import {
-  pgTable,
-  text,
-  varchar,
-  timestamp,
-  jsonb,
-  index,
-  serial,
-  integer,
-  boolean,
-  real,
-} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { integer, pgTable, serial, text, varchar, boolean, pgEnum } from "drizzle-orm/pg-core";
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -24,6 +13,7 @@ export const sessions = pgTable(
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
+export const layoutTypeEnum = pgEnum('layout_type', ['single_zone', 'split_vertical', 'split_horizontal', 'pip_bottom_right']);
 
 // User storage table (required for Replit Auth)
 export const users = pgTable("users", {
@@ -59,6 +49,8 @@ export const playlists = pgTable("playlists", {
   userId: varchar("user_id").notNull().references(() => users.id),
   name: varchar("name").notNull(),
   description: text("description"),
+  layout: layoutTypeEnum('layout').default('single_zone').notNull(),
+
   isActive: boolean("is_active").default(false),
   totalDuration: integer("total_duration").default(0), // Calculated total duration
   createdAt: timestamp("created_at").defaultNow(),
@@ -72,6 +64,8 @@ export const playlistItems = pgTable("playlist_items", {
   contentItemId: integer("content_item_id").notNull().references(() => contentItems.id),
   order: integer("order").notNull(),
   customDuration: integer("custom_duration"), // Override default duration
+  zone: varchar('zone', { length: 50 }).default('main').notNull(),
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 

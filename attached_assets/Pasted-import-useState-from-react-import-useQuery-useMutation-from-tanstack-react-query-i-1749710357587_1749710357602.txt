@@ -1,0 +1,230 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+import Header from "@/components/layout/header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Plus, List, FileText, GripVertical, Trash2, Edit, Settings, Layout,
+  SplitSquareHorizontal, SplitSquareVertical, PictureInPicture, Image, Video, Globe, Type
+} from "lucide-react";
+
+// Tipos para mayor claridad
+type Playlist = import("@shared/schema").Playlist;
+type PlaylistItem = import("@shared/schema").PlaylistItem;
+type ContentItem = import("@shared/schema").ContentItem;
+type FullPlaylistItem = PlaylistItem & { contentItem: ContentItem };
+
+// Definición de las zonas para cada layout
+const LAYOUT_ZONES: Record<string, { id: string; title: string }[]> = {
+  single_zone: [{ id: 'main', title: 'Contenido Principal' }],
+  split_vertical: [{ id: 'left', title: 'Zona Izquierda' }, { id: 'right', title: 'Zona Derecha' }],
+  split_horizontal: [{ id: 'top', title: 'Zona Superior' }, { id: 'bottom', title: 'Zona Inferior' }],
+  pip_bottom_right: [{ id: 'main', title: 'Principal' }, { id: 'pip', title: 'Picture-in-Picture' }],
+};
+
+export default function PlaylistsPage() {
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const { toast } = useToast();
+
+  // --- QUERIES ---
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery<Playlist[]>({ queryKey: ["/api/playlists"] });
+  const { data: allContent = [] } = useQuery<ContentItem[]>({ queryKey: ["/api/content"] });
+  const { data: playlistData, isLoading: playlistLoading } = useQuery<Playlist & { items: FullPlaylistItem[] }>({
+    queryKey: ["/api/playlists", selectedPlaylistId],
+    enabled: !!selectedPlaylistId,
+    onSuccess: () => setSelectedItems(new Set()), // Limpiar selección al cambiar de playlist
+  });
+
+  // --- MUTATIONS ---
+  const addItemMutation = useMutation({
+    mutationFn: async ({ contentItemId, zone }: { contentItemId: number, zone: string }) => {
+      const order = playlistData?.items.filter(item => item.zone === zone).length || 0;
+      return apiRequest(`/api/playlists/${selectedPlaylistId}/items`, {
+        method: "POST",
+        body: JSON.stringify({ contentItemId, order, zone })
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] }),
+  });
+
+  const reorderItemMutation = useMutation({
+    mutationFn: async (data: { itemId: number, newZone: string, newOrder: number }) => {
+        // Esta API no la tienes, necesitarías crearla en `server/routes.ts`
+        // Por ahora, simularemos la llamada. En una app real, esta API actualizaría
+        // la zona y el orden de un item.
+        return apiRequest(`/api/playlist-items/${data.itemId}/move`, { 
+            method: 'PUT',
+            body: JSON.stringify({ zone: data.newZone, order: data.newOrder })
+        });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] }),
+  });
+  
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (itemIds: number[]) => {
+      // Necesitarás un endpoint en el backend para esto, o hacer múltiples llamadas
+      await Promise.all(itemIds.map(id => apiRequest(`/api/playlist-items/${id}`, { method: "DELETE" })));
+    },
+    onSuccess: () => {
+      toast({ title: "Elementos eliminados" });
+      setSelectedItems(new Set());
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
+    },
+  });
+
+  // --- HANDLERS ---
+  const handleDragEnd = (result: DropResult) => {
+    const { source, destination, draggableId } = result;
+    if (!destination) return;
+
+    // TODO: Implementar lógica de reordenamiento y movimiento entre zonas
+    // Esto requiere una API más compleja en el backend para manejar reordenamiento
+    // dentro y entre zonas.
+    toast({ title: "Funcionalidad pendiente", description: "El reordenamiento necesita un endpoint de API."});
+  };
+
+  const toggleItemSelected = (itemId: number) => {
+    const newSelection = new Set(selectedItems);
+    if (newSelection.has(itemId)) newSelection.delete(itemId);
+    else newSelection.add(itemId);
+    setSelectedItems(newSelection);
+  };
+
+  // --- HELPERS ---
+  const getContentIcon = (type: string) => {
+    const iconProps = { className: "w-5 h-5" };
+    switch (type) {
+      case "image": return <Image {...iconProps} />;
+      case "video": return <Video {...iconProps} />;
+      case "webpage": return <Globe {...iconProps} />;
+      case "pdf": return <FileText {...iconProps} />;
+      case "text": return <Type {...iconProps} />;
+      default: return <FileText {...iconProps} />;
+    }
+  };
+
+  const contentInPlaylist = new Set(playlistData?.items?.map(item => item.contentItemId) || []);
+  const availableContent = allContent.filter(item => !contentInPlaylist.has(item.id));
+  const currentLayout = playlistData?.layout || 'single_zone';
+  const zones = LAYOUT_ZONES[currentLayout as keyof typeof LAYOUT_ZONES] || [];
+
+  return (
+    <div className="flex flex-col h-screen">
+      <Header title="Editor de Playlists" subtitle="Crea y gestiona layouts y secuencias de contenido" />
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-6 p-6 overflow-hidden">
+
+        {/* COLUMNA 1: LISTA DE PLAYLISTS */}
+        <Card className="lg:col-span-1 flex flex-col">
+          <CardHeader><CardTitle>Playlists</CardTitle></CardHeader>
+          <CardContent className="flex-1 overflow-y-auto space-y-2">
+            {playlists.map((playlist) => (
+              <Button
+                key={playlist.id}
+                variant={selectedPlaylistId === playlist.id ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setSelectedPlaylistId(playlist.id)}
+              >
+                <List className="mr-2 h-4 w-4" />
+                {playlist.name}
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* COLUMNA 2: EDITOR VISUAL */}
+        <div className="lg:col-span-3 flex flex-col gap-6 overflow-hidden">
+          {selectedPlaylistId ? (
+            <>
+              {/* Controles de Layout */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Layout de la Pantalla</CardTitle>
+                  <CardDescription>Selecciona la distribución para la playlist "{playlistData?.name}".</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ToggleGroup type="single" value={currentLayout} onValueChange={(val) => val && console.log('Cambiar layout a:', val)}>
+                    <ToggleGroupItem value="single_zone" aria-label="Pantalla completa"><Layout className="h-5 w-5"/></ToggleGroupItem>
+                    <ToggleGroupItem value="split_vertical" aria-label="Vertical"><SplitSquareVertical className="h-5 w-5"/></ToggleGroupItem>
+                    {/* Añadir más layouts aquí */}
+                  </ToggleGroup>
+                </CardContent>
+              </Card>
+
+              {/* Editor de Zonas */}
+              <div className="flex-1 overflow-y-auto pr-2">
+                {selectedItems.size > 0 && (
+                  <div className="p-2 bg-slate-100 rounded-md mb-4 flex items-center gap-2 sticky top-0 z-10">
+                    <p className="text-sm">{selectedItems.size} items seleccionados</p>
+                    <Button variant="destructive" size="sm" onClick={() => bulkDeleteMutation.mutate([...selectedItems])}>
+                      <Trash2 className="w-4 h-4 mr-2"/> Eliminar
+                    </Button>
+                  </div>
+                )}
+                <DragDropContext onDragEnd={handleDragEnd}>
+                  <div className={`grid gap-4 ${currentLayout === 'split_vertical' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    {zones.map(zone => (
+                      <Droppable key={zone.id} droppableId={zone.id}>
+                        {(provided, snapshot) => (
+                          <div ref={provided.innerRef} {...provided.droppableProps} className={`p-4 border-2 border-dashed rounded-lg min-h-[200px] ${snapshot.isDraggingOver ? 'border-blue-500 bg-blue-50' : 'border-slate-300'}`}>
+                            <h3 className="font-bold mb-4 text-center">{zone.title}</h3>
+                            <div className="space-y-2">
+                              {playlistData?.items?.filter(item => item.zone === zone.id).sort((a,b) => a.order - b.order).map((item, index) => (
+                                <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
+                                  {(provided) => (
+                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="flex items-center gap-2 p-2 bg-white rounded-md shadow-sm border">
+                                      <Checkbox checked={selectedItems.has(item.id)} onCheckedChange={() => toggleItemSelected(item.id)} />
+                                      {getContentIcon(item.contentItem.type)}
+                                      <span className="flex-1 text-sm truncate">{item.contentItem.title}</span>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              ))}
+                              {provided.placeholder}
+                            </div>
+                          </div>
+                        )}
+                      </Droppable>
+                    ))}
+                  </div>
+                </DragDropContext>
+              </div>
+            </>
+          ) : (
+             <Card className="flex items-center justify-center h-full">
+                <div className="text-center text-slate-500">
+                  <List className="mx-auto h-12 w-12 opacity-50 mb-4" />
+                  <p>Selecciona una playlist para comenzar.</p>
+                </div>
+              </Card>
+          )}
+        </div>
+
+        {/* COLUMNA 3: BIBLIOTECA DE CONTENIDO */}
+        <Card className="lg:col-span-1 flex flex-col">
+          <CardHeader><CardTitle>Biblioteca</CardTitle></CardHeader>
+          <CardContent className="flex-1 overflow-y-auto space-y-2">
+            {availableContent.map(item => (
+              <div key={item.id} className="flex items-center gap-2 p-2 border rounded-md">
+                {getContentIcon(item.type)}
+                <span className="flex-1 text-sm truncate">{item.title}</span>
+                <Button size="sm" variant="ghost" disabled={!selectedPlaylistId} onClick={() => addItemMutation.mutate({ contentItemId: item.id, zone: 'main' })}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+      </div>
+    </div>
+  );
+}
