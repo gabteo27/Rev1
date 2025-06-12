@@ -6,6 +6,8 @@ import { wsManager } from "@/lib/websocket";
 import Header from "@/components/layout/header";
 import LivePreview from "@/components/preview/live-preview";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -293,13 +295,13 @@ const formatDuration = (seconds: number) => {
   });
 
 return (
-    <div className="space-y-6 min-h-screen bg-background">
+    <div className="h-full flex flex-col bg-background">
       <Header
         title="Dashboard XcienTV"
         subtitle="Panel de control principal para señalización digital"
       />
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
+      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <Card>
@@ -361,6 +363,124 @@ return (
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Control de Reproducción */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+          <div className="xl:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Monitor className="h-5 w-5" />
+                  Control de Reproducción
+                </CardTitle>
+                <CardDescription>
+                  Selecciona una pantalla y playlist para controlar la reproducción
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="screen-select">Pantalla</Label>
+                    <Select value={selectedScreen} onValueChange={setSelectedScreen}>
+                      <SelectTrigger id="screen-select">
+                        <SelectValue placeholder="Seleccionar pantalla..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(screens) && screens.length > 0 ? (
+                          screens.map((screen: any) => (
+                            <SelectItem key={screen.id} value={screen.id.toString()}>
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${screen.isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span>{screen.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>No hay pantallas disponibles</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="playlist-select">Playlist</Label>
+                    <Select value={selectedPlaylist} onValueChange={setSelectedPlaylist}>
+                      <SelectTrigger id="playlist-select">
+                        <SelectValue placeholder="Seleccionar playlist..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(playlists) && playlists.length > 0 ? (
+                          playlists.map((playlist: any) => (
+                            <SelectItem key={playlist.id} value={playlist.id.toString()}>
+                              <div className="flex items-center gap-2">
+                                <List className="w-4 h-4" />
+                                <span>{playlist.name}</span>
+                                <Badge variant="secondary" className="ml-auto">
+                                  {playlist.items?.length || 0} items
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>No hay playlists disponibles</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Controles de reproducción */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={togglePreview}
+                    disabled={!selectedScreen || !selectedPlaylist || playbackMutation.isPending}
+                    className="flex-1"
+                  >
+                    {isPreviewPlaying ? (
+                      <>
+                        <Pause className="w-4 h-4 mr-2" />
+                        Pausar
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 mr-2" />
+                        Reproducir
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={stopPreview}
+                    disabled={!selectedScreen || playbackMutation.isPending}
+                  >
+                    <Square className="w-4 h-4 mr-2" />
+                    Detener
+                  </Button>
+                </div>
+
+                {/* Información de la playlist seleccionada */}
+                {selectedPlaylistData && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium">{selectedPlaylistData.name}</h4>
+                      <Badge>{selectedPlaylistData.items?.length || 0} elementos</Badge>
+                    </div>
+                    {playlistDetails && (
+                      <p className="text-sm text-muted-foreground">
+                        Duración total: {formatDuration(playlistDetails.totalDuration || 0)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div>
+            <LivePreview />
+          </div>
         </div>
 
         {/* Widgets y actividad del sistema */}

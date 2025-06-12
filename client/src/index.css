@@ -306,12 +306,14 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
+  overflow-x: hidden;
 }
 
 #root {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* Layout container */
@@ -319,12 +321,14 @@ html, body {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* Main content area that should scroll */
 .main-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
 }
 
@@ -332,6 +336,14 @@ html, body {
 .page-container {
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Fix for flex containers with scroll */
+.scrollable-container {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Custom scrollbar */

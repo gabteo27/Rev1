@@ -50,7 +50,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col">
       <Header
         title="Configuración"
         subtitle="Personaliza XcienTV según tus preferencias"
@@ -62,7 +62,8 @@ export default function Settings() {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Appearance Settings */}
         <Card>
           <CardHeader>
@@ -263,6 +264,7 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );
