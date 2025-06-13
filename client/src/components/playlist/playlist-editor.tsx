@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
@@ -58,21 +59,13 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
 
   const { toast } = useToast();
 
-  // Efecto para inicializar valores de edición cuando cambia playlistData
-  useState(() => {
-    if (playlistData) {
-      setEditName(playlistData.name || "");
-      setEditDescription(playlistData.description || "");
-    }
-  });
-
-  // Sync edit values when playlist data changes
-  useState(() => {
+  // Efecto para sincronizar valores de edición cuando cambia playlistData
+  useEffect(() => {
     if (playlistData && !isEditingInfo) {
       setEditName(playlistData.name || "");
       setEditDescription(playlistData.description || "");
     }
-  });
+  }, [playlistData, isEditingInfo]);
 
   // Mutaciones para mover, eliminar, etc.
   const moveItemMutation = useMutation({
@@ -286,12 +279,12 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
               Agregar Contenido
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col z-50">
-            <DialogHeader className="flex-shrink-0">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden" style={{ zIndex: 1000 }}>
+            <DialogHeader className="flex-shrink-0 pb-4">
               <DialogTitle>Biblioteca de Contenido</DialogTitle>
             </DialogHeader>
 
-            <div className="flex-1 flex flex-col space-y-4 min-h-0">
+            <div className="flex flex-col h-full max-h-[70vh] space-y-4">
               {/* Búsqueda */}
               <div className="flex-shrink-0">
                 <Input
@@ -301,24 +294,24 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
                 />
               </div>
 
-              {/* Lista de zonas para agregar contenido */}
-              <div className="flex-1 min-h-0">
-                <ScrollArea className="h-full">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-4">
+              {/* Lista de zonas para agregar contenido con scroll */}
+              <div className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full w-full">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-1">
                     {zones.map(zone => (
-                      <div key={zone.id} className="border rounded-lg p-4">
-                        <h4 className="font-medium mb-3">{zone.title}</h4>
-                        <ScrollArea className="h-64">
+                      <div key={zone.id} className="border rounded-lg p-4 bg-white">
+                        <h4 className="font-medium mb-3 text-gray-900">{zone.title}</h4>
+                        <div className="max-h-80 overflow-y-auto">
                           <div className="space-y-2">
                             {filteredContent.map((item: any) => (
                               <div
                                 key={item.id}
-                                className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+                                className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors border"
                               >
-                                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                <div className="flex items-center space-x-3 flex-1 min-w-0">
                                   {getContentIcon(item.type)}
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">{item.title}</p>
+                                    <p className="text-sm font-medium truncate text-gray-900">{item.title}</p>
                                     <p className="text-xs text-gray-500">{item.category || "Sin categoría"}</p>
                                   </div>
                                   <Badge className={getContentBadgeColor(item.type)}>
@@ -327,26 +320,35 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
                                 </div>
                                 <Button
                                   size="sm"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
                                     addContentMutation.mutate({ contentId: item.id, zone: zone.id });
                                     setIsContentDialogOpen(false);
                                   }}
                                   disabled={addContentMutation.isPending}
-                                  className="ml-2 flex-shrink-0 z-10 relative"
+                                  className="ml-3 flex-shrink-0 h-8 w-8 p-0"
+                                  style={{ position: 'relative', zIndex: 10 }}
                                 >
-                                  <Plus className="w-3 h-3" />
+                                  <Plus className="w-4 h-4" />
                                 </Button>
                               </div>
                             ))}
+                            {filteredContent.length === 0 && (
+                              <div className="text-center py-8 text-gray-500">
+                                <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">No se encontró contenido</p>
+                              </div>
+                            )}
                           </div>
-                        </ScrollArea>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </ScrollArea>
               </div>
             </div>
-          </DialogContent></old_str>
+          </DialogContent>
         </Dialog>
       </div>
 

@@ -1739,8 +1739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         playbackData.push({
           date: date.toISOString().split('T')[0],
-          plays: Math.floor(Math.random() * 200) + 100,
-          views: Math.floor(Math.random() * 1000) + 500,
+          plays: Math.floor(Math.random() * 200) + 100,          views: Math.floor(Math.random() * 1000) + 500,
           duration: Math.floor(Math.random() * 10000) + 5000
         });
       }
