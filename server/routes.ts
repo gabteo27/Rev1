@@ -414,6 +414,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!playlist) {
         return res.status(404).json({ message: "Playlist not found" });
       }
+
+      // --- ADDED: Notify connected players and admins of playlist change ---
+      broadcastPlaylistUpdate(userId, id, 'playlist-updated');
+      // --- END ADDED ---
+
       res.json(playlist);
     } catch (error) {
       console.error("Error updating playlist:", error);
@@ -462,6 +467,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertPlaylistItemSchema.parse(itemData);
       const item = await storage.addPlaylistItem(validatedData, userId);
 
+      // --- ADDED: Notify connected players and admins of playlist change ---
+      broadcastPlaylistUpdate(userId, playlistId, 'playlist-item-added');
+      // --- END ADDED ---
+
       res.json(item);
     } catch (error: unknown) {
       console.error("Error adding playlist item:", error);
@@ -479,6 +488,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!item) {
         return res.status(404).json({ message: "Playlist item not found" });
       }
+
+      // Get the playlistId associated with this item.
+      const playlistItem = await storage.getPlaylistItem(id);
+      const playlistId = playlistItem?.playlistId;
+
+       // --- ADDED: Notify connected players and admins of playlist change ---
+       if (playlistId) {
+         broadcastPlaylistUpdate(userId, playlistId, 'playlist-item-updated');
+       }
+       // --- END ADDED ---
+
       res.json(item);
     } catch (error) {
       console.error("Error updating playlist item:", error);
@@ -491,10 +511,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
 
+      // Get the playlistId associated with this item BEFORE deleting it.
+      const playlistItem = await storage.getPlaylistItem(id);
+
       const success = await storage.deletePlaylistItem(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Playlist item not found" });
       }
+
+      // --- ADDED: Notify connected players and admins of playlist change ---
+      if (playlistItem) {
+        broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-item-deleted');
+      }
+      // --- END ADDED ---
+
       res.json({ message: "Playlist item deleted successfully" });
     } catch (error) {
       console.error("Error deleting playlist item:", error);
@@ -509,6 +539,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { itemOrders } = req.body;
 
       await storage.reorderPlaylistItems(playlistId, itemOrders, userId);
+      
+      // --- ADDED: Notify connected players and admins of playlist change ---
+      broadcastPlaylistUpdate(userId, playlistId, 'playlist-reordered');
+      // --- END ADDED ---
+
       res.json({ message: "Playlist items reordered successfully" });
     } catch (error) {
       console.error("Error reordering playlist items:", error);
@@ -620,10 +655,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If playlist changed, broadcast playlist change to connected players
       if (updates.playlistId !== undefined) {
         console.log(`Broadcasting playlist change to screen ${id}: playlist ${updates.playlistId}`);
-        
+
         const wssInstance = app.get('wss') as WebSocketServer;
         let playerNotified = false;
-        
+
         wssInstance.clients.forEach((client: WebSocket) => {
           const clientWithId = client as any;
           if (clientWithId.readyState === WebSocket.OPEN) {
@@ -655,7 +690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         });
-        
+
         console.log(`📊 WebSocket clients checked: ${wssInstance.clients.size} total`);
         if (!playerNotified) {
           console.log(`⚠️ No active player connection found for screen ${id}, but change was broadcast to admin`);
@@ -818,7 +853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json(alert);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating alert:", error);
       res.status(500).json({ message: "Failed to create alert" });
     }
@@ -1141,6 +1176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   interface WebSocketWithId extends WebSocket {
     userId?: string;
+    screenId?: number; // Add screenId to the WebSocket interface
   }
 
   wss.on("connection", (ws: WebSocket) => {
@@ -1253,6 +1289,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
+  // New function to broadcast playlist updates to relevant clients (admins and players)
+  async function broadcastPlaylistUpdate(userId: string, playlistId: number, eventType: string) {
+    const wssInstance = app.get('wss') as WebSocketServer;
+
+    // Fetch the playlist to include in the update
+    const playlist = await storage.getPlaylistWithItems(playlistId, userId);
+
+    if (!playlist) {
+      console.warn(`Playlist ${playlistId} not found, cannot broadcast update`);
+      return;
+    }
+
+    wssInstance.clients.forEach((client: WebSocket) => {
+      const clientWithId = client as WebSocketWithId;
+
+      if (clientWithId.readyState === WebSocket.OPEN) {
+        // Send to admin users associated with the playlist
+        if (clientWithId.userId === userId) {
+          console.log(`✅ Sending playlist update (${eventType}) to admin user ${userId}`);
+          clientWithId.send(JSON.stringify({
+            type: 'playlist-update',
+            data: { playlist, event: eventType }
+          }));
+        }
+        // Send to players associated with the playlist
+        else if (clientWithId.screenId) {
+          // Get the screen's playlist ID to see if it matches the updated playlist
+          const screen = await storage.getScreenById(clientWithId.screenId);
+          if (screen?.playlistId === playlistId) {
+             console.log(`✅ Sending playlist update (${eventType}) to player for screen ${clientWithId.screenId}`);
+             clientWithId.send(JSON.stringify({
+               type: 'playlist-update',
+               data: { playlist, event: eventType }
+             }));
+          }
+        }
+      }
+    });
+  }
+
   // Debug endpoint to check all screens (remove in production)
   app.get("/api/debug/screens", isAuthenticated, async (req: any, res) => {
     try {
@@ -1341,7 +1417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If playlist changed, broadcast to affected screens
       if (updates.playlistId !== undefined && group.screenIds) {
         const wssInstance = app.get('wss') as WebSocketServer;
-        
+
         group.screenIds.forEach(screenId => {
           wssInstance.clients.forEach((client: WebSocket) => {
             const clientWithId = client as any;
@@ -1404,7 +1480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Broadcast play command to all screens in the group
       const wssInstance = app.get('wss') as WebSocketServer;
-      
+
       if (group.screenIds) {
         group.screenIds.forEach(screenId => {
           wssInstance.clients.forEach((client: WebSocket) => {
@@ -1447,7 +1523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Broadcast pause command to all screens in the group
       const wssInstance = app.get('wss') as WebSocketServer;
-      
+
       if (group.screenIds) {
         group.screenIds.forEach(screenId => {
           wssInstance.clients.forEach((client: WebSocket) => {

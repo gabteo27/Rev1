@@ -505,6 +505,17 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           console.log('🔄 Reloading page due to playlist change...');
           window.location.reload();
         }, 1000);
+      } else if (data.type === 'playlist-content-updated') {
+        console.log('🔄 Playlist content update detected via WebSocket:', data.data);
+        
+        // Invalidate and refetch playlist data immediately
+        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+        
+        // Small delay to ensure the backend has processed the change
+        setTimeout(() => {
+          console.log('🔄 Refreshing playlist content...');
+          queryClient.refetchQueries({ queryKey: ['/api/player/playlists', playlistId] });
+        }, 500);
       }
     };
 

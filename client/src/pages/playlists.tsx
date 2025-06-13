@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -27,6 +27,54 @@ import {
 type Playlist = any;
 type PlaylistItem = any;
 type ContentItem = any;
+
+// Componente para input de duración con estado local
+const DurationInput = ({ itemId, initialDuration, onDurationChange }: { 
+  itemId: number; 
+  initialDuration: number; 
+  onDurationChange: (duration: number) => void;
+}) => {
+  const [value, setValue] = useState(initialDuration.toString());
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setValue(initialDuration.toString());
+    }
+  }, [initialDuration, isEditing]);
+
+  const handleSubmit = () => {
+    const duration = value === '' ? 10 : parseInt(value) || 10;
+    setValue(duration.toString());
+    setIsEditing(false);
+    if (duration !== initialDuration) {
+      onDurationChange(duration);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    } else if (e.key === 'Escape') {
+      setValue(initialDuration.toString());
+      setIsEditing(false);
+    }
+  };
+
+  return (
+    <Input
+      type="number"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onFocus={() => setIsEditing(true)}
+      onBlur={handleSubmit}
+      onKeyDown={handleKeyDown}
+      className="w-12 h-5 text-xs text-center"
+      min="1"
+      placeholder="10"
+    />
+  );
+};
 
 // Definición de las zonas para cada layout
 const LAYOUT_ZONES: Record<string, { id: string; title: string }[]> = {
@@ -770,29 +818,15 @@ export default function Playlists() {
                                           <div className="flex-1 min-w-0">
                                             <h4 className="font-medium truncate">{item.contentItem?.title || 'Sin título'}</h4>
                                             <div className="flex items-center gap-2 mt-1">
-                                              <Input
-                                                type="number"
-                                                value={item.customDuration || item.contentItem?.duration || 10}
-                                                onChange={(e) => {
-                                                  const value = e.target.value;
-                                                  const duration = value === '' ? 10 : parseInt(value) || 10;
+                                              <DurationInput
+                                                itemId={item.id}
+                                                initialDuration={item.customDuration || item.contentItem?.duration || 10}
+                                                onDurationChange={(duration) => {
                                                   updateItemDurationMutation.mutate({
                                                     itemId: item.id,
                                                     duration: duration
                                                   });
                                                 }}
-                                                onBlur={(e) => {
-                                                  if (e.target.value === '') {
-                                                    e.target.value = '10';
-                                                    updateItemDurationMutation.mutate({
-                                                      itemId: item.id,
-                                                      duration: 10
-                                                    });
-                                                  }
-                                                }}
-                                                className="w-12 h-5 text-xs text-center"
-                                                min="1"
-                                                placeholder="10"
                                               />
                                               <span className="text-xs text-muted-foreground">seg</span>
                                             </div>

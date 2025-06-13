@@ -688,6 +688,15 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return item;
   }
+  async getPlaylistItemById(id: number, userId: string): Promise<any | undefined> {
+    const [item] = await db
+      .select()
+      .from(playlistItems)
+      .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)));
+    return item?.playlist_items;
+  }
+
   async updatePlaylistDuration(playlistId: number) {
     // Get all items in the playlist with their durations
     const items = await db
