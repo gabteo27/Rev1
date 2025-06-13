@@ -572,7 +572,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }
     };
     
-    const unsubscribePlaylist = wsManager.subscribe('playlist-change', handleWebSocketMessage);
+    const unsubscribePlaylistChange = wsManager.subscribe('playlist-change', handleWebSocketMessage);
+    const unsubscribePlaylistContent = wsManager.subscribe('playlist-content-updated', handleWebSocketMessage);
+    const unsubscribePlaybackControl = wsManager.subscribe('playback-control', handleWebSocketMessage);
+    const unsubscribeScreenPlaylist = wsManager.subscribe('screen-playlist-updated', handleWebSocketMessage);
     
         // Fallback: Check for playlist changes periodically 
         const checkForUpdates = () => {
@@ -609,7 +612,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           if (validationInterval) {
             clearInterval(validationInterval);
           }
-          unsubscribePlaylist();
+          unsubscribePlaylistChange();
+          unsubscribePlaylistContent();
+          unsubscribePlaybackControl();
+          unsubscribeScreenPlaylist();
           console.log('🔍 Stopped playlist monitoring');
         };
       }, [isPreview, playlistId]);
@@ -716,7 +722,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
   // Escuchar actualizaciones de alertas via WebSocket
   useEffect(() => {
-    if (!websocket) return;
+    if (isPreview) return;
 
     const handleAlertMessage = (data: any) => {
       if (data.type === 'alert') {
@@ -738,19 +744,14 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }
     };
 
-    websocket.addEventListener('message', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        handleAlertMessage(data);
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    });
+    const unsubscribeAlert = wsManager.subscribe('alert', handleAlertMessage);
+    const unsubscribeAlertDeleted = wsManager.subscribe('alert-deleted', handleAlertMessage);
 
     return () => {
-      // Cleanup will be handled by websocket cleanup
+      unsubscribeAlert();
+      unsubscribeAlertDeleted();
     };
-  }, [websocket]);
+  }, [isPreview]);
 
   // Función para renderizar el contenido de un item
   const renderContentItem = (item: PlaylistItem) => {
