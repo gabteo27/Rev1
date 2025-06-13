@@ -336,13 +336,6 @@ export default function Content() {
                         {item.type}
                       </Badge>
                     </div>
-
-                    {/* Duration Badge */}
-                    {item.duration && (
-                      <div className="absolute top-3 right-3 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs">
-                        {item.duration}s
-                      </div>
-                    )}
                   </div>
 
                   {/* Content Info */}
