@@ -43,9 +43,15 @@ const DurationInput = ({ itemId, initialDuration, onDurationChange }: {
   }, [initialDuration, isEditing]);
 
   const handleSubmit = () => {
-    const duration = value === '' ? 10 : parseInt(value) || 10;
+    let duration = parseInt(value) || 10;
+    
+    // Validar que el valor esté en un rango razonable
+    if (duration < 1) duration = 1;
+    if (duration > 86400) duration = 86400; // Máximo 24 horas
+    
     setValue(duration.toString());
     setIsEditing(false);
+    
     if (duration !== initialDuration) {
       onDurationChange(duration);
     }
@@ -53,6 +59,7 @@ const DurationInput = ({ itemId, initialDuration, onDurationChange }: {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       handleSubmit();
     } else if (e.key === 'Escape') {
       setValue(initialDuration.toString());
@@ -60,16 +67,25 @@ const DurationInput = ({ itemId, initialDuration, onDurationChange }: {
     }
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    // Solo permitir números y valores vacíos temporalmente
+    if (newValue === '' || /^\d+$/.test(newValue)) {
+      setValue(newValue);
+    }
+  };
+
   return (
     <Input
       type="number"
       value={value}
-      onChange={(e) => setValue(e.target.value)}
+      onChange={handleChange}
       onFocus={() => setIsEditing(true)}
       onBlur={handleSubmit}
       onKeyDown={handleKeyDown}
-      className="w-12 h-5 text-xs text-center"
+      className="w-16 h-6 text-xs text-center"
       min="1"
+      max="86400"
       placeholder="10"
     />
   );
@@ -374,6 +390,11 @@ export default function Playlists() {
 
   const updateItemDurationMutation = useMutation({
     mutationFn: async ({ itemId, duration }: { itemId: number, duration: number }) => {
+      // Validar la duración antes de enviar
+      if (duration < 1 || duration > 86400) {
+        throw new Error("La duración debe estar entre 1 y 86400 segundos");
+      }
+      
       const response = await apiRequest(`/api/playlist-items/${itemId}`, {
         method: "PUT",
         body: JSON.stringify({ customDuration: duration }),
@@ -382,15 +403,21 @@ export default function Playlists() {
         },
       });
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        const errorData = await response.text();
+        throw new Error(`Error ${response.status}: ${errorData}`);
       }
       return response.json();
     },
     onSuccess: () => {
       refetchPlaylist();
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      toast({
+        title: "Duración actualizada",
+        description: "La duración del elemento se ha actualizado correctamente.",
+      });
     },
     onError: (error: any) => {
+      console.error("Error updating duration:", error);
       toast({
         title: "Error",
         description: error.message || "No se pudo actualizar la duración.",

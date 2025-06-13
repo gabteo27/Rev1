@@ -484,6 +484,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updates = req.body;
 
+      // Validate customDuration if provided
+      if (updates.customDuration !== undefined) {
+        const duration = parseInt(updates.customDuration);
+        if (isNaN(duration) || duration < 1 || duration > 86400) {
+          return res.status(400).json({ 
+            message: "La duración debe ser un número entre 1 y 86400 segundos" 
+          });
+        }
+        updates.customDuration = duration;
+      }
+
       const item = await storage.updatePlaylistItem(id, updates, userId);
       if (!item) {
         return res.status(404).json({ message: "Playlist item not found" });
@@ -827,17 +838,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const timeoutId = setTimeout(async () => {
           try {
-            // Check if alert still exists before deleting
-            const existingAlert = await storage.getAlerts(userId).then(alerts => 
-              alerts.find(a => a.id === alert.id && a.isActive)
-            );
+            // Check if alert still exists and is active before deleting
+            const existingAlerts = await storage.getAlerts(userId);
+            const existingAlert = existingAlerts.find(a => a.id === alert.id && a.isActive);
 
             if (existingAlert) {
-              await storage.deleteAlert(alert.id, userId);
-              console.log(`Alert ${alert.id} auto-deleted after ${alert.duration} seconds`);
-
-              // Notificar a los clientes que la alerta fue eliminada
-              broadcastToUser(userId, 'alert-deleted', { alertId: alert.id });
+              const success = await storage.deleteAlert(alert.id, userId);
+              if (success) {
+                console.log(`Alert ${alert.id} auto-deleted after ${alert.duration} seconds`);
+                // Notificar a los clientes que la alerta fue eliminada
+                broadcastToUser(userId, 'alert-deleted', { alertId: alert.id });
+              }
+            } else {
+              console.log(`Alert ${alert.id} was already deleted or inactive`);
             }
 
             // Remove from timeouts map
@@ -899,10 +912,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         alertTimeouts.delete(id);
       }
 
+      // Check if alert exists before attempting deletion
+      const alerts = await storage.getAlerts(userId);
+      const alertExists = alerts.some(alert => alert.id === id);
+      
+      if (!alertExists) {
+        return res.status(404).json({ message: "Alert not found" });
+      }
+
       const success = await storage.deleteAlert(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Alert not found" });
       }
+
+      // Broadcast alert deletion to all user's clients
+      broadcastToUser(userId, 'alert-deleted', { alertId: id });
+
       res.json({ message: "Alert deleted successfully" });
     } catch (error) {
       console.error("Error deleting alert:", error);

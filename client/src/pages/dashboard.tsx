@@ -334,6 +334,25 @@ const formatDuration = (seconds: number) => {
   const selectedScreenData = Array.isArray(screens) ? screens.find((s: any) => s.id.toString() === selectedScreen) : null;
   const selectedPlaylistData = Array.isArray(playlists) ? playlists.find((p: any) => p.id.toString() === selectedPlaylist) : null;
 
+  const handleAlertDismiss = async (alertId: number) => {
+    try {
+      const response = await apiRequest(`/api/alerts/${alertId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+      } else if (response.status === 404) {
+        // Alert already deleted, just remove from local state
+        setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+      }
+    } catch (error) {
+      console.error('Error dismissing alert:', error);
+      // Remove from local state anyway to prevent UI issues
+      setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+    }
+  };
+
   // Query for detailed playlist data when a playlist is selected
   const { data: playlistDetails } = useQuery({
     queryKey: ["/api/playlists", selectedPlaylist],
