@@ -260,6 +260,10 @@ class WebSocketManager {
         case 'screen_updated':
           queryClient.invalidateQueries({ queryKey: ['/api/screens'] });
           break;
+        case 'widget-updated':
+          queryClient.invalidateQueries({ queryKey: ['/api/widgets'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
+          break;
         default:
           // Handle subscribed events
           if (this.subscribers.has(message.type)) {

@@ -535,6 +535,14 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
                 });
               }
             }
+            
+            if (message.type === 'widget-updated') {
+              console.log('Widget change detected for player:', message.data);
+              
+              // Invalidate widget queries immediately
+              queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/widgets'] });
+            }
           } catch (error) {
             console.error('Error parsing WebSocket message:', error);
           }

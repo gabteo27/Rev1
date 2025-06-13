@@ -161,6 +161,18 @@ export default function Dashboard() {
           }
         })
       );
+
+      // Subscribe to widget updates
+      unsubscribeFunctions.push(
+        wsManager.subscribe('widget-updated', (widgetData) => {
+          console.log('Widget update received via WebSocket:', widgetData);
+          queryClient.invalidateQueries({ queryKey: ["/api/widgets"] });
+          toast({
+            title: "Widget Actualizado",
+            description: `Widget ${widgetData?.action || 'modificado'}`,
+          });
+        })
+      );
     };
 
     setupSubscriptions();

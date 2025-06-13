@@ -635,7 +635,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 data: { 
                   playlistId: updates.playlistId,
                   screenId: id,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
+                  action: 'reload'
                 }
               }));
               playerNotified = true;
@@ -944,6 +945,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertWidgetSchema.parse(widgetData);
       const widget = await storage.createWidget(validatedData);
+
+      // Broadcast widget change to all user's clients
+      broadcastToUser(userId, 'widget-updated', { action: 'created', widget });
+
       res.json(widget);
     } catch (error) {
       console.error("Error creating widget:", error);
@@ -961,6 +966,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!widget) {
         return res.status(404).json({ message: "Widget not found" });
       }
+
+      // Broadcast widget change to all user's clients
+      broadcastToUser(userId, 'widget-updated', { action: 'updated', widget });
+
       res.json(widget);
     } catch (error) {
       console.error("Error updating widget:", error);
@@ -977,6 +986,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!success) {
         return res.status(404).json({ message: "Widget not found" });
       }
+
+      // Broadcast widget change to all user's clients
+      broadcastToUser(userId, 'widget-updated', { action: 'deleted', widgetId: id });
+
       res.json({ message: "Widget deleted successfully" });
     } catch (error) {
       console.error("Error deleting widget:", error);
