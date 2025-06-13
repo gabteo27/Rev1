@@ -387,6 +387,8 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     queryKey: isPreview ? ['/api/playlists', playlistId] : ['/api/player/playlists', playlistId],
     queryFn: () => {
       const endpoint = isPreview ? `/api/playlists/${playlistId}` : `/api/player/playlists/${playlistId}`;
+      console.log(`🎵 Fetching playlist data from: ${endpoint}`);
+      
       if (isPreview) {
         return apiRequest(endpoint).then(res => res.json());
       } else {
@@ -402,12 +404,19 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             throw new Error(`Failed to fetch playlist: ${res.status}`);
           }
           return res.json();
+        }).then(data => {
+          console.log(`🎵 Playlist data received:`, data);
+          return data;
         });
       }
     },
     enabled: !!playlistId,
-    refetchInterval: isPreview ? 5000 : 30000, // More frequent checks for player
-    staleTime: isPreview ? 30000 : 10000, // Consider data stale sooner for player
+    refetchInterval: isPreview ? 5000 : 2000, // Very frequent checks for player
+    staleTime: isPreview ? 30000 : 0, // Always consider player data stale
+    gcTime: 0, // Don't cache data
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   // Query para obtener alertas activas
@@ -468,19 +477,15 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     enabled: !!playlistId, // Solo ejecutar si hay playlist
   });
 
-  // Enhanced real-time update system with polling fallback
+  // Enhanced real-time update system with aggressive polling and forced reloads
   useEffect(() => {
     if (isPreview) return;
 
-    let ws: WebSocket | null = null;
-    let reconnectTimeout: NodeJS.Timeout;
     let pollingInterval: NodeJS.Timeout;
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 3; // Reduced attempts
     let lastPlaylistId = playlistId;
-    let wsConnected = false;
+    let lastValidationTime = Date.now();
 
-    // Polling fallback function
+    // Very aggressive polling function that forces reload on any change
     const pollForChanges = () => {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) return;
@@ -492,143 +497,68 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }).then(res => res.json()).then(data => {
         if (data.valid && data.screen) {
           const currentPlaylistId = data.screen.playlistId;
+          const currentTime = Date.now();
           
-          // Check if playlist changed
+          // Check if playlist changed or if we haven't validated in a while
           if (currentPlaylistId !== lastPlaylistId) {
-            console.log(`Polling detected playlist change: ${lastPlaylistId} -> ${currentPlaylistId}`);
+            console.log(`🔄 PLAYLIST CHANGE DETECTED: ${lastPlaylistId} -> ${currentPlaylistId}`);
+            console.log('🚀 FORCING IMMEDIATE RELOAD...');
+            
+            // Store the new playlist ID
             lastPlaylistId = currentPlaylistId;
             
-            // Force refresh
-            queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/playlists'] });
+            // Force immediate reload without delay
+            window.location.reload();
+            return;
+          }
+
+          // Also check if the current playlist content has changed by comparing query cache
+          if (currentPlaylistId && currentTime - lastValidationTime > 5000) {
+            lastValidationTime = currentTime;
             
-            setTimeout(() => {
-              console.log('Reloading player due to polling-detected change...');
-              window.location.reload();
-            }, 500);
+            // Check if playlist data in cache is stale
+            const cachedPlaylist = queryClient.getQueryData(['/api/player/playlists', currentPlaylistId]);
+            if (cachedPlaylist) {
+              // Force refresh playlist data
+              queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', currentPlaylistId] });
+              queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/player/alerts'] });
+            }
           }
         }
       }).catch(error => {
         console.error('Polling error:', error);
+        // If polling fails, still try to reload to recover
+        if (Date.now() - lastValidationTime > 30000) {
+          console.log('🔧 Polling failed for too long, forcing reload to recover...');
+          window.location.reload();
+        }
       });
     };
 
-    // Start aggressive polling (every 3 seconds)
-    pollingInterval = setInterval(pollForChanges, 3000);
+    // Start very aggressive polling (every 1 second)
+    console.log('🔍 Starting aggressive playlist monitoring...');
+    pollingInterval = setInterval(pollForChanges, 1000);
 
-    const connectWebSocket = () => {
-      try {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-        ws = new WebSocket(wsUrl);
+    // Also poll immediately
+    pollForChanges();
 
-        ws.onopen = () => {
-          console.log('Player WebSocket connected for real-time updates');
-          wsConnected = true;
-          reconnectAttempts = 0;
-          const authToken = localStorage.getItem('authToken');
-          if (authToken) {
-            ws!.send(JSON.stringify({ type: 'player-auth', token: authToken }));
-          }
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            console.log('WebSocket message received:', message);
-            
-            if (message.type === 'playlist-change') {
-              console.log('Playlist change detected for player:', message.data);
-              
-              // Get current screen info to check if this change affects us
-              const authToken = localStorage.getItem('authToken');
-              if (authToken) {
-                fetch('/api/player/validate-token', {
-                  headers: {
-                    'Authorization': `Bearer ${authToken}`
-                  }
-                }).then(res => res.json()).then(data => {
-                  if (data.valid && data.screen) {
-                    const newPlaylistId = message.data?.playlistId;
-                    const currentScreenId = data.screen.id;
-                    const messageScreenId = message.data?.screenId;
-                    
-                    console.log(`Current screen: ${currentScreenId}, Message screen: ${messageScreenId}, New playlist: ${newPlaylistId}`);
-                    
-                    // Check if this change is for our screen
-                    if (messageScreenId === currentScreenId) {
-                      console.log(`Playlist change is for our screen! New playlist: ${newPlaylistId}, Current: ${playlistId}`);
-                      lastPlaylistId = newPlaylistId;
-                      
-                      // Force refresh all playlist queries
-                      queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
-                      queryClient.invalidateQueries({ queryKey: ['/api/playlists'] });
-                      
-                      // Immediate reload
-                      console.log('Reloading player to apply playlist change...');
-                      window.location.reload();
-                    }
-                  }
-                }).catch(error => {
-                  console.error('Failed to validate token during playlist change:', error);
-                });
-              }
-            }
-            
-            if (message.type === 'widget-updated') {
-              console.log('Widget change detected for player:', message.data);
-              
-              // Invalidate widget queries immediately
-              queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/widgets'] });
-            }
-          } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-          }
-        };
-
-        ws.onclose = (event) => {
-          console.log('Player WebSocket disconnected:', event.code, event.reason);
-          wsConnected = false;
-          
-          // Only attempt limited reconnection
-          if (reconnectAttempts < maxReconnectAttempts) {
-            reconnectAttempts++;
-            const delay = Math.min(2000 * reconnectAttempts, 10000);
-            console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
-            reconnectTimeout = setTimeout(connectWebSocket, delay);
-          } else {
-            console.log('Max WebSocket reconnection attempts reached, relying on polling');
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error('Player WebSocket error:', error);
-          wsConnected = false;
-          if (ws) {
-            ws.close();
-          }
-        };
-
-      } catch (error) {
-        console.error('Failed to connect to WebSocket:', error);
-        wsConnected = false;
+    // Set up visibility change handler to poll when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔍 Tab became visible, checking for changes...');
+        pollForChanges();
       }
     };
 
-    // Try to connect WebSocket but don't rely on it exclusively
-    connectWebSocket();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-      }
       if (pollingInterval) {
         clearInterval(pollingInterval);
       }
-      if (ws) {
-        ws.close();
-      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      console.log('🔍 Stopped playlist monitoring');
     };
   }, [isPreview, playlistId]);
 
@@ -652,6 +582,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       });
     }
   };
+
+  // Additional effect to detect playlist changes and log them
+  useEffect(() => {
+    if (!isPreview && playlistId) {
+      console.log(`🎵 Current playlistId: ${playlistId}`);
+      console.log(`🎵 Playlist data:`, playlist);
+      
+      // Store current playlist ID for comparison
+      const storedPlaylistId = localStorage.getItem('currentPlaylistId');
+      if (storedPlaylistId !== String(playlistId)) {
+        console.log(`🔄 Playlist ID changed from ${storedPlaylistId} to ${playlistId}`);
+        localStorage.setItem('currentPlaylistId', String(playlistId));
+      }
+    }
+  }, [playlistId, playlist, isPreview]);
 
   // 1. Inicializa o actualiza los trackers cuando la playlist cambia
   useEffect(() => {
