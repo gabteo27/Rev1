@@ -14,21 +14,43 @@ export default function Alerts() {
   const [editingAlert, setEditingAlert] = useState<any>(null);
   const { toast } = useToast();
 
-  const { data: alerts = [], isLoading } = useQuery({
+  const { data: alerts = [], isLoading, error: alertsError } = useQuery({
     queryKey: ["/api/alerts"],
-    queryFn: () => apiRequest("/api/alerts").then(res => res.json()),
-    refetchInterval: 5000, // Refetch every 5 seconds to keep data fresh
+    queryFn: async () => {
+      const response = await apiRequest("/api/alerts");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch alerts: ${response.status}`);
+      }
+      return response.json();
+    },
+    refetchInterval: 5000,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const { data: screens = [] } = useQuery({
     queryKey: ["/api/screens"],
-    queryFn: () => apiRequest("/api/screens").then(res => res.json()),
+    queryFn: async () => {
+      const response = await apiRequest("/api/screens");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch screens: ${response.status}`);
+      }
+      return response.json();
+    },
   });
 
-  const { data: fixedAlerts = [] } = useQuery({
+  const { data: fixedAlerts = [], error: fixedAlertsError } = useQuery({
     queryKey: ["/api/alerts/fixed"],
-    queryFn: () => apiRequest("/api/alerts/fixed").then(res => res.json()),
+    queryFn: async () => {
+      const response = await apiRequest("/api/alerts/fixed");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch fixed alerts: ${response.status}`);
+      }
+      return response.json();
+    },
     refetchInterval: 5000,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const deleteAlertMutation = useMutation({
@@ -131,6 +153,26 @@ export default function Alerts() {
     setEditingAlert(null);
     setCreateModalOpen(false);
   };
+
+  // Show error state if there are critical errors
+  if (alertsError && !alerts?.length) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-red-600 mb-2">
+            Error al cargar las alertas
+          </h3>
+          <p className="text-gray-600 mb-6">
+            {alertsError.message || "No se pudieron cargar las alertas. Intenta nuevamente."}
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            Recargar página
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

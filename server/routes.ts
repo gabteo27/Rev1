@@ -836,10 +836,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const alerts = await storage.getAlerts(userId);
-      res.json(alerts);
+      // Filter out fixed alerts from regular alerts endpoint
+      const regularAlerts = alerts.filter(alert => !alert.isFixed);
+      res.json(regularAlerts);
     } catch (error) {
       console.error("Error fetching alerts:", error);
       res.status(500).json({ message: "Failed to fetch alerts" });
+    }
+  });
+
+  // Fixed alerts endpoints
+  app.get("/api/alerts/fixed", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const alerts = await storage.getAlerts(userId);
+      // Filter only fixed alerts
+      const fixedAlerts = alerts.filter(alert => alert.isFixed && alert.isActive);
+      res.json(fixedAlerts);
+    } catch (error) {
+      console.error("Error fetching fixed alerts:", error);
+      res.status(500).json({ message: "Failed to fetch fixed alerts" });
+    }
+  });
+
+  app.post("/api/alerts/fixed", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const alertData = {
+        ...req.body,
+        userId,
+        isFixed: true,
+        duration: 0 // Fixed alerts don't have duration
+      };
+
+      const validatedData = insertAlertSchema.parse(alertData);
+      const alert = await storage.createAlert(validatedData);
+
+      console.log(`Created fixed alert ${alert.id} for user ${userId}`);
+
+      // Broadcast alert to all user devices immediately
+      await broadcastAlertToAllUserDevices(userId, alert);
+
+      res.json(alert);
+    } catch (error: any) {
+      console.error("Error creating fixed alert:", error);
+      res.status(500).json({ message: "Failed to create fixed alert" });
+    }
+  });
+
+  app.delete("/api/alerts/fixed/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+
+      const success = await storage.deleteAlert(id, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Fixed alert not found" });
+      }
+
+      // Broadcast alert deletion
+      await broadcastAlertToAllUserDevices(userId, { id, deleted: true, isFixed: true });
+
+      res.json({ message: "Fixed alert deactivated successfully" });
+    } catch (error) {
+      console.error("Error deactivating fixed alert:", error);
+      res.status(500).json({ message: "Failed to deactivate fixed alert" });
     }
   });
 
@@ -849,13 +910,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const alertData = {
         ...req.body,
         userId,
-        isFixed: false // Regular alerts are not fixed
+        isFixed: req.body.isFixed || false
       };
 
       const validatedData = insertAlertSchema.parse(alertData);
       const alert = await storage.createAlert(validatedData);
 
-      console.log(`Created alert ${alert.id} for user ${userId}`);
+      console.log(`Created ${alert.isFixed ? 'fixed' : 'regular'} alert ${alert.id} for user ${userId}`);
 
       // Broadcast alert to all user devices immediately
       await broadcastAlertToAllUserDevices(userId, alert);
@@ -864,6 +925,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error creating alert:", error);
       res.status(500).json({ message: "Failed to create alert" });
+    }
+  });
+
+  app.put("/api/alerts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+
+      const alert = await storage.updateAlert(id, updates, userId);
+      if (!alert) {
+        return res.status(404).json({ message: "Alert not found" });
+      }
+
+      // Broadcast updated alert
+      await broadcastAlertToAllUserDevices(userId, alert);
+
+      res.json(alert);
+    } catch (error) {
+      console.error("Error updating alert:", error);
+      res.status(500).json({ message: "Failed to update alert" });
+    }
+  });
+
+  app.delete("/api/alerts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+
+      const success = await storage.deleteAlert(id, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Alert not found" });
+      }
+
+      // Broadcast alert deletion
+      await broadcastAlertToAllUserDevices(userId, { id, deleted: true });
+
+      res.json({ message: "Alert deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting alert:", error);
+      res.status(500).json({ message: "Failed to delete alert" });
     }
   });
 

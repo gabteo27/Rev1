@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { X, Monitor } from "lucide-react";
 
 interface AlertModalProps {
@@ -29,15 +29,26 @@ const durationOptions = [
 ];
 
 export default function AlertModal({ open, onClose, screens = [], alert }: AlertModalProps) {
-  const [message, setMessage] = useState(alert?.message || "");
-  const [backgroundColor, setBackgroundColor] = useState(alert?.backgroundColor || "#ef4444");
-  const [textColor, setTextColor] = useState(alert?.textColor || "#ffffff");
-  const [duration, setDuration] = useState(alert?.duration || 30);
-  const [isFixed, setIsFixed] = useState(alert?.isFixed || false);
-  const [selectedScreens, setSelectedScreens] = useState<number[]>(alert?.targetScreens || []);
-  const [targetAllScreens, setTargetAllScreens] = useState(
-    !alert?.targetScreens || alert.targetScreens.length === 0
-  );
+  const [message, setMessage] = useState("");
+  const [backgroundColor, setBackgroundColor] = useState("#ef4444");
+  const [textColor, setTextColor] = useState("#ffffff");
+  const [duration, setDuration] = useState(30);
+  const [isFixed, setIsFixed] = useState(false);
+  const [selectedScreens, setSelectedScreens] = useState<number[]>([]);
+  const [targetAllScreens, setTargetAllScreens] = useState(true);
+
+  // Initialize state when alert prop changes
+  useState(() => {
+    if (alert) {
+      setMessage(alert.message || "");
+      setBackgroundColor(alert.backgroundColor || "#ef4444");
+      setTextColor(alert.textColor || "#ffffff");
+      setDuration(alert.duration || 30);
+      setIsFixed(alert.isFixed || false);
+      setSelectedScreens(alert.targetScreens || []);
+      setTargetAllScreens(!alert.targetScreens || alert.targetScreens.length === 0);
+    }
+  });
 
   const { toast } = useToast();
 
@@ -48,10 +59,15 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
         method: "POST",
         body: JSON.stringify(alertData),
       });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Failed to create alert" }));
+        throw new Error(error.message || "Failed to create alert");
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/alerts/fixed"] });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts/active"] });
       toast({
         title: `${isFixed ? "Alerta fija" : "Alerta"} creada`,
@@ -74,10 +90,15 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
         method: "PUT",
         body: JSON.stringify(alertData),
       });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Failed to update alert" }));
+        throw new Error(error.message || "Failed to update alert");
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/alerts/fixed"] });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts/active"] });
       toast({
         title: "Alerta actualizada",
@@ -122,13 +143,15 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
   };
 
   const handleClose = () => {
-    setMessage("");
-    setBackgroundColor("#ef4444");
-    setTextColor("#ffffff");
-    setDuration(30);
-    setIsFixed(false);
-    setSelectedScreens([]);
-    setTargetAllScreens(true);
+    if (!alert) {
+      setMessage("");
+      setBackgroundColor("#ef4444");
+      setTextColor("#ffffff");
+      setDuration(30);
+      setIsFixed(false);
+      setSelectedScreens([]);
+      setTargetAllScreens(true);
+    }
     onClose();
   };
 
