@@ -488,11 +488,20 @@ export class DatabaseStorage implements IStorage {
 
   // Screen operations
   async getScreens(userId: string): Promise<Screen[]> {
-    return await db
+    console.log(`Fetching screens for user: ${userId}`);
+    const result = await db
       .select()
       .from(screens)
-      .where(eq(screens.userId, userId))
-      .orderBy(desc(screens.createdAt));
+      .where(eq(screens.userId, userId));
+    console.log(`Found ${result.length} screens for user ${userId}:`, result.map(s => ({ id: s.id, name: s.name, userId: s.userId })));
+    return result;
+  }
+
+  async getScreenById(screenId: number, userId: string): Promise<Screen | null> {
+    const result = await db.select().from(screens)
+      .where(and(eq(screens.id, screenId), eq(screens.userId, userId)))
+      .limit(1);
+    return result[0] || null;
   }
 
   async getScreen(id: number, userId: string): Promise<Screen | undefined> {

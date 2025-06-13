@@ -517,18 +517,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     // Handle WebSocket messages
     const handleWebSocketMessage = (data: any) => {
-      console.log('🎵 WebSocket message received in player:', data);
+      console.log('🎵 WebSocket message received:', data);
 
-      if (data.type === 'playlist-change') {
-        console.log('🔄 Playlist change detected via WebSocket:', data.data);
-
-        // Force page reload for playlist assignment changes
-        setTimeout(() => {
-          console.log('🔄 Reloading page due to playlist assignment change...');
-          window.location.reload();
-        }, 1000);
-      } else if (data.type === 'playlist-content-updated') {
-        console.log('📝 Playlist content updated, refreshing...');
+      if (data.type === 'playlist-content-updated' && data.data?.playlistId === playlistId) {
+        console.log('🔄 Playlist content updated, refreshing...');
 
         // Invalidate and refetch playlist data
         queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
@@ -536,29 +528,54 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           queryKey: ['/api/player/playlists', playlistId],
           type: 'active'
         });
+      }
 
-        // Reset current index if it's out of bounds
-        if (data.playlist && data.playlist.items) {
-          const newItemCount = data.playlist.items.length;
-          //if (currentIndex >= newItemCount && newItemCount > 0) {
-          //  setCurrentIndex(0);
-          //} else if (newItemCount === 0) {
-          //  setIsPlaying(false);
-          //}
+      if (data.type === 'playlist-change') {
+        const newPlaylistId = data.data?.newPlaylistId;
+        const messageScreenId = data.data?.screenId;
+
+        // Check if this message is for our screen or if we should check our assigned playlist
+        if (messageScreenId === screenId || !messageScreenId) {
+          if (newPlaylistId !== lastPlaylistId) {
+            console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} (WebSocket)`);
+            lastPlaylistId = newPlaylistId;
+
+            // Reload the page to reflect the new playlist
+            setTimeout(() => {
+              console.log('🔄 Reloading page due to playlist change (WebSocket)...');
+              window.location.reload();
+            }, 500);
+          }
         }
-      } else if (data.type === 'playlist-update') {
-        console.log('🔄 Generic playlist update detected via WebSocket:', data.data);
+      }
 
-        // Handle generic playlist updates
-        if (data.data.playlist?.id === playlistId) {
-          console.log('🎯 Playlist update is for current playlist, refreshing...');
+      if (data.type === 'playback-control') {
+        console.log(`🎮 Playback control received: ${data.data?.action}`);
+        // Handle playback control commands (play, pause, stop)
+        const action = data.data?.action;
+        if (action === 'play') {
+          setCurrentItemIndex(0);
+          setIsPlaying(true);
+        } else if (action === 'pause') {
+          setIsPlaying(false);
+        } else if (action === 'stop') {
+          setIsPlaying(false);
+          setCurrentItemIndex(0);
+        }
+      }
 
-          // Invalidate and refetch playlist data
-          queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
-          queryClient.refetchQueries({ 
-            queryKey: ['/api/player/playlists', playlistId],
-            type: 'active'
-          });
+      if (data.type === 'screen-playlist-updated') {
+        const messageScreenId = data.data?.screenId;
+        const newPlaylistId = data.data?.playlistId;
+
+        if (messageScreenId === screenId) {
+          console.log(`🔄 Screen playlist updated to ${newPlaylistId} (WebSocket)`);
+
+          // Reload page to reflect playlist change
+          setTimeout(() => {
+            console.log('🔄 Reloading page due to screen playlist update...');
+            window.location.reload();
+          }, 500);
         }
       }
     };

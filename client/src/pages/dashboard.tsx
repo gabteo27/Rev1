@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Play, 
-  Pause, 
+import {
+  Play,
+  Pause,
   Square,
   Monitor, 
   List, 
@@ -24,7 +24,8 @@ import {
   Globe,
   Calendar,
   Thermometer,
-  TrendingUp
+  TrendingUp,
+  RefreshCw
 } from "lucide-react";
 
 // Widget components with real APIs

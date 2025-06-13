@@ -683,69 +683,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
-
+  // Update screen
   app.put("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id, 10);
-      const updates = {
-        name: req.body.name,
-        location: req.body.location,
-        playlistId: req.body.playlistId ? parseInt(req.body.playlistId, 10) : null,
-      };
+      const screenId = parseInt(req.params.id);
+      const { name, location, playlistId } = req.body;
 
-      const screen = await storage.updateScreen(id, updates, userId);
+      const screen = await storage.updateScreen(screenId, {
+        name,
+        location,
+        playlistId
+      }, req.user.id);
+
       if (!screen) {
-        return res.status(404).json({ message: "Screen not found or access denied" });
+        return res.status(404).json({ message: "Screen not found" });
       }
 
-      // Broadcast screen update via WebSocket
-      broadcastToUser(userId, 'screen-update', screen);
+      // Broadcast screen update to all connected clients
+      broadcastScreenUpdate(screen);
 
-      // If playlist changed, broadcast playlist change to connected players
-      if (updates.playlistId !== undefined) {
-        console.log(`Broadcasting playlist change to screen ${id}: playlist ${updates.playlistId}`);
+      // If playlist changed, also broadcast playlist change to the specific screen
+      if (req.body.hasOwnProperty('playlistId')) {
+        await broadcastPlaylistUpdate(req.user.id, playlistId, 'screen-playlist-updated');
 
+        // Send direct update to the affected screen
         const wssInstance = app.get('wss') as WebSocketServer;
-        let playerNotified = false;
-
         wssInstance.clients.forEach((client: WebSocket) => {
-          const clientWithId = client as any;
-          if (clientWithId.readyState === WebSocket.OPEN) {
-            // Send to player connections for this specific screen
-            if (clientWithId.screenId === id) {
-              console.log(`✅ Sending playlist change to player for screen ${id}`);
-              clientWithId.send(JSON.stringify({
-                type: 'playlist-change',
-                data: { 
-                  playlistId: updates.playlistId,
-                  screenId: id,
-                  timestamp: new Date().toISOString(),
-                  action: 'reload'
-                }
-              }));
-              playerNotified = true;
-            }
-            // Also send to admin clients for this user
-            else if (clientWithId.userId === userId) {
-              console.log(`✅ Sending playlist change notification to admin user ${userId}`);
-              clientWithId.send(JSON.stringify({
-                type: 'playlist-change',
-                data: { 
-                  playlistId: updates.playlistId,
-                  screenId: id,
-                  timestamp: new Date().toISOString()
-                }
-              }));
-            }
+          const clientWithId = client as WebSocketWithId;
+          if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === screenId) {
+            clientWithId.send(JSON.stringify({
+              type: 'playlist-change',
+              data: { 
+                newPlaylistId: playlistId,
+                screenId: screenId,
+                timestamp: new Date().toISOString()
+              }
+            }));
           }
         });
-
-        console.log(`📊 WebSocket clients checked: ${wssInstance.clients.size} total`);
-        if (!playerNotified) {
-          console.log(`⚠️ No active player connection found for screen ${id}, but change was broadcast to admin`);
-        }
       }
 
       res.json(screen);
@@ -755,50 +730,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete screen
   app.delete("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id, 10);
-
-      const success = await storage.deleteScreen(id, userId);
-      if (!success) {
-        return res.status(404).json({ message: "Screen not found or access denied" });
-      }
-      res.status(200).json({ message: "Screen deleted successfully" });
+      const screenId = parseInt(req.params.id);
+      await storage.deleteScreen(screenId, req.user.id);
+      res.json({ message: "Screen deleted successfully" });
     } catch (error) {
       console.error("Error deleting screen:", error);
       res.status(500).json({ message: "Failed to delete screen" });
     }
   });
 
-  // Playback control endpoint
+  // Screen playback control
   app.post("/api/screens/:id/playback", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const screenId = parseInt(req.params.id, 10);
+      const screenId = parseInt(req.params.id);
       const { playlistId, action } = req.body;
 
-      // Verify screen ownership
-      const screen = await storage.getScreens(userId).then(screens => 
-        screens.find(s => s.id === screenId)
-      );
-
+      // Verify screen belongs to user
+      const screen = await storage.getScreenById(screenId, req.user.id);
       if (!screen) {
         return res.status(404).json({ message: "Screen not found" });
       }
 
-      // Log the playback action
-      console.log(`Playback ${action} on screen ${screenId} with playlist ${playlistId}`);
+      console.log(`🎮 Playback control: ${action} for screen ${screenId} with playlist ${playlistId}`);
 
-      // Here you would typically send the command to the actual screen
-      // For now, we'll just acknowledge the command
+      // Broadcast playback control to the specific screen
+      const wssInstance = app.get('wss') as WebSocketServer;
+      let messageSent = false;
+
+      wssInstance.clients.forEach((client: WebSocket) => {
+        const clientWithId = client as WebSocketWithId;
+        if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === screenId) {
+          clientWithId.send(JSON.stringify({
+            type: 'playback-control',
+            data: {
+              action,
+              playlistId: parseInt(playlistId),
+              timestamp: new Date().toISOString()
+            }
+          }));
+          messageSent = true;
+          console.log(`✅ Playback control sent to screen ${screenId}`);
+        }
+      });
+
+      if (!messageSent) {
+        console.log(`⚠️ No connected clients found for screen ${screenId}`);
+      }
 
       res.json({ 
-        message: "Playback command sent",
-        screenId,
-        playlistId,
-        action,
-        timestamp: new Date()
+        success: true, 
+        message: `Playback ${action} command sent to screen`,
+        screenConnected: messageSent
       });
     } catch (error) {
       console.error("Error controlling playback:", error);
@@ -879,7 +864,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const timeoutId = setTimeout(async () => {
           try {
             // Check if alert still exists and is active before deleting
-            const existingAlerts = await storage.getAlerts(userId);
+            const existingAlerts```text
+= await storage.getAlerts(userId);
             const existingAlert = existingAlerts.find(a => a.id === alert.id && a.isActive);
 
             if (existingAlert) {
