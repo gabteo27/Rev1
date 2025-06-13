@@ -539,7 +539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { itemOrders } = req.body;
 
       await storage.reorderPlaylistItems(playlistId, itemOrders, userId);
-      
+
       // --- ADDED: Notify connected players and admins of playlist change ---
       broadcastPlaylistUpdate(userId, playlistId, 'playlist-reordered');
       // --- END ADDED ---
@@ -1289,44 +1289,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
-  // New function to broadcast playlist updates to relevant clients (admins and players)
+  // Enhanced function to broadcast playlist updates to relevant clients (admins and players)
   async function broadcastPlaylistUpdate(userId: string, playlistId: number, eventType: string) {
     const wssInstance = app.get('wss') as WebSocketServer;
 
-    // Fetch the playlist to include in the update
-    const playlist = await storage.getPlaylistWithItems(playlistId, userId);
+    try {
+      // Fetch the playlist to include in the update
+      const playlist = await storage.getPlaylistWithItems(playlistId, userId);
 
-    if (!playlist) {
-      console.warn(`Playlist ${playlistId} not found, cannot broadcast update`);
-      return;
-    }
+      if (!playlist) {
+        console.warn(`Playlist ${playlistId} not found, cannot broadcast update`);
+        return;
+      }
 
-    wssInstance.clients.forEach((client: WebSocket) => {
-      const clientWithId = client as WebSocketWithId;
+      console.log(`📡 Broadcasting playlist update: ${eventType} for playlist ${playlistId} to ${wssInstance.clients.size} clients`);
 
-      if (clientWithId.readyState === WebSocket.OPEN) {
-        // Send to admin users associated with the playlist
-        if (clientWithId.userId === userId) {
-          console.log(`✅ Sending playlist update (${eventType}) to admin user ${userId}`);
-          clientWithId.send(JSON.stringify({
-            type: 'playlist-update',
-            data: { playlist, event: eventType }
-          }));
-        }
-        // Send to players associated with the playlist
-        else if (clientWithId.screenId) {
-          // Get the screen's playlist ID to see if it matches the updated playlist
-          const screen = await storage.getScreenById(clientWithId.screenId);
-          if (screen?.playlistId === playlistId) {
-             console.log(`✅ Sending playlist update (${eventType}) to player for screen ${clientWithId.screenId}`);
-             clientWithId.send(JSON.stringify({
-               type: 'playlist-update',
-               data: { playlist, event: eventType }
-             }));
+      // Get all screens that use this playlist
+      const allScreens = await storage.getScreens(userId);
+      const affectedScreenIds = allScreens.filter(screen => screen.playlistId === playlistId).map(screen => screen.id);
+
+      console.log(`🎯 Affected screens for playlist ${playlistId}:`, affectedScreenIds);
+
+      let adminClientsNotified = 0;
+      let playerClientsNotified = 0;
+
+      wssInstance.clients.forEach((client: WebSocket) => {
+        const clientWithId = client as WebSocketWithId;
+
+        if (clientWithId.readyState === WebSocket.OPEN) {
+          // Send to admin users associated with the playlist
+          if (clientWithId.userId === userId) {
+            console.log(`✅ Sending playlist update (${eventType}) to admin user ${userId}`);
+            clientWithId.send(JSON.stringify({
+              type: 'playlist-content-updated',
+              data: { 
+                playlist, 
+                event: eventType,
+                playlistId: playlistId,
+                timestamp: new Date().toISOString()
+              }
+            }));
+            adminClientsNotified++;
+          }
+          // Send to players associated with the playlist
+          else if (clientWithId.screenId && affectedScreenIds.includes(clientWithId.screenId)) {
+            console.log(`✅ Sending playlist content update (${eventType}) to player for screen ${clientWithId.screenId}`);
+            clientWithId.send(JSON.stringify({
+              type: 'playlist-content-updated',
+              data: { 
+                playlist, 
+                event: eventType,
+                playlistId: playlistId,
+                screenId: clientWithId.screenId,
+                timestamp: new Date().toISOString()
+              }
+            }));
+            playerClientsNotified++;
           }
         }
-      }
-    });
+      });
+
+      console.log(`📊 Broadcast complete: ${adminClientsNotified} admin clients, ${playerClientsNotified} player clients notified`);
+
+    } catch (error) {
+      console.error(`Error broadcasting playlist update:`, error);
+    }
   }
 
   // Debug endpoint to check all screens (remove in production)

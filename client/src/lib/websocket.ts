@@ -24,26 +24,37 @@ class WebSocketManager {
     this.handleMessage = this.handleMessage.bind(this);
   }
 
-  async connect(userId?: string, authToken?: string) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+  connect(userId?: string, authToken?: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       console.log('WebSocket already connected');
       return;
     }
 
-    this.userId = userId || null;
-    this.authToken = authToken || null;
+    // If currently connecting, don't start another connection
+    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+      console.log('WebSocket connection already in progress');
+      return;
+    }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    this.userId = userId;
+    this.authToken = authToken;
 
-    console.log('Connecting to WebSocket:', wsUrl, this.authToken ? '(with player token)' : '(admin mode)');
+    // Clear any existing reconnection timeout
+    if (this.reconnectTimeoutId) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
+    }
 
     try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      console.log('🔌 Connecting to WebSocket:', wsUrl);
+
       this.ws = new WebSocket(wsUrl);
-      this.setupEventHandlers();
+      this.setupEventListeners();
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      this.scheduleReconnect();
+      console.error('❌ Failed to create WebSocket connection:', error);
+      this.reconnectWithBackoff();
     }
   }
 
@@ -187,6 +198,25 @@ class WebSocketManager {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
     }
+  }
+
+  private reconnectWithBackoff() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('❌ Max reconnection attempts reached, giving up');
+      return;
+    }
+
+    // Use exponential backoff with jitter
+    const baseDelay = 1000 * Math.pow(2, this.reconnectAttempts);
+    const jitter = Math.random() * 1000; // Add random jitter to prevent thundering herd
+    const delay = Math.min(baseDelay + jitter, 30000);
+
+    console.log(`🔄 Attempting to reconnect in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+
+    this.reconnectTimeoutId = setTimeout(() => {
+      this.reconnectAttempts++;
+      this.connect(this.userId, this.authToken);
+    }, delay);
   }
 }
 

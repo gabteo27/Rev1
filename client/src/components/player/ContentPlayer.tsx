@@ -500,22 +500,43 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       if (data.type === 'playlist-change') {
         console.log('🔄 Playlist change detected via WebSocket:', data.data);
         
-        // Force page reload for now to ensure proper playlist update
+        // Force page reload for playlist assignment changes
         setTimeout(() => {
-          console.log('🔄 Reloading page due to playlist change...');
+          console.log('🔄 Reloading page due to playlist assignment change...');
           window.location.reload();
         }, 1000);
       } else if (data.type === 'playlist-content-updated') {
         console.log('🔄 Playlist content update detected via WebSocket:', data.data);
         
-        // Invalidate and refetch playlist data immediately
-        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+        // Check if this update is for our current playlist
+        if (data.data.playlistId === playlistId) {
+          console.log('🎯 Update is for current playlist, refreshing content...');
+          
+          // Invalidate and refetch playlist data immediately
+          queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+          
+          // Force immediate refetch
+          queryClient.refetchQueries({ 
+            queryKey: ['/api/player/playlists', playlistId],
+            type: 'active'
+          });
+        } else {
+          console.log('ℹ️ Update is for different playlist, ignoring...');
+        }
+      } else if (data.type === 'playlist-update') {
+        console.log('🔄 Generic playlist update detected via WebSocket:', data.data);
         
-        // Small delay to ensure the backend has processed the change
-        setTimeout(() => {
-          console.log('🔄 Refreshing playlist content...');
-          queryClient.refetchQueries({ queryKey: ['/api/player/playlists', playlistId] });
-        }, 500);
+        // Handle generic playlist updates
+        if (data.data.playlist?.id === playlistId) {
+          console.log('🎯 Playlist update is for current playlist, refreshing...');
+          
+          // Invalidate and refetch playlist data
+          queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+          queryClient.refetchQueries({ 
+            queryKey: ['/api/player/playlists', playlistId],
+            type: 'active'
+          });
+        }
       }
     };
 
