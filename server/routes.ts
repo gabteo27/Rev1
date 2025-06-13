@@ -1747,7 +1747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Screen group not found" });
       }
 
-      // Broadcast pause command to all screens inthe previous section.
+      // Broadcast pause command to all screens in the group
       const wssInstance = app.get('wss') as WebSocketServer;
 
       if (group.screenIds) {
