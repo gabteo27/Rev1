@@ -860,7 +860,7 @@ export default function Playlists() {
 
       {/* Content Library Modal */}
       <Dialog open={contentLibraryOpen} onOpenChange={setContentLibraryOpen}>
-        
+
 <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Biblioteca de Contenido</DialogTitle>
@@ -875,8 +875,7 @@ export default function Playlists() {
               <Input
                 placeholder="Buscar contenido..."
                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+                                onChange={(e) => setSearchTerm(e.target.value)}              />
             </div>
 
             {/* Content List */}
