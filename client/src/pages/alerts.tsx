@@ -17,6 +17,11 @@ export default function Alerts() {
     queryFn: () => apiRequest("/api/alerts").then(res => res.json()),
   });
 
+  const { data: screens = [] } = useQuery({
+    queryKey: ["/api/screens"],
+    queryFn: () => apiRequest("/api/screens").then(res => res.json()),
+  });
+
   const deleteAlertMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await apiRequest(`/api/alerts/${id}`, { method: "DELETE" });
@@ -245,6 +250,7 @@ export default function Alerts() {
       <AlertModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
+        screens={screens}
       />
     </div>
   );

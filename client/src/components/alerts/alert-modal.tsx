@@ -38,7 +38,7 @@ const durationOptions = [
   { value: -1, label: "Hasta cerrar manualmente" },
 ];
 
-export default function AlertModal({ open, onClose, screens }: AlertModalProps) {
+export default function AlertModal({ open, onClose, screens = [] }: AlertModalProps) {
   const [message, setMessage] = useState("");
   const [backgroundColor, setBackgroundColor] = useState("#ef4444");
   const [textColor, setTextColor] = useState("#ffffff");
