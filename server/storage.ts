@@ -642,7 +642,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAlert(alert: InsertAlert): Promise<Alert> {
-    const [item] = await db.insert(alerts).values(alert).returning();
+    const [item] = await db.insert(alerts).values({
+      ...alert,
+      isFixed: alert.isFixed || false
+    }).returning();
     return item;
   }
 

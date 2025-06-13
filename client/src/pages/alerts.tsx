@@ -26,9 +26,9 @@ export default function Alerts() {
     mutationFn: async (id: number) => {
       const response = await apiRequest(`/api/alerts/${id}`, { method: "DELETE" });
       if (!response.ok) {
-        // Don't throw error if alert was already deleted
         if (response.status === 404) {
-          return null; // Silently ignore if already deleted
+          // Alert already deleted, just return success
+          return { success: true, alreadyDeleted: true };
         }
         const error = await response.json().catch(() => ({ message: "Failed to delete alert" }));
         throw new Error(error.message || "Failed to delete alert");
@@ -37,9 +37,8 @@ export default function Alerts() {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-      // Only show success message if the alert was actually deleted (not 404)
-      if (data !== null) {
-        toast({ title: "Alerta eliminada" });
+      if (!data.alreadyDeleted) {
+        toast({ title: "Alerta eliminada exitosamente" });
       }
     },
     onError: (error: any) => {
@@ -65,49 +64,12 @@ export default function Alerts() {
     },
   });
 
-  // Auto-delete alerts when their duration expires
+  // Clean up any stale timeouts when component unmounts
   useEffect(() => {
-    if (!alerts || alerts.length === 0) return;
-
-    const activeAlerts = alerts.filter((alert: any) => alert.isActive && alert.duration > 0);
-    const timeouts: NodeJS.Timeout[] = [];
-
-    activeAlerts.forEach((alert: any) => {
-      const createdTime = new Date(alert.createdAt).getTime();
-      const currentTime = Date.now();
-      const elapsedTime = (currentTime - createdTime) / 1000;
-      const remainingTime = Math.max(0, alert.duration - elapsedTime);
-
-      if (remainingTime > 0) {
-        const timeoutId = setTimeout(() => {
-          // Only delete if the component is still mounted and the alert still exists
-          try {
-            const currentAlerts = queryClient.getQueryData(["/api/alerts"]) as any[];
-            if (currentAlerts && Array.isArray(currentAlerts)) {
-              const stillExists = currentAlerts.find((a: any) => a.id === alert.id && a.isActive);
-              if (stillExists) {
-                deleteAlertMutation.mutate(alert.id);
-              }
-            }
-          } catch (error) {
-            console.error('Error checking alert status:', error);
-          }
-        }, remainingTime * 1000);
-
-        timeouts.push(timeoutId);
-      } else if (elapsedTime >= alert.duration) {
-        // Alert should have already expired, delete it immediately
-        setTimeout(() => {
-          deleteAlertMutation.mutate(alert.id);
-        }, 100);
-      }
-    });
-
-    // Cleanup all timeouts when component unmounts or alerts change
     return () => {
-      timeouts.forEach(timeout => clearTimeout(timeout));
+      // This effect just ensures proper cleanup
     };
-  }, [alerts, deleteAlertMutation, queryClient]);
+  }, []);
 
   const formatDuration = (seconds: number) => {
     if (seconds === 0) return "Manual";
@@ -182,7 +144,12 @@ export default function Alerts() {
                           <Badge variant={alert.isActive ? "default" : "secondary"}>
                             {alert.isActive ? "Activa" : "Inactiva"}
                           </Badge>
-                          {remainingTime && (
+                          {alert.isFixed && (
+                            <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                              Fija
+                            </Badge>
+                          )}
+                          {remainingTime && !alert.isFixed && (
                             <Badge variant="outline">{remainingTime}</Badge>
                           )}
                         </CardDescription>

@@ -885,34 +885,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/alerts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const alertData = { ...req.body, userId };
+      const { message, backgroundColor = "#ef4444", textColor = "#ffffff", duration = 30, targetScreens = [], isFixed = false } = req.body;
+
+      if (!message || message.trim().length === 0) {
+        return res.status(400).json({ message: "Alert message is required" });
+      }
+
+      if (duration < 0 || duration > 86400) {
+        return res.status(400).json({ message: "Duration must be between 0 and 86400 seconds" });
+      }
+
+      const alertData = {
+        userId,
+        message: message.trim(),
+        backgroundColor,
+        textColor,
+        duration,
+        isActive: true,
+        targetScreens: Array.isArray(targetScreens) ? targetScreens : [],
+        isFixed: !!isFixed
+      };
 
       const validatedData = insertAlertSchema.parse(alertData);
       const alert = await storage.createAlert(validatedData);
+
+      console.log(`Created alert ${alert.id} with duration ${alert.duration}s`);
 
       // Broadcast alert to ALL connected clients for this user (admin and players)
       await broadcastAlertToAllUserDevices(userId, alert);
 
       // Si la alerta tiene duración, programar auto-eliminación
       if (alert.duration > 0) {
-        // Clear any existing timeout for this alert
-        if (alertTimeouts.has(alert.id)) {
-          clearTimeout(alertTimeouts.get(alert.id)!);
-        }
-
         const timeoutId = setTimeout(async () => {
           try {
-            // Check if alert still exists and is active before deleting
-            const existingAlerts = await storage.getAlerts(userId);
-            const existingAlert = existingAlerts.find(a => a.id === alert.id && a.isActive);
-
-            if (existingAlert) {
-              await storage.updateAlert(alert.id, { isActive: false }, userId);
-              console.log(`Alert ${alert.id} auto-expired after ${alert.duration} seconds`);
-              // Notificar a los clientes que la alerta expiró
-              await broadcastAlertToAllUserDevices(userId, { ...existingAlert, isActive: false });
-            }
-
+            console.log(`Auto-expiring alert ${alert.id} after ${alert.duration} seconds`);
+            
+            // Deactivate the alert instead of deleting it
+            await storage.updateAlert(alert.id, { isActive: false }, userId);
+            
+            // Broadcast the deactivation
+            await broadcastAlertToAllUserDevices(userId, { ...alert, isActive: false });
+            
             // Remove from timeouts map
             alertTimeouts.delete(alert.id);
           } catch (error) {
@@ -923,12 +936,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Store the timeout
         alertTimeouts.set(alert.id, timeoutId);
+        console.log(`Set timeout for alert ${alert.id} for ${alert.duration} seconds`);
       }
 
       res.json(alert);
     } catch (error: any) {
       console.error("Error creating alert:", error);
-      res.status(500).json({ message: "Failed to create alert" });
+      if (error.name === 'ZodError') {
+        res.status(400).json({ message: "Invalid alert data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create alert" });
+      }
     }
   });
 
@@ -959,49 +977,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Track active deletion requests to prevent duplicates
-  const activeDeletions = new Set<string>();
-
   app.delete("/api/alerts/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
-      const deletionKey = `${userId}-${id}`;
 
-      // Prevent duplicate deletion requests
-      if (activeDeletions.has(deletionKey)) {
-        return res.status(409).json({ message: "Alert deletion already in progress" });
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid alert ID" });
       }
 
-      activeDeletions.add(deletionKey);
-
-      try {
-        // Clear any pending timeout for this alert
-        if (alertTimeouts.has(id)) {
-          clearTimeout(alertTimeouts.get(id)!);
-          alertTimeouts.delete(id);
-        }
-
-        // Check if alert exists before attempting deletion
-        const alerts = await storage.getAlerts(userId);
-        const alertExists = alerts.some(alert => alert.id === id);
-
-        if (!alertExists) {
-          return res.status(404).json({ message: "Alert not found" });
-        }
-
-        const success = await storage.deleteAlert(id, userId);
-        if (!success) {
-          return res.status(404).json({ message: "Alert not found" });
-        }
-
-        // Broadcast alert deletion to all user's devices
-        await broadcastAlertToAllUserDevices(userId, { id, isActive: false, deleted: true });
-
-        res.json({ message: "Alert deleted successfully" });
-      } finally {
-        activeDeletions.delete(deletionKey);
+      // Clear any pending timeout for this alert
+      if (alertTimeouts.has(id)) {
+        clearTimeout(alertTimeouts.get(id)!);
+        alertTimeouts.delete(id);
+        console.log(`Cleared timeout for alert ${id}`);
       }
+
+      // Attempt to delete the alert
+      const success = await storage.deleteAlert(id, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Alert not found" });
+      }
+
+      console.log(`Alert ${id} deleted successfully`);
+
+      // Broadcast alert deletion to all user's devices
+      await broadcastAlertToAllUserDevices(userId, { id, isActive: false, deleted: true });
+
+      res.json({ message: "Alert deleted successfully" });
     } catch (error) {
       console.error("Error deleting alert:", error);
       res.status(500).json({ message: "Failed to delete alert" });
@@ -1072,14 +1075,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Permanent alerts API endpoint
-  app.post("/api/alerts/permanent", isAuthenticated, async (req: any, res) => {
+  // Fixed alerts API endpoint
+  app.post("/api/alerts/fixed", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { message, backgroundColor = "#ef4444", textColor = "#ffffff" } = req.body;
+      const { message, backgroundColor = "#ef4444", textColor = "#ffffff", targetScreens = [] } = req.body;
 
       if (!message?.trim()) {
-        return res.status(400).json({ message: "Message is required for permanent alert" });
+        return res.status(400).json({ message: "Message is required for fixed alert" });
       }
 
       const alertData = {
@@ -1087,34 +1090,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: message.trim(),
         backgroundColor,
         textColor,
-        duration: 0, // 0 means permanent
+        duration: 0, // 0 means permanent/fixed
         isActive: true,
-        targetScreens: []
+        targetScreens: Array.isArray(targetScreens) ? targetScreens : [],
+        isFixed: true
       };
 
       const validatedData = insertAlertSchema.parse(alertData);
       const alert = await storage.createAlert(validatedData);
 
-      // Broadcast permanent alert to all user devices
+      console.log(`Created fixed alert ${alert.id}`);
+
+      // Broadcast fixed alert to all user devices
       await broadcastAlertToAllUserDevices(userId, alert);
 
       res.json(alert);
     } catch (error: any) {
-      console.error("Error creating permanent alert:", error);
-      res.status(500).json({ message: "Failed to create permanent alert" });
+      console.error("Error creating fixed alert:", error);
+      res.status(500).json({ message: "Failed to create fixed alert" });
     }
   });
 
-  // Get permanent alerts
-  app.get("/api/alerts/permanent", isAuthenticated, async (req: any, res) => {
+  // Get fixed alerts
+  app.get("/api/alerts/fixed", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const alerts = await storage.getAlerts(userId);
-      const permanentAlerts = alerts.filter(alert => alert.duration === 0 && alert.isActive);
-      res.json(permanentAlerts);
+      const fixedAlerts = alerts.filter(alert => alert.isFixed && alert.isActive);
+      res.json(fixedAlerts);
     } catch (error) {
-      console.error("Error fetching permanent alerts:", error);
-      res.status(500).json({ message: "Failed to fetch permanent alerts" });
+      console.error("Error fetching fixed alerts:", error);
+      res.status(500).json({ message: "Failed to fetch fixed alerts" });
+    }
+  });
+
+  // Deactivate fixed alert
+  app.delete("/api/alerts/fixed/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid alert ID" });
+      }
+
+      const alert = await storage.updateAlert(id, { isActive: false }, userId);
+      if (!alert) {
+        return res.status(404).json({ message: "Fixed alert not found" });
+      }
+
+      // Broadcast alert deactivation
+      await broadcastAlertToAllUserDevices(userId, { ...alert, isActive: false });
+
+      res.json({ message: "Fixed alert deactivated successfully" });
+    } catch (error) {
+      console.error("Error deactivating fixed alert:", error);
+      res.status(500).json({ message: "Failed to deactivate fixed alert" });
     }
   });
 

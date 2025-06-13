@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { integer, pgTable, serial, text, varchar, boolean, pgEnum, jsonb, timestamp, index } from "drizzle-orm/pg-core";
+import { InferSelectModel } from 'drizzle-orm';
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -90,18 +91,21 @@ export const screens = pgTable("screens", {
 });
 
 // Alerts
-export const alerts = pgTable("alerts", {
+export const alertsTable = pgTable("alerts", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: text("user_id").notNull(),
   message: text("message").notNull(),
-  backgroundColor: varchar("background_color").default("#ef4444"),
-  textColor: varchar("text_color").default("#ffffff"),
-  duration: integer("duration").default(30), // Duration in seconds
-  isActive: boolean("is_active").default(false),
-  targetScreens: text("target_screens").array(), // Array of screen IDs
+  backgroundColor: text("background_color").default("#ef4444"),
+  textColor: text("text_color").default("#ffffff"),
+  duration: integer("duration").default(30),
+  isActive: boolean("is_active").default(true),
+  targetScreens: integer("target_screens").array().default([]),
+  isFixed: boolean("is_fixed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export type Alert = InferSelectModel<typeof alertsTable>;
 
 // Widgets
 export const widgets = pgTable("widgets", {
@@ -176,7 +180,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   contentItems: many(contentItems),
   playlists: many(playlists),
   screens: many(screens),
-  alerts: many(alerts),
+  alerts: many(alertsTable),
   widgets: many(widgets),
   schedules: many(schedules),
   screenGroups: many(screenGroups),
@@ -222,9 +226,9 @@ export const screensRelations = relations(screens, ({ one }) => ({
   }),
 }));
 
-export const alertsRelations = relations(alerts, ({ one }) => ({
+export const alertsRelations = relations(alertsTable, ({ one }) => ({
   user: one(users, {
-    fields: [alerts.userId],
+    fields: [alertsTable.userId],
     references: [users.id],
   }),
 }));
@@ -296,7 +300,7 @@ export const insertScreenSchema = createInsertSchema(screens).omit({
   updatedAt: true,
 });
 
-export const insertAlertSchema = createInsertSchema(alerts).omit({
+export const insertAlertSchema = createInsertSchema(alertsTable).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -337,7 +341,6 @@ export type PlaylistItem = typeof playlistItems.$inferSelect;
 export type InsertPlaylistItem = z.infer<typeof insertPlaylistItemSchema>;
 export type Screen = typeof screens.$inferSelect;
 export type InsertScreen = z.infer<typeof insertScreenSchema>;
-export type Alert = typeof alerts.$inferSelect;
 export type InsertAlert = z.infer<typeof insertAlertSchema>;
 export type Widget = typeof widgets.$inferSelect;
 export type InsertWidget = z.infer<typeof insertWidgetSchema>;

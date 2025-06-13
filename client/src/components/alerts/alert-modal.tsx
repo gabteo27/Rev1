@@ -34,8 +34,8 @@ const durationOptions = [
   { value: 30, label: "30 segundos" },
   { value: 60, label: "1 minuto" },
   { value: 300, label: "5 minutos" },
-  { value: 0, label: "Permanente (hasta cerrar manualmente)" },
-  { value: -1, label: "Hasta cerrar manualmente" },
+  { value: 900, label: "15 minutos" },
+  { value: 0, label: "Alerta fija (hasta cerrar manualmente)" },
 ];
 
 export default function AlertModal({ open, onClose, screens = [] }: AlertModalProps) {
@@ -45,21 +45,30 @@ export default function AlertModal({ open, onClose, screens = [] }: AlertModalPr
   const [duration, setDuration] = useState(30);
   const [allScreens, setAllScreens] = useState(true);
   const [selectedScreens, setSelectedScreens] = useState<number[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { toast } = useToast();
 
   const createAlertMutation = useMutation({
     mutationFn: async (alertData: any) => {
-      const response = await apiRequest("/api/alerts", {
+      const endpoint = alertData.isFixed ? "/api/alerts/fixed" : "/api/alerts";
+      const response = await apiRequest(endpoint, {
         method: "POST",
         body: JSON.stringify(alertData),
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create alert");
+      }
+      
       return response.json();
     },
     onSuccess: (alertData) => {
+      const alertType = alertData.isFixed ? "fija" : "temporal";
       toast({
         title: "Alerta creada",
-        description: `La alerta ha sido enviada a las pantallas seleccionadas. ${
+        description: `La alerta ${alertType} ha sido enviada a las pantallas seleccionadas. ${
           alertData.duration > 0 
             ? `Se eliminará automáticamente en ${alertData.duration} segundos.`
             : 'Permanecerá hasta ser cerrada manualmente.'
@@ -67,9 +76,11 @@ export default function AlertModal({ open, onClose, screens = [] }: AlertModalPr
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+      setIsSubmitting(false);
       handleClose();
     },
     onError: (error: any) => {
+      setIsSubmitting(false);
       toast({
         title: "Error al crear alerta",
         description: error.message || "Verifica que todos los campos estén completos y que tengas pantallas disponibles.",
@@ -78,7 +89,9 @@ export default function AlertModal({ open, onClose, screens = [] }: AlertModalPr
     },
   });
 
-  const handleCreateAlert = () => {
+  const handleSubmit = () => {
+    if (isSubmitting) return;
+
     if (!message.trim()) {
       toast({
         title: "Error",
@@ -88,63 +101,40 @@ export default function AlertModal({ open, onClose, screens = [] }: AlertModalPr
       return;
     }
 
-    const finalDuration = duration === -1 ? 0 : duration; // -1 and 0 both mean manual close
+    if (!allScreens && selectedScreens.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar al menos una pantalla o enviar a todas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
 
     const alertData = {
       message: message.trim(),
       backgroundColor,
       textColor,
-      duration: finalDuration,
+      duration,
       isActive: true,
       targetScreens: allScreens ? [] : selectedScreens,
+      isFixed: duration === 0
     };
 
-    // Use different endpoint for permanent alerts
-    if (finalDuration === 0) {
-      // Use permanent alerts endpoint
-      const permanentAlertData = {
-        message: message.trim(),
-        backgroundColor,
-        textColor,
-        targetScreens: allScreens ? [] : selectedScreens,
-      };
-
-      fetch('/api/alerts/permanent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        },
-        body: JSON.stringify(permanentAlertData),
-      })
-      .then(response => response.json())
-      .then(data => {
-        toast({
-          title: "Alerta permanente creada",
-          description: "La alerta permanente ha sido enviada a todas las pantallas.",
-        });
-        queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-        handleClose();
-      })
-      .catch(error => {
-        toast({
-          title: "Error al crear alerta permanente",
-          description: error.message || "No se pudo crear la alerta permanente.",
-          variant: "destructive",
-        });
-      });
-    } else {
-      createAlertMutation.mutate(alertData);
-    }
+    createAlertMutation.mutate(alertData);
   };
 
   const handleClose = () => {
+    if (isSubmitting) return;
+    
     setMessage("");
     setBackgroundColor("#ef4444");
     setTextColor("#ffffff");
     setDuration(30);
     setAllScreens(true);
     setSelectedScreens([]);
+    setIsSubmitting(false);
     onClose();
   };
 
@@ -380,14 +370,14 @@ export default function AlertModal({ open, onClose, screens = [] }: AlertModalPr
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Cancelar
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={!message.trim() || createAlertMutation.isPending}
+            disabled={!message.trim() || isSubmitting}
           >
-            {createAlertMutation.isPending ? "Enviando..." : "Enviar Alerta"}
+            {isSubmitting ? "Enviando..." : duration === 0 ? "Crear Alerta Fija" : "Enviar Alerta"}
           </Button>
         </DialogFooter>
       </DialogContent>
