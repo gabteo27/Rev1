@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { AlertOverlay } from './AlertOverlay';
 import type { Playlist, PlaylistItem, Widget, Alert } from '@shared/schema';
-import { wsManager } from '@/lib/ws';
+import { wsManager } from '@/lib/websocket';
 
 // --- Estilos para el reproductor ---
 const styles = {
