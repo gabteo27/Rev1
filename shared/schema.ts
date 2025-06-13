@@ -13,7 +13,7 @@ export const sessions = pgTable(
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
-export const layoutTypeEnum = pgEnum('layout_type', ['single_zone', 'split_vertical', 'split_horizontal', 'pip_bottom_right']);
+export const layoutTypeEnum = pgEnum('layout_type', ['single_zone', 'split_vertical', 'split_horizontal', 'pip_bottom_right', 'carousel', 'web_scroll']);
 
 // User storage table (required for Replit Auth)
 export const users = pgTable("users", {
@@ -50,7 +50,8 @@ export const playlists = pgTable("playlists", {
   name: varchar("name").notNull(),
   description: text("description"),
   layout: layoutTypeEnum('layout').default('single_zone').notNull(),
-
+  carouselDuration: integer("carousel_duration").default(5), // Duration per image in carousel mode
+  scrollSpeed: integer("scroll_speed").default(50), // Pixels per second for web scroll mode
   isActive: boolean("is_active").default(false),
   totalDuration: integer("total_duration").default(0), // Calculated total duration
   createdAt: timestamp("created_at").defaultNow(),

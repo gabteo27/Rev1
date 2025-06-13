@@ -362,17 +362,32 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updatePlaylist(
-    id: number,
-    playlist: Partial<InsertPlaylist>,
-    userId: string,
-  ): Promise<Playlist | undefined> {
-    const [item] = await db
-      .update(playlists)
-      .set({ ...playlist, updatedAt: new Date() })
-      .where(and(eq(playlists.id, id), eq(playlists.userId, userId)))
-      .returning();
-    return item;
+  async updatePlaylist(id: number, updates: any, userId: string): Promise<Playlist | undefined> {
+    try {
+      const updateData: any = { 
+        ...updates, 
+        updatedAt: new Date() 
+      };
+
+      // Only include carousel/scroll fields if they are provided
+      if (updates.carouselDuration !== undefined) {
+        updateData.carouselDuration = updates.carouselDuration;
+      }
+      if (updates.scrollSpeed !== undefined) {
+        updateData.scrollSpeed = updates.scrollSpeed;
+      }
+
+      const [item] = await db
+        .update(playlists)
+        .set(updateData)
+        .where(and(eq(playlists.id, id), eq(playlists.userId, userId)))
+        .returning();
+
+      return item;
+    } catch (error) {
+      console.error("Error updating playlist:", error);
+      throw error;
+    }
   }
 
   async deletePlaylist(id: number, userId: string): Promise<boolean> {

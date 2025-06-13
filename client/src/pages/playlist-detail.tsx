@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft,
   Save,
@@ -24,6 +25,7 @@ import {
   FileText,
   Globe,
   Type,
+  Layout,
 } from "lucide-react";
 
 export default function PlaylistDetail() {
@@ -167,7 +169,10 @@ export default function PlaylistDetail() {
     updatePlaylistMutation.mutate({
       name: playlistData.name,
       description: playlistData.description,
-      isActive: playlistData.isActive
+      isActive: playlistData.isActive,
+      layout: playlistData.layout || 'single_zone',
+      carouselDuration: playlistData.carouselDuration,
+      scrollSpeed: playlistData.scrollSpeed
     });
   };
 
@@ -233,6 +238,15 @@ export default function PlaylistDetail() {
         return <FileText className="w-5 h-5 text-slate-600" />;
     }
   };
+
+  const layoutOptions = [
+    { value: 'single_zone', label: 'Completa', description: 'Una sola zona de contenido' },
+    { value: 'split_vertical', label: 'Vertical', description: 'División vertical en dos zonas' },
+    { value: 'split_horizontal', label: 'Horizontal', description: 'División horizontal en dos zonas' },
+    { value: 'pip_bottom_right', label: 'PiP', description: 'Picture in Picture inferior derecha' },
+    { value: 'carousel', label: 'Carrusel', description: 'Presentación de imágenes en bucle' },
+    { value: 'web_scroll', label: 'Web Scroll', description: 'Página web con scroll automático' }
+  ];
 
   const getAvailableContent = () => {
     if (!availableContent || !playlistData?.items) return availableContent || [];
@@ -311,6 +325,33 @@ export default function PlaylistDetail() {
                     disabled={!isEditing}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="layout">Tipo de Layout</Label>
+                  <Select
+                    value={playlistData.layout || 'single_zone'}
+                    onValueChange={(value) => setPlaylistData({ ...playlistData, layout: value })}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar layout..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {layoutOptions.map((layout) => (
+                        <SelectItem key={layout.value} value={layout.value}>
+                          <div className="flex items-center gap-2">
+                            <Layout className="w-4 h-4" />
+                            <div>
+                              <div className="font-medium">{layout.label}</div>
+                              <div className="text-xs text-muted-foreground">{layout.description}</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex items-center space-x-2">
                   <Switch
                     checked={playlistData.isActive}
@@ -319,6 +360,45 @@ export default function PlaylistDetail() {
                   />
                   <Label>Playlist activa</Label>
                 </div>
+                
+                {/* Configuraciones específicas por layout */}
+                {playlistData.layout === 'carousel' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="carousel-duration">Duración por imagen (segundos)</Label>
+                    <Input
+                      id="carousel-duration"
+                      type="number"
+                      min="1"
+                      max="60"
+                      value={playlistData.carouselDuration || 5}
+                      onChange={(e) => setPlaylistData({ 
+                        ...playlistData, 
+                        carouselDuration: parseInt(e.target.value) || 5 
+                      })}
+                      disabled={!isEditing}
+                      placeholder="5"
+                    />
+                  </div>
+                )}
+                
+                {playlistData.layout === 'web_scroll' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="scroll-speed">Velocidad de scroll (px/segundo)</Label>
+                    <Input
+                      id="scroll-speed"
+                      type="number"
+                      min="10"
+                      max="200"
+                      value={playlistData.scrollSpeed || 50}
+                      onChange={(e) => setPlaylistData({ 
+                        ...playlistData, 
+                        scrollSpeed: parseInt(e.target.value) || 50 
+                      })}
+                      disabled={!isEditing}
+                      placeholder="50"
+                    />
+                  </div>
+                )}
               </div>
               <div className="mt-4">
                 <Label htmlFor="description">Descripción</Label>
