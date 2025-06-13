@@ -264,6 +264,9 @@ class WebSocketManager {
           queryClient.invalidateQueries({ queryKey: ['/api/widgets'] });
           queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
           break;
+        case 'playlist-change':
+          // Let the ContentPlayer handle playlist changes
+          break;
         default:
           // Handle subscribed events
           if (this.subscribers.has(message.type)) {

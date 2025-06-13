@@ -1,10 +1,11 @@
 // client/src/components/player/ContentPlayer.tsx (versión completa y mejorada)
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { AlertOverlay } from './AlertOverlay';
 import type { Playlist, PlaylistItem, Widget, Alert } from '@shared/schema';
+import { wsManager } from '@/lib/ws';
 
 // --- Estilos para el reproductor ---
 const styles = {
@@ -29,7 +30,7 @@ const YouTubePlayer = ({ url }: { url: string }) => {
       /youtu\.be\/([^#\&\?]*)/,
       /youtube\.com\/embed\/([^#\&\?]*)/
     ];
-    
+
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match && match[1] && match[1].length === 11) {
@@ -99,7 +100,7 @@ const YouTubePlayer = ({ url }: { url: string }) => {
 // Widget Components
 const ClockWidget = ({ config, position }: { config: any, position: string }) => {
   const [time, setTime] = useState(new Date());
-  
+
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -107,7 +108,7 @@ const ClockWidget = ({ config, position }: { config: any, position: string }) =>
 
   const format = config?.format || '24h';
   const timezone = config?.timezone || 'America/Mexico_City';
-  
+
   const formatTime = (date: Date) => {
     try {
       return new Intl.DateTimeFormat('es-ES', {
@@ -160,14 +161,14 @@ const ClockWidget = ({ config, position }: { config: any, position: string }) =>
 const WeatherWidget = ({ config, position }: { config: any, position: string }) => {
   const [weather, setWeather] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  
+
   useEffect(() => {
     const fetchWeather = async () => {
       setLoading(true);
       try {
         const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
         const city = config?.city || 'Mexico City';
-        
+
         if (apiKey) {
           const response = await fetch(
             `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}&aqi=no`
@@ -192,7 +193,7 @@ const WeatherWidget = ({ config, position }: { config: any, position: string }) 
         setLoading(false);
       }
     };
-    
+
     fetchWeather();
     const interval = setInterval(fetchWeather, 10 * 60 * 1000);
     return () => clearInterval(interval);
@@ -239,13 +240,13 @@ const WeatherWidget = ({ config, position }: { config: any, position: string }) 
 const NewsWidget = ({ config, position }: { config: any, position: string }) => {
   const [news, setNews] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  
+
   useEffect(() => {
     const fetchNews = async () => {
       try {
         const rssUrl = config?.rssUrl || 'https://feeds.bbci.co.uk/mundo/rss.xml';
         const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
-        
+
         const response = await fetch(proxyUrl);
         if (response.ok) {
           const data = await response.json();
@@ -258,7 +259,7 @@ const NewsWidget = ({ config, position }: { config: any, position: string }) => 
         ]);
       }
     };
-    
+
     fetchNews();
     const interval = setInterval(fetchNews, 15 * 60 * 1000);
     return () => clearInterval(interval);
@@ -382,13 +383,14 @@ interface ZoneTracker {
 
 export default function ContentPlayer({ playlistId, isPreview = false }: { playlistId?: number, isPreview?: boolean }) {
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
+  const queryClient = useQueryClient();
 
   const { data: playlist, isLoading } = useQuery<Playlist & { items: PlaylistItem[] }>({
     queryKey: isPreview ? ['/api/playlists', playlistId] : ['/api/player/playlists', playlistId],
     queryFn: () => {
       const endpoint = isPreview ? `/api/playlists/${playlistId}` : `/api/player/playlists/${playlistId}`;
       console.log(`🎵 Fetching playlist data from: ${endpoint}`);
-      
+
       if (isPreview) {
         return apiRequest(endpoint).then(res => res.json());
       } else {
@@ -411,7 +413,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }
     },
     enabled: !!playlistId,
-    refetchInterval: isPreview ? 5000 : 2000, // Very frequent checks for player
+    refetchInterval: isPreview ? 5000 : false, // Very frequent checks for player
     staleTime: isPreview ? 30000 : 0, // Always consider player data stale
     gcTime: 0, // Don't cache data
     refetchOnMount: true,
@@ -498,15 +500,15 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         if (data.valid && data.screen) {
           const currentPlaylistId = data.screen.playlistId;
           const currentTime = Date.now();
-          
+
           // Check if playlist changed or if we haven't validated in a while
           if (currentPlaylistId !== lastPlaylistId) {
             console.log(`🔄 PLAYLIST CHANGE DETECTED: ${lastPlaylistId} -> ${currentPlaylistId}`);
             console.log('🚀 FORCING IMMEDIATE RELOAD...');
-            
+
             // Store the new playlist ID
             lastPlaylistId = currentPlaylistId;
-            
+
             // Force immediate reload without delay
             window.location.reload();
             return;
@@ -515,7 +517,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           // Also check if the current playlist content has changed by comparing query cache
           if (currentPlaylistId && currentTime - lastValidationTime > 5000) {
             lastValidationTime = currentTime;
-            
+
             // Check if playlist data in cache is stale
             const cachedPlaylist = queryClient.getQueryData(['/api/player/playlists', currentPlaylistId]);
             if (cachedPlaylist) {
@@ -560,14 +562,58 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       console.log('🔍 Stopped playlist monitoring');
     };
-  }, [isPreview, playlistId]);
+  }, [isPreview, playlistId, queryClient]);
+
+  useEffect(() => {
+    if (isPreview) return;
+
+    const messageHandler = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('WebSocket message received:', message);
+
+            if (message.type === 'playlist-change') {
+              console.log('Playlist change detected via WebSocket:', message.data);
+
+              // Only reload if the change is for this screen
+              if (message.data?.screenId && message.data?.action === 'reload') {
+                const authToken = localStorage.getItem('authToken');
+
+                // Verify this is for our screen
+                fetch('/api/player/validate-token', {
+                  headers: {
+                    'Authorization': `Bearer ${authToken}`
+                  }
+                }).then(res => res.json()).then(data => {
+                  if (data.valid && data.screen && data.screen.id === message.data.screenId) {
+                    console.log('🔄 Reloading due to playlist change for this screen');
+                    window.location.reload();
+                  }
+                }).catch(error => {
+                  console.error('Failed to validate screen for playlist change:', error);
+                });
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+          }
+        };
+
+        wsManager.connect();
+
+    wsManager.onMessage(messageHandler);
+
+    return () => {
+      wsManager.removeMessageListener(messageHandler);
+    };
+  }, [isPreview]);
 
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 
   // Manejar la expiración de alertas
   const handleAlertExpired = (alertId: number) => {
     setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
-    
+
     // Si no es preview, marcar la alerta como inactiva en el servidor
     if (!isPreview) {
       const authToken = localStorage.getItem('authToken');
@@ -588,7 +634,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     if (!isPreview && playlistId) {
       console.log(`🎵 Current playlistId: ${playlistId}`);
       console.log(`🎵 Playlist data:`, playlist);
-      
+
       // Store current playlist ID for comparison
       const storedPlaylistId = localStorage.getItem('currentPlaylistId');
       if (storedPlaylistId !== String(playlistId)) {
@@ -603,7 +649,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     if (playlist?.items && Array.isArray(playlist.items)) {
       console.log('Playlist changed, updating trackers:', playlist.items);
       console.log('Playlist layout:', playlist.layout);
-      
+
       const zones: Record<string, PlaylistItem[]> = {};
 
       // Inicializa las zonas según el layout
@@ -651,7 +697,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           items: zones[zoneId],
         };
       }
-      
+
       console.log('Zone trackers updated:', newTrackers);
       setZoneTrackers(newTrackers);
     } else {
@@ -794,7 +840,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       </div>
     </div>
   );
-  
+
   if (!playlist) return (
     <div style={styles.container}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
@@ -824,8 +870,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             <div style={{ position: 'absolute', top: '10px', left: '10px', color: 'white', fontSize: '12px', opacity: 0.7, zIndex: 1000 }}>
               Zona Izquierda ({zoneTrackers['left']?.items?.length || 0} items)
             </div>
-            {renderZone('left') || (
-              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+            {renderZone('left') || (              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
                 Sin contenido en zona izquierda
               </div>
             )}
@@ -840,7 +885,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               </div>
             )}
           </div>
-          
+
           {/* Widgets Overlay */}
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
@@ -870,7 +915,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               </div>
             )}
           </div>
-          
+
           {/* Widgets Overlay */}
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
@@ -911,12 +956,12 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               </div>
             )}
           </div>
-          
+
           {/* Widgets Overlay */}
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
-          
+
           {/* Alerts Overlay */}
           {activeAlerts.map((alert) => (
             <AlertOverlay
@@ -939,12 +984,12 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               Sin contenido
             </div>
           )}
-          
+
           {/* Widgets Overlay */}
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
-          
+
           {/* Alerts Overlay */}
           {activeAlerts.map((alert) => (
             <AlertOverlay
