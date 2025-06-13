@@ -792,30 +792,16 @@ export default function Playlists() {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-medium truncate text-sm">{item.contentItem?.title || 'Sin título'}</h4>
                                   <div className="flex items-center gap-2 mt-1">
-                                    <Input
-                                      type="number"
-                                      value={item.customDuration || item.contentItem?.duration || 10}
-                                      onChange={(e) => {
-                                        const value = e.target.value;
-                                        const duration = value === '' ? 10 : parseInt(value) || 10;
-                                        updateItemDurationMutation.mutate({
-                                          itemId: item.id,
-                                          duration: duration
-                                        });
-                                      }}
-                                      onBlur={(e) => {
-                                        if (e.target.value === '') {
-                                          e.target.value = '10';
-                                          updateItemDurationMutation.mutate({
-                                            itemId: item.id,
-                                            duration: 10
-                                          });
-                                        }
-                                      }}
-                                      className="w-12 h-6 text-xs text-center"
-                                      min="1"
-                                      placeholder="10"
-                                    />
+                                    <DurationInput
+                                                itemId={item.id}
+                                                initialDuration={item.customDuration || item.contentItem?.duration || 10}
+                                                onDurationChange={(duration) => {
+                                                  updateItemDurationMutation.mutate({
+                                                    itemId: item.id,
+                                                    duration: duration
+                                                  });
+                                                }}
+                                              />
                                     <span className="text-xs text-muted-foreground">seg</span>
                                   </div>
                                 </div>
@@ -884,7 +870,8 @@ export default function Playlists() {
                           checked={isSelected}
                           onChange={() => toggleContentSelection(item.id)}
                         />
-                        <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center">
+                        <div className="w-8 h-8 bg-muted rounded-md flex items```python
+-center justify-center">
                           {React.cloneElement(IconComponent, { className: `w-4 h-4 ${iconColor}` })}
                         </div>
                         <div className="flex-1 min-w-0">

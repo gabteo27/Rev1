@@ -111,12 +111,14 @@ export default function Dashboard() {
 
     // Wait for WebSocket to be connected before subscribing
     const setupSubscriptions = () => {
-      // Set up polling as fallback regardless of WebSocket status
+      // Set up polling as fallback with reduced frequency
       const pollingInterval = setInterval(() => {
-        // Poll for updates every 5 seconds as fallback
-        queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      }, 5000);
+        // Poll for updates every 30 seconds as fallback, only when WebSocket is disconnected
+        if (!wsManager.isConnected()) {
+          queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+        }
+      }, 30000);
 
       unsubscribeFunctions.push(() => clearInterval(pollingInterval));
 
@@ -160,6 +162,20 @@ export default function Dashboard() {
         })
       );
 
+      // Subscribe to playlist content updates
+      unsubscribeFunctions.push(
+        wsManager.subscribe('playlist-content-updated', (data) => {
+          console.log('Playlist content update received:', data);
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+          if (data?.playlistId) {
+            queryClient.invalidateQueries({ queryKey: ["/api/playlists", data.playlistId.toString()] });
+          }
+          if (selectedPlaylist && data?.playlistId === parseInt(selectedPlaylist)) {
+            queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+          }
+        })
+      );
+
       // Subscribe to content deletion
       unsubscribeFunctions.push(
         wsManager.subscribe('content-deleted', () => {
@@ -198,15 +214,19 @@ export default function Dashboard() {
     };
   }, [toast, selectedPlaylist]);
 
-  // Fetch data with proper error handling
+  // Fetch data with proper error handling and caching
   const { data: screens = [] } = useQuery({
     queryKey: ["/api/screens"],
     retry: 1,
+    staleTime: 60000, // 1 minute
+    gcTime: 300000, // 5 minutes
   });
 
   const { data: playlists = [] } = useQuery({
     queryKey: ["/api/playlists"],
     retry: 1,
+    staleTime: 60000, // 1 minute
+    gcTime: 300000, // 5 minutes
   });
 
   const { data: content = [], isLoading: isLoadingContent, error: contentError } = useQuery<any[]>({
@@ -233,8 +253,14 @@ export default function Dashboard() {
     mutationFn: async ({ screenId, playlistId, action }: { screenId: string, playlistId: string, action: 'play' | 'pause' | 'stop' }) => {
       const response = await apiRequest(`/api/screens/${screenId}/playback`, {
         method: "POST",
-        body: JSON.stringify({ playlistId, action })
+        body: JSON.stringify({ playlistId, action }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
       return response.json();
     },
     onSuccess: (data, variables) => {
@@ -244,13 +270,19 @@ export default function Dashboard() {
       });
 
       // Broadcast update via WebSocket to connected screens
-      wsManager.send('playback-control', {
-        screenId: variables.screenId,
-        playlistId: variables.playlistId,
-        action: variables.action
-      });
+      if (wsManager.isConnected()) {
+        wsManager.send({
+          type: 'playback-control',
+          data: {
+            screenId: variables.screenId,
+            playlistId: variables.playlistId,
+            action: variables.action
+          }
+        });
+      }
     },
     onError: (error: any) => {
+      console.error('Playback control error:', error);
       toast({
         title: "Error",
         description: error.message || "No se pudo controlar la reproducción",
@@ -385,18 +417,17 @@ return (
         </div>
 
         {/* Control de Reproducción */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-          <div className="xl:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Monitor className="h-5 w-5" />
-                  Control de Reproducción
-                </CardTitle>
-                <CardDescription>
-                  Selecciona una pantalla y playlist para controlar la reproducción
-                </CardDescription>
-              </CardHeader>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="h-5 w-5" />
+                Control de Reproducción
+              </CardTitle>
+              <CardDescription>
+                Selecciona una pantalla y playlist para controlar la reproducción
+              </CardDescription>
+            </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -495,11 +526,8 @@ return (
                 )}
               </CardContent>
             </Card>
-          </div>
 
-          <div>
-            <LivePreview />
-          </div>
+          <LivePreview />
         </div>
 
         {/* Widgets y actividad del sistema */}

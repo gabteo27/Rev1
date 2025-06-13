@@ -17,6 +17,7 @@ class WebSocketManager {
   private userId: string | null = null;
   private authToken: string | null = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
+  private reconnectTimeoutId: NodeJS.Timeout | null = null;
 
   constructor() {
     this.connect = this.connect.bind(this);
@@ -58,7 +59,7 @@ class WebSocketManager {
     }
   }
 
-  private setupEventHandlers() {
+  private setupEventListeners() {
     if (!this.ws) return;
 
     this.ws.onopen = () => {

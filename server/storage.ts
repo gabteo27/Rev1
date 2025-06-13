@@ -147,6 +147,8 @@ export interface IStorage {
     createScreenGroup(data: InsertScreenGroup): Promise<ScreenGroup>;
     updateScreenGroup(id: number, updates: Partial<InsertScreenGroup>, userId: string): Promise<ScreenGroup | undefined>;
     deleteScreenGroup(id: number, userId: string): Promise<boolean>;
+
+    getPlaylistItem(id: number): Promise<PlaylistItem | undefined>
 }
 
 export class DatabaseStorage implements IStorage {
@@ -398,15 +400,22 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async updatePlaylistItem(id: number, playlistItem: Partial<InsertPlaylistItem>, userId: string): Promise<PlaylistItem | undefined> {
-    // First get the playlist item to verify ownership
-    const [existing] = await db
-      .select({ playlistItem: playlistItems, playlist: playlists })
+  async updatePlaylistItem(
+    id: number,
+    playlistItem: Partial<InsertPlaylistItem>,
+    userId: string,
+  ): Promise<PlaylistItem | undefined> {
+    // First verify the item belongs to a playlist owned by the user
+    const itemCheck = await db
+      .select({ playlistId: playlistItems.playlistId })
       .from(playlistItems)
       .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
-      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)));
+      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)))
+      .limit(1);
 
-    if (!existing) return undefined;
+    if (!itemCheck.length) {
+      return undefined;
+    }
 
     const [item] = await db
       .update(playlistItems)
@@ -414,9 +423,9 @@ export class DatabaseStorage implements IStorage {
       .where(eq(playlistItems.id, id))
       .returning();
 
-    if (item) {
-      // Recalculate total duration when duration changes
-      await this.updatePlaylistDuration(item.playlistId);
+    // Update playlist total duration after item update
+    if (item && itemCheck[0].playlistId) {
+      await this.updatePlaylistDuration(itemCheck[0].playlistId);
     }
 
     return item;
@@ -769,12 +778,12 @@ export class DatabaseStorage implements IStorage {
     async getScreenGroups(userId: string): Promise<ScreenGroup[]> {
       return await db.select().from(screenGroups).where(eq(screenGroups.userId, userId));
     }
-  
+
     async createScreenGroup(data: InsertScreenGroup): Promise<ScreenGroup> {
       const [group] = await db.insert(screenGroups).values(data).returning();
       return group;
     }
-  
+
     async updateScreenGroup(id: number, updates: Partial<InsertScreenGroup>, userId: string): Promise<ScreenGroup | undefined> {
       const [group] = await db
         .update(screenGroups)
@@ -783,13 +792,30 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return group;
     }
-  
+
     async deleteScreenGroup(id: number, userId: string): Promise<boolean> {
       const result = await db
         .delete(screenGroups)
         .where(and(eq(screenGroups.id, id), eq(screenGroups.userId, userId)));
       return (result.rowCount ?? 0) > 0;
     }
+
+  async getPlaylistItem(id: number): Promise<PlaylistItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(playlistItems)
+      .where(eq(playlistItems.id, id));
+    return item;
+  }
+
+  async getPlaylistItemWithUser(id: number, userId: string): Promise<PlaylistItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(playlistItems)
+      .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)));
+    return item?.playlist_items;
+  }
 }
 
 export const storage = new DatabaseStorage();
