@@ -38,13 +38,13 @@ export default function PlaylistDetail() {
 
   const playlistId = parseInt(params.id || "0");
 
-  const { data: playlist, isLoading } = useQuery({
+  const { data: playlist, isLoading, error: playlistError } = useQuery({
     queryKey: ["/api/playlists", playlistId],
     enabled: !!playlistId,
     retry: false,
   });
 
-  const { data: availableContent } = useQuery({
+  const { data: availableContent, error: contentError } = useQuery({
     queryKey: ["/api/content"],
     retry: false,
   });
@@ -249,6 +249,22 @@ export default function PlaylistDetail() {
     return availableContent.filter((content: any) => !usedContentIds.includes(content.id));
   };
 
+  if (playlistError) {
+    return (
+      <div className="flex flex-col h-full">
+        <Header title="Error" subtitle="No se pudo cargar la playlist" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Error al cargar la playlist</p>
+            <Button onClick={() => setLocation("/playlists")}>
+              Volver a playlists
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading || !playlistData) {
     return (
       <div className="flex flex-col h-full">
@@ -345,7 +361,7 @@ export default function PlaylistDetail() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                 <div className="flex items-center space-x-2">
                   <Switch
                     checked={playlistData.isActive}
