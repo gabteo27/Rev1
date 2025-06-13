@@ -856,7 +856,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               Zona Derecha ({zoneTrackers['right']?.items?.length || 0} items)
             </div>
             {renderZone('right') || (
-              <div```typescript
+              <div 
  style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
                 Sin contenido en zona derecha
               </div>
