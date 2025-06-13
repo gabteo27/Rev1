@@ -1,0 +1,49 @@
+Uncaught TypeError: Cannot read properties of undefined (reading 'filter')
+    at AlertModal (src/components/alerts/alert-modal.tsx:166:33)
+    at renderWithHooks (chunk-WERSD76P.js:11548:26)
+    at mountIndeterminateComponent (chunk-WERSD76P.js:14926:21)
+    at beginWork (chunk-WERSD76P.js:15914:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js:19765:15)
+    at performUnitOfWork (chunk-WERSD76P.js:19198:20)
+    at workLoopSync (chunk-WERSD76P.js:19137:13)Understand this error
+ The above error occurred in the <AlertModal> component:
+
+    at AlertModal (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/alerts/alert-modal.tsx:49:38)
+    at div
+    at Alerts (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/alerts.tsx:29:49)
+    at Route (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=b8222bdd:280:16)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=b8222bdd:336:17)
+    at Suspense
+    at div
+    at div
+    at div
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=b8222bdd:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=b8222bdd:64:5)
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/sidebar.tsx:60:7
+    at AdminLayout (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:66:24)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=b8222bdd:336:17)
+    at AppContent (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:97:42)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=b8222bdd:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=b8222bdd:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=b8222bdd:2932:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-WERSD76P.js:14032Understand this error
+chunk-WERSD76P.js:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'filter')
+    at AlertModal (src/components/alerts/alert-modal.tsx:166:33)
+    at renderWithHooks (chunk-WERSD76P.js:11548:26)
+    at mountIndeterminateComponent (chunk-WERSD76P.js:14926:21)
+    at beginWork (chunk-WERSD76P.js:15914:22)
+    at beginWork$1 (chunk-WERSD76P.js:19753:22)
+    at performUnitOfWork (chunk-WERSD76P.js:19198:20)
+    at workLoopSync (chunk-WERSD76P.js:19137:13)
+    at renderRootSync (chunk-WERSD76P.js:19116:15)
+    at recoverFromConcurrentError (chunk-WERSD76P.js:18736:28)
+    at performSyncWorkOnRoot (chunk-WERSD76P.js:18879:28)Understand this error
+ WebSocket disconnected: 1005 
