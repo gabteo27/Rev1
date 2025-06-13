@@ -1,5 +1,3 @@
-// client/src/components/player/ContentPlayer.tsx (versión completa y mejorada)
-
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
@@ -10,18 +8,17 @@ import { wsManager } from '@/lib/websocket';
 // --- Estilos para el reproductor ---
 const styles = {
   container: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: '#000', color: 'white', overflow: 'hidden' } as React.CSSProperties,
-  media: { width: '100%', height: '100%', objectFit: 'cover' } as React.CSSProperties, // 'cover' suele ser mejor para signage
+  media: { width: '100%', height: '100%', objectFit: 'cover' } as React.CSSProperties,
   zone: { position: 'relative', width: '100%', height: '100%', overflow: 'hidden' } as React.CSSProperties,
 };
 
-// --- Componentes para renderizar cada tipo de contenido (sin cambios) ---
+// --- Componentes para renderizar cada tipo de contenido ---
 const ImagePlayer = ({ src }: { src: string }) => <img src={src} style={styles.media} alt="" />;
 const VideoPlayer = ({ src }: { src: string }) => <video src={src} style={styles.media} autoPlay muted loop playsInline />;
 const WebpagePlayer = ({ src }: { src: string }) => <iframe src={src} style={{ ...styles.media, border: 'none' }} title="web-content" />;
 
-// Dedicated PDF Player Component
+// PDF Player Component
 const PDFPlayer = ({ src }: { src: string }) => {
-  // Create a PDF viewer URL using PDF.js or Google Docs viewer
   const pdfViewerUrl = src.startsWith('http') 
     ? `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
     : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + src)}&embedded=true`;
@@ -41,11 +38,9 @@ const PDFPlayer = ({ src }: { src: string }) => {
   );
 };
 
-// YouTube Player Component with autoplay and loop
+// YouTube Player Component
 const YouTubePlayer = ({ url }: { url: string }) => {
-  // Extract YouTube video ID from URL
   const getYouTubeID = (url: string) => {
-    // Handle various YouTube URL formats
     const patterns = [
       /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^#\&\?]*)/,
       /youtube\.com\/watch\?.*v=([^#\&\?]*)/,
@@ -84,22 +79,21 @@ const YouTubePlayer = ({ url }: { url: string }) => {
     );
   }
 
-  // Build embed URL with all kiosk mode parameters
   const embedUrl = `https://www.youtube.com/embed/${videoId}?` + [
-    'autoplay=1',           // Auto-start video
-    'mute=1',              // Muted (required for autoplay)
-    'loop=1',              // Loop the video
-    `playlist=${videoId}`,  // Required for loop to work
-    'controls=0',          // Hide player controls
-    'showinfo=0',          // Hide video info
-    'iv_load_policy=3',    // Hide annotations
-    'modestbranding=1',    // Minimal YouTube branding
-    'rel=0',               // Don't show related videos
-    'fs=0',                // Disable fullscreen
-    'disablekb=1',         // Disable keyboard controls
-    'cc_load_policy=0',    // Disable closed captions
-    'playsinline=1',       // Play inline on mobile
-    'enablejsapi=1'        // Enable JavaScript API
+    'autoplay=1',
+    'mute=1',
+    'loop=1',
+    `playlist=${videoId}`,
+    'controls=0',
+    'showinfo=0',
+    'iv_load_policy=3',
+    'modestbranding=1',
+    'rel=0',
+    'fs=0',
+    'disablekb=1',
+    'cc_load_policy=0',
+    'playsinline=1',
+    'enablejsapi=1'
   ].join('&');
 
   return (
@@ -291,7 +285,7 @@ const NewsWidget = ({ config, position }: { config: any, position: string }) => 
     if (news.length > 1) {
       const timer = setInterval(() => {
         setCurrentIndex((prev) => (prev + 1) % news.length);
-      }, 10000); // Cambia cada 10 segundos
+      }, 10000);
       return () => clearInterval(timer);
     }
   }, [news.length]);
@@ -405,6 +399,7 @@ interface ZoneTracker {
 
 export default function ContentPlayer({ playlistId, isPreview = false }: { playlistId?: number, isPreview?: boolean }) {
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
+  const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
   const queryClient = useQueryClient();
 
   const { data: playlist, isLoading } = useQuery<Playlist & { items: PlaylistItem[] }>({
@@ -416,7 +411,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       if (isPreview) {
         return apiRequest(endpoint).then(res => res.json());
       } else {
-        // For player, use direct fetch with auth token
         const authToken = localStorage.getItem('authToken');
         return fetch(endpoint, {
           headers: {
@@ -428,18 +422,15 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             throw new Error(`Failed to fetch playlist: ${res.status}`);
           }
           return res.json();
-        }).then(data => {
-          console.log(`🎵 Playlist data received:`, data);
-          return data;
         });
       }
     },
     enabled: !!playlistId,
-    refetchInterval: isPreview ? 30000 : false, // Reduce frequency for preview
-    staleTime: isPreview ? 30000 : 60000, // Cache data longer
-    gcTime: 300000, // Keep cache for 5 minutes
+    refetchInterval: isPreview ? 30000 : false,
+    staleTime: isPreview ? 30000 : 60000,
+    gcTime: 300000,
     refetchOnMount: true,
-    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
   });
 
@@ -464,7 +455,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         });
       }
     },
-    refetchInterval: 5000, // Verificar alertas cada 5 segundos
+    refetchInterval: 5000,
     enabled: !!playlistId,
   });
 
@@ -483,7 +474,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       if (isPreview) {
         return apiRequest(endpoint).then(res => res.json());
       } else {
-        // Para el player, necesitamos pasar el token de autenticación
         const authToken = localStorage.getItem('authToken');
         return fetch(endpoint, {
           headers: {
@@ -497,8 +487,8 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         });
       }
     },
-    refetchInterval: isPreview ? 10000 : 120000, // Actualiza widgets
-    enabled: !!playlistId, // Solo ejecutar si hay playlist
+    refetchInterval: isPreview ? 10000 : 120000,
+    enabled: !!playlistId,
   });
 
   // Real-time update system using WebSocket and polling fallback
@@ -533,8 +523,9 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       if (data.type === 'playlist-change') {
         const newPlaylistId = data.data?.newPlaylistId;
         const messageScreenId = data.data?.screenId;
-
+    
         // Check if this message is for our screen or if we should check our assigned playlist
+        const screenId = localStorage.getItem('screenId');
         if (messageScreenId === screenId || !messageScreenId) {
           if (newPlaylistId !== lastPlaylistId) {
             console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} (WebSocket)`);
@@ -552,21 +543,22 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       if (data.type === 'playback-control') {
         console.log(`🎮 Playback control received: ${data.data?.action}`);
         // Handle playback control commands (play, pause, stop)
-        const action = data.data?.action;
-        if (action === 'play') {
-          setCurrentItemIndex(0);
-          setIsPlaying(true);
-        } else if (action === 'pause') {
-          setIsPlaying(false);
-        } else if (action === 'stop') {
-          setIsPlaying(false);
-          setCurrentItemIndex(0);
-        }
+        //const action = data.data?.action;
+        //if (action === 'play') {
+        //  setCurrentItemIndex(0);
+        //  setIsPlaying(true);
+        //} else if (action === 'pause') {
+        //  setIsPlaying(false);
+        //} else if (action === 'stop') {
+        //  setIsPlaying(false);
+        //  setCurrentItemIndex(0);
+        //}
       }
 
       if (data.type === 'screen-playlist-updated') {
         const messageScreenId = data.data?.screenId;
         const newPlaylistId = data.data?.playlistId;
+        const screenId = localStorage.getItem('screenId');
 
         if (messageScreenId === screenId) {
           console.log(`🔄 Screen playlist updated to ${newPlaylistId} (WebSocket)`);
@@ -579,96 +571,57 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         }
       }
     };
-
-    // Subscribe to playlist changes
+    
     const unsubscribePlaylist = wsManager.subscribe('playlist-change', handleWebSocketMessage);
-
-    // Fallback: Check for playlist changes periodically 
-    const checkForUpdates = () => {
-      fetch('/api/player/validate-token', {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
-      }).then(res => res.json()).then(data => {
-        if (data.valid && data.screen) {
-          const currentPlaylistId = data.screen.playlistId;
-
-          // Only update if playlist actually changed
-          if (currentPlaylistId !== lastPlaylistId) {
-            console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${currentPlaylistId} (polling)`);
-            lastPlaylistId = currentPlaylistId;
-
-            // Reload the page to reflect the new playlist
-            setTimeout(() => {
-              console.log('🔄 Reloading page due to playlist change (polling)...');
-              window.location.reload();
-            }, 500);
+    
+        // Fallback: Check for playlist changes periodically 
+        const checkForUpdates = () => {
+          fetch('/api/player/validate-token', {
+            headers: {
+              'Authorization': `Bearer ${authToken}`
+            }
+          }).then(res => res.json()).then(data => {
+            if (data.valid && data.screen) {
+              const currentPlaylistId = data.screen.playlistId;
+    
+              // Only update if playlist actually changed
+              if (currentPlaylistId !== lastPlaylistId) {
+                console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${currentPlaylistId} (polling)`);
+                lastPlaylistId = currentPlaylistId;
+    
+                // Reload the page to reflect the new playlist
+                setTimeout(() => {
+                  console.log('🔄 Reloading page due to playlist change (polling)...');
+                  window.location.reload();
+                }, 500);
+              }
+            }
+          }).catch(error => {
+            console.error('Validation error:', error);
+          });
+        };
+    
+        // Check every 5 seconds as fallback
+        console.log('🔍 Starting playlist monitoring (fallback)...');
+        validationInterval = setInterval(checkForUpdates, 5000);
+    
+        return () => {
+          if (validationInterval) {
+            clearInterval(validationInterval);
           }
-        }
-      }).catch(error => {
-        console.error('Validation error:', error);
-      });
-    };
+          unsubscribePlaylist();
+          console.log('🔍 Stopped playlist monitoring');
+        };
+      }, [isPreview, playlistId]);
 
-    // Check every 5 seconds as fallback
-    console.log('🔍 Starting playlist monitoring (fallback)...');
-    validationInterval = setInterval(checkForUpdates, 5000);
-
-    return () => {
-      if (validationInterval) {
-        clearInterval(validationInterval);
-      }
-      unsubscribePlaylist();
-      console.log('🔍 Stopped playlist monitoring');
-    };
-  }, [isPreview, playlistId]);
-
-  const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
-
-  // Manejar la expiración de alertas
-  const handleAlertExpired = (alertId: number) => {
-    setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
-
-    // Si no es preview, marcar la alerta como inactiva en el servidor
-    if (!isPreview) {
-      const authToken = localStorage.getItem('authToken');
-      fetch(`/api/player/alerts/${alertId}/expire`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      }).catch(error => {
-        console.error('Failed to expire alert:', error);
-      });
-    }
-  };
-
-  // Additional effect to detect playlist changes and log them
-  useEffect(() => {
-    if (!isPreview && playlistId) {
-      console.log(`🎵 Current playlistId: ${playlistId}`);
-      console.log(`🎵 Playlist data:`, playlist);
-
-      // Store current playlist ID for comparison
-      const storedPlaylistId = localStorage.getItem('currentPlaylistId');
-      if (storedPlaylistId !== String(playlistId)) {
-        console.log(`🔄 Playlist ID changed from ${storedPlaylistId} to ${playlistId}`);
-        localStorage.setItem('currentPlaylistId', String(playlistId));
-      }
-    }
-  }, [playlistId, playlist, isPreview]);
-
-  // 1. Inicializa o actualiza los trackers cuando la playlist cambia
+  // Inicializa o actualiza los trackers cuando la playlist cambia
   useEffect(() => {
     if (playlist?.items && Array.isArray(playlist.items)) {
       console.log('Playlist changed, updating trackers:', playlist.items);
-      console.log('Playlist layout:', playlist.layout);
 
       const zones: Record<string, PlaylistItem[]> = {};
-
-      // Inicializa las zonas según el layout
       const layout = playlist.layout || 'single_zone';
+
       switch (layout) {
         case 'split_vertical':
           zones['left'] = [];
@@ -688,22 +641,17 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           break;
       }
 
-      // Agrupa items por zona
       for (const item of playlist.items) {
         const zone = item.zone || 'main';
-        console.log(`Item ${item.id} assigned to zone: ${zone}, item:`, item);
         if (!zones[zone]) {
           zones[zone] = [];
         }
         zones[zone].push(item);
       }
 
-      // Ordena los items dentro de cada zona por el campo order
       for(const zone in zones) {
         zones[zone].sort((a,b) => (a.order || 0) - (b.order || 0));
       }
-
-      console.log('Zones created:', zones);
 
       const newTrackers: Record<string, ZoneTracker> = {};
       for (const zoneId in zones) {
@@ -713,15 +661,13 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         };
       }
 
-      console.log('Zone trackers updated:', newTrackers);
       setZoneTrackers(newTrackers);
     } else {
-      console.log('No playlist items, clearing trackers');
       setZoneTrackers({});
     }
-  }, [playlist?.id, playlist?.items, playlist?.layout]); // More specific dependencies
+  }, [playlist?.id, playlist?.items, playlist?.layout]);
 
-  // 2. Lógica de temporizadores para cada zona
+  // Lógica de temporizadores para cada zona
   useEffect(() => {
     const timers: NodeJS.Timeout[] = [];
 
@@ -748,12 +694,29 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     return () => {
       timers.forEach(clearTimeout);
     };
-  }, [zoneTrackers]); // Se re-ejecuta cada vez que un índice cambia
+  }, [zoneTrackers]);
 
-  // --- Función para renderizar el contenido de un item ---
+  // Manejar la expiración de alertas
+  const handleAlertExpired = (alertId: number) => {
+    setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+
+    if (!isPreview) {
+      const authToken = localStorage.getItem('authToken');
+      fetch(`/api/player/alerts/${alertId}/expire`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      }).catch(error => {
+        console.error('Failed to expire alert:', error);
+      });
+    }
+  };
+
+  // Función para renderizar el contenido de un item
   const renderContentItem = (item: PlaylistItem) => {
     if (!item?.contentItem) {
-      console.warn('No content item found for playlist item:', item);
       return (
         <div style={{ 
           ...styles.media, 
@@ -769,9 +732,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     }
 
     const { type, url, title } = item.contentItem;
-    console.log(`Rendering content item: ${title} (${type}) - ${url}`);
 
-    // Detect YouTube URLs for special handling
     const isYouTubeURL = (url: string) => {
       return url && (
         url.includes('youtube.com/watch') || 
@@ -781,9 +742,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       );
     };
 
-    // Handle YouTube URLs with special player
     if (isYouTubeURL(url)) {
-      console.log('Detected YouTube URL, using YouTubePlayer:', url);
       return <YouTubePlayer url={url} />;
     }
 
@@ -815,16 +774,13 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     }
   };
 
-  // --- Función para renderizar una zona específica ---
+  // Función para renderizar una zona específica
   const renderZone = (zoneId: string) => {
     const tracker = zoneTrackers[zoneId];
-    console.log(`Rendering zone ${zoneId}:`, tracker);
     if (!tracker || tracker.items.length === 0) {
-      console.log(`Zone ${zoneId} has no content`);
       return null;
     }
     const currentItem = tracker.items[tracker.currentIndex];
-    console.log(`Zone ${zoneId} current item:`, currentItem);
     return renderContentItem(currentItem);
   };
 
@@ -868,36 +824,28 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     </div>
   );
 
-  // --- Renderizado del Layout ---
+  // Renderizado del Layout
   const layout = playlist?.layout || 'single_zone';
-  console.log('Rendering layout:', layout);
-
-  // Debug: mostrar qué contenido hay en cada zona
-  Object.keys(zoneTrackers).forEach(zoneId => {
-    const tracker = zoneTrackers[zoneId];
-    console.log(`Zone ${zoneId}: ${tracker.items.length} items, current index: ${tracker.currentIndex}`);
-  });
 
   switch (layout) {
     case 'split_vertical':
       return (
         <div style={{ ...styles.container, display: 'flex' }}>
           <div style={{ ...styles.zone, width: '50%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
-            {renderZone('left') || (              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+            {renderZone('left') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
                 Sin contenido en zona izquierda
               </div>
             )}
           </div>
           <div style={{ ...styles.zone, width: '50%' }}>
             {renderZone('right') || (
-              <div 
- style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
                 Sin contenido en zona derecha
               </div>
             )}
           </div>
 
-          {/* Widgets Overlay */}
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
@@ -921,7 +869,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             )}
           </div>
 
-          {/* Widgets Overlay */}
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
@@ -956,12 +903,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             )}
           </div>
 
-          {/* Widgets Overlay */}
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
 
-          {/* Alerts Overlay */}
           {activeAlerts.map((alert) => (
             <AlertOverlay
               key={alert.id}
@@ -981,12 +926,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             </div>
           )}
 
-          {/* Widgets Overlay */}
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
 
-          {/* Alerts Overlay */}
           {activeAlerts.map((alert) => (
             <AlertOverlay
               key={alert.id}
@@ -998,422 +941,3 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       );
   }
 }
-
-const renderPiPBottomRight = () => {
-    const mainItems = playlist?.items?.filter(item => item.zone === 'main') || [];
-    const pipItems = playlist?.items?.filter(item => item.zone === 'pip') || [];
-
-    const currentMainItem = getCurrentItem(mainItems, zoneTrackers.main);
-    const currentPipItem = getCurrentItem(pipItems, zoneTrackers.pip);
-
-    return (
-      <div style={styles.container}>
-        {/* Main content */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          zIndex: 1
-        }}>
-          {currentMainItem && renderContentItem(currentMainItem)}
-        </div>
-
-        {/* PiP content */}
-        {currentPipItem && (
-          <div style={{
-            position: 'absolute',
-            bottom: '20px',
-            right: '20px',
-            width: '300px',
-            height: '200px',
-            zIndex: 2,
-            border: '2px solid white',
-            borderRadius: '8px',
-            overflow: 'hidden'
-          }}>
-            {renderContentItem(currentPipItem)}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderCarousel = () => {
-    // Only show images in carousel mode
-    const imageItems = playlist?.items?.filter(item => item.contentItem?.type === 'image') || [];
-
-    if (imageItems.length === 0) {
-      return (
-        <div style={{ ...styles.container, justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ textAlign: 'center', color: 'white' }}>
-            <div style={{ fontSize: '24px', marginBottom: '15px' }}>🖼️ Sin imágenes</div>
-            <div style={{ fontSize: '16px', opacity: 0.8 }}>
-              El modo carrusel necesita imágenes para mostrar.
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const currentItem = getCurrentItem(imageItems, zoneTrackers.main);
-    const carouselDuration = playlist.carousel_duration || 5;
-
-    // Override duration for carousel
-    const itemWithCustomDuration = currentItem ? {
-      ...currentItem,
-      customDuration: carouselDuration,
-      contentItem: {
-        ...currentItem.contentItem,
-        duration: carouselDuration
-      }
-    } : null;
-
-    return (
-      <div style={styles.container}>
-        {itemWithCustomDuration && (
-          <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: '#000'
-          }}>
-            <img
-              src={itemWithCustomDuration.contentItem.url}
-              alt={itemWithCustomDuration.contentItem.title}
-              style={{
-                maxWidth: '100%',
-                maxHeight: '100%',
-                objectFit: 'contain'
-              }}
-              onError={(e) => {
-                console.error('Error loading carousel image:', e);
-              }}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderWebScroll = () => {
-    // Only show web content in scroll mode
-    const webItems = playlist?.items?.filter(item => item.contentItem?.type === 'webpage') || [];
-
-    if (webItems.length === 0) {
-      return (
-        <div style={{ ...styles.container, justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ textAlign: 'center', color: 'white' }}>
-            <div style={{ fontSize: '24px', marginBottom: '15px' }}>🌐 Sin páginas web</div>
-            <div style={{ fontSize: '16px', opacity: 0.8 }}>
-              El modo scroll web necesita contenido web para mostrar.
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const currentItem = getCurrentItem(webItems, zoneTrackers.main);
-    const scrollSpeed = playlist.scroll_speed || 50;
-
-    return (
-      <div style={styles.container}>
-        {currentItem && (
-          <div style={{
-            width: '100%',
-            height: '100%',
-            overflow: 'hidden'
-          }}>
-            <iframe
-              src={currentItem.contentItem.url}
-              style={{
-                width: '100%',
-                height: '200%', // Make it taller to enable scrolling
-                border: 'none',
-                animation: `scrollDown ${Math.max(30, 60000 / scrollSpeed)}s linear infinite`
-              }}
-              title={currentItem.contentItem.title}
-              onError={(e) => {
-                console.error('Error loading web content:', e);
-              }}
-            />
-          </div>
-        )}
-        <style>
-          {`
-            @keyframes scrollDown {
-              0% { transform: translateY(0); }
-              100% { transform: translateY(-50%); }
-            }
-          `}
-        </style>
-      </div>
-    );
-  };
-  const getCurrentItem = (items: PlaylistItem[], tracker: ZoneTracker | undefined) => {
-    if (!tracker || items.length === 0) {
-      return null;
-    }
-    return items[tracker.currentIndex];
-  };
-
-  const renderSingleZone = () => {
-    const mainItems = playlist?.items?.filter(item => item.zone === 'main') || [];
-    const currentItem = getCurrentItem(mainItems, zoneTrackers.main);
-
-    return (
-      <div style={styles.container}>
-        {currentItem && renderContentItem(currentItem)}
-      </div>
-    );
-  };
-
-  const renderSplitVertical = () => {
-    const leftItems = playlist?.items?.filter(item => item.zone === 'left') || [];
-    const rightItems = playlist?.items?.filter(item => item.zone === 'right') || [];
-
-    const currentLeftItem = getCurrentItem(leftItems, zoneTrackers.left);
-    const currentRightItem = getCurrentItem(rightItems, zoneTrackers.right);
-
-    return (
-      <div style={{ ...styles.container, display: 'flex' }}>
-        <div style={{ ...styles.zone, width: '50%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
-          {currentLeftItem && renderContentItem(currentLeftItem)}
-        </div>
-        <div style={{ ...styles.zone, width: '50%' }}>
-          {currentRightItem && renderContentItem(currentRightItem)}
-        </div>
-      </div>
-    );
-  };
-
-  const renderSplitHorizontal = () => {
-    const topItems = playlist?.items?.filter(item => item.zone === 'top') || [];
-    const bottomItems = playlist?.items?.filter(item => item.zone === 'bottom') || [];
-
-    const currentTopItem = getCurrentItem(topItems, zoneTrackers.top);
-    const currentBottomItem = getCurrentItem(bottomItems, zoneTrackers.bottom);
-
-    return (
-      <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ ...styles.zone, height: '50%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
-          {currentTopItem && renderContentItem(currentTopItem)}
-        </div>
-        <div style={{ ...styles.zone, height: '50%' }}>
-          {currentBottomItem && renderContentItem(currentBottomItem)}
-        </div>
-      </div>
-    );
-  };
-
-const renderLayoutContent = () => {
-    if (!playlist?.items || playlist.items.length === 0) {
-      return (
-        <div style={{ ...styles.container, justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ textAlign: 'center', color: 'white' }}>
-            <div style={{ fontSize: '24px', marginBottom: '15px' }}>📋 Playlist vacía</div>
-            <div style={{ fontSize: '16px', opacity: 0.8 }}>
-              Esta playlist no tiene contenido para mostrar.
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const layout = playlist.layout || 'single_zone';
-
-    switch (layout) {
-      case 'single_zone':
-        return renderSingleZone();
-      case 'split_vertical':
-        return renderSplitVertical();
-      case 'split_horizontal':
-        return renderSplitHorizontal();
-      case 'pip_bottom_right':
-        return renderPiPBottomRight();
-      case 'carousel':
-        return renderCarousel();
-      case 'web_scroll':
-        return renderWebScroll();
-      default:
-        return renderSingleZone();
-    }
-  };
-  const renderCarouselContent = () => {
-    if (!playlist?.items?.length) return null;
-
-    const imageItems = playlist.items.filter(item => item.contentItem?.type === 'image');
-    if (!imageItems.length) {
-      return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', backgroundColor: '#f0f0f0' }}>
-          <p style={{ color: '#333' }}>No hay imágenes disponibles para el carrusel</p>
-        </div>
-      );
-    }
-
-    const currentImage = imageItems[currentIndex % imageItems.length];
-    return (
-      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-        <img
-          src={currentImage.contentItem.url}
-          alt={currentImage.contentItem.title}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.5s' }}
-          onError={(e) => {
-            console.error('Error loading carousel image:', currentImage.contentItem.url);
-          }}
-        />
-        <div style={{ position: 'absolute', bottom: '4px', left: '4px', backgroundColor: 'rgba(0, 0, 0, 0.6)', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8em' }}>
-          {currentIndex + 1} / {imageItems.length}
-        </div>
-      </div>
-    );
-  };
-
-  const renderWebScrollContent = () => {
-    // Only show web content in scroll mode
-    const webItems = playlist?.items?.filter(item => item.contentItem?.type === 'webpage') || [];
-
-    if (webItems.length === 0) {
-      return (
-        <div style={{ ...styles.container, justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ textAlign: 'center', color: 'white' }}>
-            <div style={{ fontSize: '24px', marginBottom: '15px' }}>🌐 Sin páginas web</div>
-            <div style={{ fontSize: '16px', opacity: 0.8 }}>
-              El modo scroll web necesita contenido web para mostrar.
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const currentItem = getCurrentItem(webItems, zoneTrackers.main);
-    const scrollSpeed = playlist.scroll_speed || 50;
-
-    return (
-      <div style={styles.container}>
-        {currentItem && (
-          <div style={{
-            width: '100%',
-            height: '100%',
-            overflow: 'hidden'
-          }}>
-            <iframe
-              src={currentItem.contentItem.url}
-              style={{
-                width: '100%',
-                height: '200%', // Make it taller to enable scrolling
-                border: 'none',
-                animation: `scrollDown ${Math.max(30, 60000 / scrollSpeed)}s linear infinite`
-              }}
-              title={currentItem.contentItem.title}
-              onError={(e) => {
-                console.error('Error loading web content:', e);
-              }}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderContent = () => {
-    // Handle special layouts
-    if (playlist?.layout === 'carousel') {
-      return renderCarouselContent();
-    }
-
-    if (playlist?.layout === 'web_scroll') {
-      return renderWebScrollContent();
-    }
-
-    // Standard content rendering
-    const mainItems = playlist?.items?.filter(item => item.zone === 'main') || [];
-    const currentItem = getCurrentItem(mainItems, zoneTrackers.main);
-
-    if (!currentItem?.contentItem) {
-      return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', backgroundColor: '#f0f0f0' }}>
-          <p style={{ color: '#333' }}>No hay contenido para reproducir</p>
-        </div>
-      );
-    }
-
-    const item = currentItem.contentItem;
-
-    switch (item.type) {
-      case 'image':
-        return <ImagePlayer src={item.url} />;
-      case 'video':
-        return <VideoPlayer src={item.url} />;
-      case 'pdf':
-        return <PDFPlayer src={item.url} />;
-      case 'webpage':
-        return <WebpagePlayer src={item.url} />;
-      default:
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', backgroundColor: '#f0f0f0' }}>
-            <p style={{ color: '#333' }}>Tipo de contenido no soportado: {item.type}</p>
-          </div>
-        );
-    }
-  };
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    if (playlist?.layout === 'carousel') {
-      const timer = setInterval(() => {
-        setCurrentIndex(prevIndex => (prevIndex + 1) % (playlist?.items?.length || 1));
-      }, (playlist.carousel_duration || 5) * 1000); // Cambia cada X segundos
-      return () => clearInterval(timer);
-    }
-  }, [playlist?.layout, playlist?.items?.length, playlist.carousel_duration]);
-
-  useEffect(() => {
-    if (!playlist?.items?.length) return;
-
-    const duration = (playlist.carousel_duration || 5) * 1000;
-
-    // Clear the previous timeout if it exists
-    // Clear the previous timeout if it exists
-
-  }, [currentIndex, playlist]);
-
-  useEffect(() => {
-    if (!playlist?.items?.length) return;
-
-    const duration = (playlist.carousel_duration || 5) * 1000;
-
-  }, [currentIndex, playlist]);
-useEffect(() => {
-    if (!playlist?.items?.length || !isPlaying) return;
-
-    let timer: NodeJS.Timeout;
-
-    if (playlist.layout === 'carousel') {
-      // For carousel, use carouselDuration or default 5 seconds
-      const carouselDuration = (playlist.carousel_duration || 5) * 1000;
-      timer = setTimeout(() => {
-       setCurrentIndex(prevIndex => (prevIndex + 1) % (playlist?.items?.length || 1));
-      }, carouselDuration);
-    } else if (playlist.layout === 'web_scroll') {
-      // For web scroll, use scrollSpeed to calculate duration
-      const scrollDuration = playlist.scroll_speed ? (60000 / playlist.scroll_speed) * 1000 : 10000;
-      timer = setTimeout(() => {
-        //handleContentEnd();
-      }, scrollDuration);
-    } else {
-      // Standard timing for other layouts
-       const mainItems = playlist?.items?.filter(item => item.zone === 'main') || [];
-       const currentItem = getCurrentItem(mainItems, zoneTrackers.main);
-      const currentDuration = (currentItem?.customDuration || currentItem?.contentItem?.duration || 30) * 1000;
-      timer = setTimeout(() => {
-        //handleContentEnd();
-      }, currentDuration);
-    }
-
-    return () => clearTimeout(timer);
-  }, [currentIndex, isPlaying, playlist, zoneTrackers]);
