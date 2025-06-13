@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -7,345 +7,359 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Monitor } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { X, Palette, Monitor, Clock, Zap } from "lucide-react";
 
 interface AlertModalProps {
   open: boolean;
   onClose: () => void;
-  screens?: any[];
-  alert?: any; // For editing existing alerts
+  screens: any[];
+  alert?: any;
 }
 
-const durationOptions = [
-  { value: 10, label: "10 segundos" },
-  { value: 30, label: "30 segundos" },
-  { value: 60, label: "1 minuto" },
-  { value: 300, label: "5 minutos" },
-  { value: 600, label: "10 minutos" },
-  { value: 0, label: "Permanente (hasta cerrar manualmente)" },
-];
-
 export default function AlertModal({ open, onClose, screens = [], alert }: AlertModalProps) {
-  const [message, setMessage] = useState("");
-  const [backgroundColor, setBackgroundColor] = useState("#ef4444");
-  const [textColor, setTextColor] = useState("#ffffff");
-  const [duration, setDuration] = useState(30);
-  const [isFixed, setIsFixed] = useState(false);
-  const [selectedScreens, setSelectedScreens] = useState<number[]>([]);
-  const [targetAllScreens, setTargetAllScreens] = useState(true);
-
-  // Initialize state when alert prop changes
-  useState(() => {
-    if (alert) {
-      setMessage(alert.message || "");
-      setBackgroundColor(alert.backgroundColor || "#ef4444");
-      setTextColor(alert.textColor || "#ffffff");
-      setDuration(alert.duration || 30);
-      setIsFixed(alert.isFixed || false);
-      setSelectedScreens(alert.targetScreens || []);
-      setTargetAllScreens(!alert.targetScreens || alert.targetScreens.length === 0);
-    }
-  });
-
   const { toast } = useToast();
 
+  const [formData, setFormData] = useState({
+    message: "",
+    backgroundColor: "#ef4444",
+    textColor: "#ffffff",
+    duration: 30,
+    targetScreens: [] as number[],
+    isFixed: false
+  });
+
+  useEffect(() => {
+    if (alert) {
+      setFormData({
+        message: alert.message || "",
+        backgroundColor: alert.backgroundColor || "#ef4444",
+        textColor: alert.textColor || "#ffffff",
+        duration: alert.duration || 30,
+        targetScreens: Array.isArray(alert.targetScreens) ? alert.targetScreens : [],
+        isFixed: alert.isFixed || false
+      });
+    } else {
+      setFormData({
+        message: "",
+        backgroundColor: "#ef4444",
+        textColor: "#ffffff",
+        duration: 30,
+        targetScreens: [],
+        isFixed: false
+      });
+    }
+  }, [alert, open]);
+
   const createAlertMutation = useMutation({
-    mutationFn: async (alertData: any) => {
-      const endpoint = isFixed ? "/api/alerts/fixed" : "/api/alerts";
-      const response = await apiRequest(endpoint, {
-        method: "POST",
-        body: JSON.stringify(alertData),
+    mutationFn: async (data: any) => {
+      const endpoint = data.isFixed ? "/api/alerts/fixed" : "/api/alerts";
+      const method = alert ? "PUT" : "POST";
+      const url = alert ? `/api/alerts/${alert.id}` : endpoint;
+
+      const response = await apiRequest(url, {
+        method,
+        body: JSON.stringify(data)
       });
+
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Failed to create alert" }));
-        throw new Error(error.message || "Failed to create alert");
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save alert");
       }
+
       return response.json();
     },
     onSuccess: () => {
+      toast({
+        title: alert ? "Alerta actualizada" : "Alerta creada",
+        description: `La alerta ${formData.isFixed ? 'fija' : 'temporal'} se ha ${alert ? 'actualizado' : 'creado'} exitosamente.`,
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts/fixed"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/alerts/active"] });
-      toast({
-        title: `${isFixed ? "Alerta fija" : "Alerta"} creada`,
-        description: "La alerta ha sido enviada exitosamente.",
-      });
-      handleClose();
+      onClose();
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear la alerta.",
+        description: error.message || `No se pudo ${alert ? 'actualizar' : 'crear'} la alerta.`,
         variant: "destructive",
       });
     },
   });
 
-  const updateAlertMutation = useMutation({
-    mutationFn: async (alertData: any) => {
-      const response = await apiRequest(`/api/alerts/${alert.id}`, {
-        method: "PUT",
-        body: JSON.stringify(alertData),
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Failed to update alert" }));
-        throw new Error(error.message || "Failed to update alert");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/alerts/fixed"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/alerts/active"] });
-      toast({
-        title: "Alerta actualizada",
-        description: "Los cambios han sido guardados exitosamente.",
-      });
-      handleClose();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo actualizar la alerta.",
-        variant: "destructive",
-      });
-    },
-  });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const handleSubmit = () => {
-    if (!message.trim()) {
+    if (!formData.message.trim()) {
       toast({
         title: "Error",
-        description: "El mensaje es requerido.",
+        description: "El mensaje de la alerta es requerido.",
         variant: "destructive",
       });
       return;
     }
 
-    const alertData = {
-      message: message.trim(),
-      backgroundColor,
-      textColor,
-      duration: isFixed ? 0 : duration,
-      isFixed,
-      targetScreens: targetAllScreens ? [] : selectedScreens,
-      isActive: true,
-    };
-
-    if (alert) {
-      updateAlertMutation.mutate(alertData);
-    } else {
-      createAlertMutation.mutate(alertData);
+    if (!formData.isFixed && (formData.duration < 1 || formData.duration > 3600)) {
+      toast({
+        title: "Error",
+        description: "La duración debe estar entre 1 y 3600 segundos.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    createAlertMutation.mutate(formData);
   };
 
-  const handleClose = () => {
-    if (!alert) {
-      setMessage("");
-      setBackgroundColor("#ef4444");
-      setTextColor("#ffffff");
-      setDuration(30);
-      setIsFixed(false);
-      setSelectedScreens([]);
-      setTargetAllScreens(true);
-    }
-    onClose();
+  const handleScreenToggle = (screenId: number, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      targetScreens: checked 
+        ? [...prev.targetScreens, screenId]
+        : prev.targetScreens.filter(id => id !== screenId)
+    }));
   };
 
-  const toggleScreenSelection = (screenId: number) => {
-    setSelectedScreens(prev => 
-      prev.includes(screenId) 
-        ? prev.filter(id => id !== screenId)
-        : [...prev, screenId]
-    );
-  };
+  const colorPresets = [
+    { name: "Rojo", bg: "#ef4444", text: "#ffffff" },
+    { name: "Naranja", bg: "#f97316", text: "#ffffff" },
+    { name: "Amarillo", bg: "#eab308", text: "#000000" },
+    { name: "Verde", bg: "#22c55e", text: "#ffffff" },
+    { name: "Azul", bg: "#3b82f6", text: "#ffffff" },
+    { name: "Púrpura", bg: "#a855f7", text: "#ffffff" },
+    { name: "Gris", bg: "#6b7280", text: "#ffffff" },
+    { name: "Negro", bg: "#000000", text: "#ffffff" }
+  ];
 
-  const isPending = createAlertMutation.isPending || updateAlertMutation.isPending;
+  // Ensure screens is always an array
+  const safeScreens = Array.isArray(screens) ? screens : [];
+
+  if (!open) return null;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {formData.isFixed ? (
+              <Zap className="w-5 h-5 text-yellow-600" />
+            ) : (
+              <Clock className="w-5 h-5 text-blue-600" />
+            )}
             {alert ? "Editar Alerta" : "Nueva Alerta"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Alert Type */}
-          <div className="flex items-center space-x-2">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Alert Type Toggle */}
+          <div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg">
             <Switch
-              checked={isFixed}
-              onCheckedChange={setIsFixed}
-              disabled={!!alert} // Can't change type when editing
+              checked={formData.isFixed}
+              onCheckedChange={(checked) => setFormData(prev => ({ 
+                ...prev, 
+                isFixed: checked,
+                duration: checked ? 0 : 30
+              }))}
             />
-            <Label>
-              {isFixed ? "Alerta Fija (permanente)" : "Alerta Temporal"}
-            </Label>
+            <div className="flex-1">
+              <Label className="text-sm font-medium">
+                {formData.isFixed ? "Alerta Fija" : "Alerta Temporal"}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {formData.isFixed 
+                  ? "Se muestra permanentemente hasta ser desactivada" 
+                  : "Se muestra por un tiempo determinado"
+                }
+              </p>
+            </div>
+            {formData.isFixed ? (
+              <Zap className="w-4 h-4 text-yellow-600" />
+            ) : (
+              <Clock className="w-4 h-4 text-blue-600" />
+            )}
           </div>
 
           {/* Message */}
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="message">Mensaje de la Alerta</Label>
             <Textarea
               id="message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              value={formData.message}
+              onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
               placeholder="Ingresa el mensaje de la alerta..."
-              className="mt-1"
-              rows={3}
+              className="min-h-[80px]"
+              required
             />
           </div>
 
-          {/* Colors */}
+          {/* Duration (only for temporal alerts) */}
+          {!formData.isFixed && (
+            <div className="space-y-2">
+              <Label htmlFor="duration">Duración (segundos)</Label>
+              <Input
+                id="duration"
+                type="number"
+                min="1"
+                max="3600"
+                value={formData.duration}
+                onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) || 30 }))}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Entre 1 segundo y 1 hora (3600 segundos)
+              </p>
+            </div>
+          )}
+
+          {/* Color Presets */}
+          <div className="space-y-3">
+            <Label>Colores Predefinidos</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {colorPresets.map((preset) => (
+                <button
+                  key={preset.name}
+                  type="button"
+                  className="p-3 rounded-lg border-2 transition-all hover:scale-105"
+                  style={{
+                    backgroundColor: preset.bg,
+                    color: preset.text,
+                    borderColor: 
+                      formData.backgroundColor === preset.bg && formData.textColor === preset.text
+                        ? "#000"
+                        : "transparent"
+                  }}
+                  onClick={() => setFormData(prev => ({
+                    ...prev,
+                    backgroundColor: preset.bg,
+                    textColor: preset.text
+                  }))}
+                >
+                  <div className="text-xs font-medium">{preset.name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom Colors */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="backgroundColor">Color de Fondo</Label>
-              <div className="flex items-center space-x-2 mt-1">
+              <div className="flex items-center space-x-2">
                 <Input
                   id="backgroundColor"
                   type="color"
-                  value={backgroundColor}
-                  onChange={(e) => setBackgroundColor(e.target.value)}
-                  className="w-16 h-10"
+                  value={formData.backgroundColor}
+                  onChange={(e) => setFormData(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                  className="w-16 h-10 p-1 rounded"
                 />
                 <Input
-                  value={backgroundColor}
-                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  type="text"
+                  value={formData.backgroundColor}
+                  onChange={(e) => setFormData(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                  className="flex-1"
                   placeholder="#ef4444"
                 />
               </div>
             </div>
-            <div>
+
+            <div className="space-y-2">
               <Label htmlFor="textColor">Color del Texto</Label>
-              <div className="flex items-center space-x-2 mt-1">
+              <div className="flex items-center space-x-2">
                 <Input
                   id="textColor"
                   type="color"
-                  value={textColor}
-                  onChange={(e) => setTextColor(e.target.value)}
-                  className="w-16 h-10"
+                  value={formData.textColor}
+                  onChange={(e) => setFormData(prev => ({ ...prev, textColor: e.target.value }))}
+                  className="w-16 h-10 p-1 rounded"
                 />
                 <Input
-                  value={textColor}
-                  onChange={(e) => setTextColor(e.target.value)}
+                  type="text"
+                  value={formData.textColor}
+                  onChange={(e) => setFormData(prev => ({ ...prev, textColor: e.target.value }))}
+                  className="flex-1"
                   placeholder="#ffffff"
                 />
               </div>
             </div>
           </div>
 
-          {/* Duration (only for non-fixed alerts) */}
-          {!isFixed && (
-            <div>
-              <Label htmlFor="duration">Duración</Label>
-              <Select value={duration.toString()} onValueChange={(value) => setDuration(parseInt(value))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar duración..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {durationOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value.toString()}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Preview */}
+          <div className="space-y-2">
+            <Label>Vista Previa</Label>
+            <div
+              className="p-4 rounded-lg text-center font-medium border"
+              style={{
+                backgroundColor: formData.backgroundColor,
+                color: formData.textColor,
+              }}
+            >
+              {formData.message || "Tu mensaje aparecerá aquí..."}
             </div>
-          )}
+          </div>
 
           {/* Target Screens */}
-          <div>
-            <div className="flex items-center space-x-2 mb-3">
-              <Switch
-                checked={targetAllScreens}
-                onCheckedChange={(checked) => {
-                  setTargetAllScreens(checked);
-                  if (checked) {
-                    setSelectedScreens([]);
-                  }
-                }}
-              />
-              <Label>Mostrar en todas las pantallas</Label>
+          <div className="space-y-3">
+            <Label>Pantallas de Destino</Label>
+            <div className="text-sm text-muted-foreground">
+              Si no seleccionas ninguna pantalla, la alerta se enviará a todas las pantallas.
             </div>
 
-            {!targetAllScreens && (
-              <div>
-                <Label>Pantallas específicas</Label>
-                <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
-                  {screens.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No hay pantallas disponibles
-                    </p>
-                  ) : (
-                    screens.map((screen) => (
-                      <div
-                        key={screen.id}
-                        className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                          selectedScreens.includes(screen.id)
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                        onClick={() => toggleScreenSelection(screen.id)}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <Monitor className="w-4 h-4" />
-                          <span className="font-medium">{screen.name}</span>
-                        </div>
-                        {screen.location && (
-                          <Badge variant="outline" className="text-xs">
-                            {screen.location}
-                          </Badge>
-                        )}
-                        <div className="flex-1" />
-                        <Badge variant={screen.isOnline ? "default" : "secondary"}>
-                          {screen.isOnline ? "En línea" : "Fuera de línea"}
-                        </Badge>
-                      </div>
-                    ))
-                  )}
-                </div>
-                {selectedScreens.length > 0 && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {selectedScreens.length} pantalla(s) seleccionada(s)
-                  </p>
-                )}
+            {safeScreens.length > 0 ? (
+              <div className="space-y-2 max-h-40 overflow-y-auto border rounded-lg p-3">
+                {safeScreens.map((screen) => (
+                  <div key={screen.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`screen-${screen.id}`}
+                      checked={formData.targetScreens.includes(screen.id)}
+                      onCheckedChange={(checked) => handleScreenToggle(screen.id, checked as boolean)}
+                    />
+                    <Label htmlFor={`screen-${screen.id}`} className="flex items-center space-x-2 cursor-pointer">
+                      <Monitor className="w-4 h-4" />
+                      <span>{screen.name}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {screen.location || "Sin ubicación"}
+                      </Badge>
+                      <Badge variant={screen.isOnline ? "default" : "secondary"} className="text-xs">
+                        {screen.isOnline ? "Online" : "Offline"}
+                      </Badge>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                No hay pantallas disponibles
               </div>
             )}
           </div>
 
-          {/* Preview */}
-          <div>
-            <Label>Vista Previa</Label>
-            <div
-              className="mt-2 p-4 rounded-lg text-center font-medium"
-              style={{
-                backgroundColor,
-                color: textColor,
-              }}
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-2 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={createAlertMutation.isPending}
             >
-              {message || "Tu mensaje aparecerá aquí..."}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={handleClose} disabled={isPending}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit} disabled={isPending}>
-              {isPending 
+            <Button
+              type="submit"
+              disabled={createAlertMutation.isPending}
+              className="min-w-[120px]"
+            >
+              {createAlertMutation.isPending 
                 ? "Guardando..." 
                 : alert 
-                  ? "Actualizar Alerta" 
-                  : `Crear ${isFixed ? "Alerta Fija" : "Alerta"}`
+                  ? "Actualizar" 
+                  : "Crear Alerta"
               }
             </Button>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
