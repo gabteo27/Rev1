@@ -232,10 +232,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         title,
         description: description || null,
-        duration: duration ? parseInt(duration, 10) : 30,
+        duration: duration ? parseInt(duration, 10) : 30, // Duración predeterminada de 30 segundos
         category: category || null,
         tags: tags ? (Array.isArray(tags) ? tags : tags.split(",").map((t: string) => t.trim())) : [],
-        thumbnailUrl: null, // ✅ Inicializamos thumbnailUrl
+        thumbnailUrl: null,
       };
 
       if (req.file) {

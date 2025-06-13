@@ -44,14 +44,14 @@ const DurationInput = ({ itemId, initialDuration, onDurationChange }: {
 
   const handleSubmit = () => {
     let duration = parseInt(value) || 10;
-    
+
     // Validar que el valor esté en un rango razonable
     if (duration < 1) duration = 1;
     if (duration > 86400) duration = 86400; // Máximo 24 horas
-    
+
     setValue(duration.toString());
     setIsEditing(false);
-    
+
     if (duration !== initialDuration) {
       onDurationChange(duration);
     }
@@ -394,7 +394,7 @@ export default function Playlists() {
       if (duration < 1 || duration > 86400) {
         throw new Error("La duración debe estar entre 1 y 86400 segundos");
       }
-      
+
       const response = await apiRequest(`/api/playlist-items/${itemId}`, {
         method: "PUT",
         body: JSON.stringify({ customDuration: duration }),
@@ -860,72 +860,73 @@ export default function Playlists() {
 
       {/* Content Library Modal */}
       <Dialog open={contentLibraryOpen} onOpenChange={setContentLibraryOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Biblioteca de Contenido</DialogTitle>
             <CardDescription>
               Selecciona el contenido para agregar a {zones.find(z => z.id === selectedZoneForContent)?.title}
             </CardDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="flex-1 flex flex-col space-y-4 min-h-0">
             {/* Search */}
-            <Input
-              placeholder="Buscar contenido..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <div className="flex-shrink-0">
+              <Input
+                placeholder="Buscar contenido..."
+                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
 
             {/* Content List */}
-            <ScrollArea className="h-96">
-              <div className="space-y-2">
-                {filteredContent.map((item: any) => {
-                  const IconComponent = getContentIcon(item.type);
-                  const iconColor = getFileColor(item.type);
-                  const isSelected = selectedContent.has(item.id);
+            <div className="flex-1 min-h-0">
+              <ScrollArea className="h-full">
+                <div className="space-y-2 pr-4">
+                  {filteredContent.map((item: any) => {
+                    const IconComponent = getContentIcon(item.type);
+                    const iconColor = getFileColor(item.type);
+                    const isSelected = selectedContent.has(item.id);
 
-                  return (
-                    <div
-                      key={item.id}
-                      className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
-                        isSelected ? 'bg-primary/10 border-primary' : 'hover:bg-accent'
-                      }`}
-                      onClick={() => toggleContentSelection(item.id)}
-                    >
-                      <div className="flex items-center space-x-3 flex-1 min-w-0">
-                        <Checkbox 
-                          checked={isSelected}
-                          onChange={() => toggleContentSelection(item.id)}
-                        />
-                        <div className="w-8 h-8 bg-muted rounded-md flex items```python
--center justify-center">
-                          {React.cloneElement(IconComponent, { className: `w-4 h-4 ${iconColor}` })}
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                          isSelected ? 'bg-primary/10 border-primary' : 'hover:bg-accent'
+                        }`}
+                        onClick={() => toggleContentSelection(item.id)}
+                      >
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          <Checkbox 
+                            checked={isSelected}
+                            onChange={() => toggleContentSelection(item.id)}
+                          />
+                          <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center">
+                            {React.cloneElement(IconComponent, { className: `w-4 h-4 ${iconColor}` })}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{item.title}</p>
+                            <p className="text-sm text-muted-foreground">{item.category || "Sin categoría"}</p>
+                          </div>
+                          <Badge variant="outline">
+                            {item.type}
+                          </Badge>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{item.title}</p>
-                          <p className="text-sm text-muted-foreground">{item.category || "Sin categoría"}</p>
-                        </div>
-                        <Badge variant="outline">
-                          {item.type}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDuration(item.duration || 0)}
-                        </span>
                       </div>
+                    );
+                  })}
+
+                  {filteredContent.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No se encontró contenido</p>
                     </div>
-                  );
-                })}
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
 
-                {filteredContent.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No se encontró contenido</p>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-
-            <div className="flex items-center justify-between pt-4 border-t">
+            {/* Action Buttons - Fixed at bottom */}
+            <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t bg-background">
               <p className="text-sm text-muted-foreground">
                 {selectedContent.size} elemento(s) seleccionado(s)
               </p>
