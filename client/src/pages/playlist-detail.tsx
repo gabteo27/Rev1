@@ -163,14 +163,25 @@ export default function PlaylistDetail() {
       });
       return;
     }
-    updatePlaylistMutation.mutate({
-      name: playlistData.name,
-      description: playlistData.description,
+    
+    // Solo enviar los campos que pueden ser actualizados
+    const updateData: any = {
+      name: playlistData.name.trim(),
+      description: playlistData.description || null,
       isActive: playlistData.isActive,
-      layout: playlistData.layout || 'single_zone',
-      carouselDuration: playlistData.carouselDuration,
-      scrollSpeed: playlistData.scrollSpeed
-    });
+      layout: playlistData.layout || 'single_zone'
+    };
+    
+    // Solo agregar configuraciones específicas si están definidas
+    if (playlistData.layout === 'carousel' && playlistData.carouselDuration) {
+      updateData.carouselDuration = parseInt(playlistData.carouselDuration.toString()) || 5;
+    }
+    
+    if (playlistData.layout === 'web_scroll' && playlistData.scrollSpeed) {
+      updateData.scrollSpeed = parseInt(playlistData.scrollSpeed.toString()) || 50;
+    }
+    
+    updatePlaylistMutation.mutate(updateData);
   };
 
   const handleDragEnd = (result: any) => {
@@ -200,9 +211,36 @@ export default function PlaylistDetail() {
     }
   };
 
+  const getCurrentLayoutItems = () => {
+    if (!playlistData?.items) return [];
+    
+    const layout = playlistData.layout || 'single_zone';
+    let validZones = ['main'];
+    
+    switch (layout) {
+      case 'split_vertical':
+        validZones = ['left', 'right'];
+        break;
+      case 'split_horizontal':
+        validZones = ['top', 'bottom'];
+        break;
+      case 'pip_bottom_right':
+        validZones = ['main', 'pip'];
+        break;
+      case 'single_zone':
+      default:
+        validZones = ['main'];
+        break;
+    }
+    
+    return playlistData.items.filter((item: any) => 
+      validZones.includes(item.zone || 'main')
+    );
+  };
+
   const calculateTotalDuration = () => {
-    if (!playlistData?.items) return 0;
-    return playlistData.items.reduce((total: number, item: any) => {
+    const currentItems = getCurrentLayoutItems();
+    return currentItems.reduce((total: number, item: any) => {
       return total + (item.customDuration || item.contentItem?.duration || 0);
     }, 0);
   };
@@ -283,7 +321,7 @@ export default function PlaylistDetail() {
     <div className="flex flex-col h-full">
       <Header
         title={playlistData.name}
-        subtitle={`${playlistData.items?.length || 0} elementos • ${formatDuration(calculateTotalDuration())}`}
+        subtitle={`${getCurrentLayoutItems().length} elementos • ${formatDuration(calculateTotalDuration())}`}
         actions={
           <div className="flex items-center space-x-2">
             <Button
@@ -474,7 +512,7 @@ export default function PlaylistDetail() {
             </div>
 
             <CardContent className="p-6">
-              {!playlistData.items || playlistData.items.length === 0 ? (
+              {getCurrentLayoutItems().length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Plus className="w-8 h-8 text-slate-400" />
@@ -499,7 +537,9 @@ export default function PlaylistDetail() {
                         ref={provided.innerRef}
                         className="space-y-4"
                       >
-                        {playlistData.items.map((item: any, index: number) => (
+                        {getCurrentLayoutItems()
+                          .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+                          .map((item: any, index: number) => (
                           <Draggable
                             key={item.id}
                             draggableId={item.id.toString()}
