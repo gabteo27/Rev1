@@ -864,8 +864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const timeoutId = setTimeout(async () => {
           try {
             // Check if alert still exists and is active before deleting
-            const existingAlerts```text
-= await storage.getAlerts(userId);
+            const existingAlerts = await storage.getAlerts(userId);
             const existingAlert = existingAlerts.find(a => a.id === alert.id && a.isActive);
 
             if (existingAlert) {
