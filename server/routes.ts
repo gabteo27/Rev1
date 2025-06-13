@@ -19,7 +19,8 @@ import {
   insertWidgetSchema,
   insertScheduleSchema,
   insertDeploymentSchema,
-  insertScreenGroupSchema
+  insertScreenGroupSchema,
+  type Alert
 } from "@shared/schema";
 import { buildApk } from "./apk-builder";
 
@@ -830,7 +831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Alerts routes
+  // Alerts
   app.get("/api/alerts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -838,6 +839,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(alerts);
     } catch (error) {
       console.error("Error fetching alerts:", error);
+      res.status(500).json({ message: "Failed to fetch alerts" });
+    }
+  });
+
+  app.post("/api/alerts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const alertData = {
+        ...req.body,
+        userId,
+        isFixed: false // Regular alerts are not fixed
+      };
+
+      const validatedData = insertAlertSchema.parse(alertData);
+      const alert = await storage.createAlert(validatedData);
+
+      console.log(`Created alert ${alert.id} for user ${userId}`);
+
+      // Broadcast alert to all user devices immediately
+      await broadcastAlertToAllUserDevices(userId, alert);
+
+      res.json(alert);
+    } catch (error: any) {
+      console.error("Error creating alert:", error);
+      res.status(500).json({ message: "Failed to create alert" });
+    }
+  });
+
+  // Get active alerts
+  app.get("/api/alerts/active", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const alerts = await storage.getActiveAlerts(userId);
+      res.json(alerts);
+    } catch (error){
+      console.error("Error fetching active alerts:", error);
+      res.status(500).json({ message: "Failed to fetch active alerts" });
+    }
+  });
+
+  // Player endpoint for alerts (no auth required, uses device token)
+  app.get("/api/player/alerts", isPlayerAuthenticated, async (req: any, res) => {
+    try {
+      const screen = req.screen;
+      if (!screen?.userId) {
+        return res.status(400).json({ message: "Screen not properly configured" });
+      }
+
+      const alerts = await storage.getActiveAlerts(screen.userId);
+
+      // Filter alerts for this specific screen if targetScreens is specified
+      const filteredAlerts = alerts.filter(alert => {
+        if (!alert.targetScreens || alert.targetScreens.length === 0) {
+          return true; // Show to all screens if no specific targets
+        }
+        return alert.targetScreens.includes(screen.id);
+      });
+
+      res.json(filteredAlerts);
+    } catch (error) {
+      console.error("Error fetching player alerts:", error);
       res.status(500).json({ message: "Failed to fetch alerts" });
     }
   });
@@ -868,149 +930,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/alerts/active", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.claims.sub;
-      const alerts = await storage.getActiveAlerts(userId);
-      res.json(alerts);
-    } catch (error) {
-      console.error("Error fetching active alerts:", error);
-      res.status(500).json({ message: "Failed to fetch active alerts" });
-    }
-  });
-
-  // Store active alert timeouts to prevent duplicates
-  const alertTimeouts = new Map<number, NodeJS.Timeout>();
-
-  app.post("/api/alerts", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { message, backgroundColor = "#ef4444", textColor = "#ffffff", duration = 30, targetScreens = [], isFixed = false } = req.body;
-
-      if (!message || message.trim().length === 0) {
-        return res.status(400).json({ message: "Alert message is required" });
-      }
-
-      if (duration < 0 || duration > 86400) {
-        return res.status(400).json({ message: "Duration must be between 0 and 86400 seconds" });
-      }
-
-      const alertData = {
-        userId,
-        message: message.trim(),
-        backgroundColor,
-        textColor,
-        duration,
-        isActive: true,
-        targetScreens: Array.isArray(targetScreens) ? targetScreens : [],
-        isFixed: !!isFixed
-      };
-
-      const validatedData = insertAlertSchema.parse(alertData);
-      const alert = await storage.createAlert(validatedData);
-
-      console.log(`Created alert ${alert.id} with duration ${alert.duration}s`);
-
-      // Broadcast alert to ALL connected clients for this user (admin and players)
-      await broadcastAlertToAllUserDevices(userId, alert);
-
-      // Si la alerta tiene duración, programar auto-eliminación
-      if (alert.duration > 0) {
-        const timeoutId = setTimeout(async () => {
-          try {
-            console.log(`Auto-expiring alert ${alert.id} after ${alert.duration} seconds`);
-            
-            // Deactivate the alert instead of deleting it
-            await storage.updateAlert(alert.id, { isActive: false }, userId);
-            
-            // Broadcast the deactivation
-            await broadcastAlertToAllUserDevices(userId, { ...alert, isActive: false });
-            
-            // Remove from timeouts map
-            alertTimeouts.delete(alert.id);
-          } catch (error) {
-            console.error(`Failed to auto-expire alert ${alert.id}:`, error);
-            alertTimeouts.delete(alert.id);
-          }
-        }, alert.duration * 1000);
-
-        // Store the timeout
-        alertTimeouts.set(alert.id, timeoutId);
-        console.log(`Set timeout for alert ${alert.id} for ${alert.duration} seconds`);
-      }
-
-      res.json(alert);
-    } catch (error: any) {
-      console.error("Error creating alert:", error);
-      if (error.name === 'ZodError') {
-        res.status(400).json({ message: "Invalid alert data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: "Failed to create alert" });
-      }
-    }
-  });
-
-  app.put("/api/alerts/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id);
-      const updates = req.body;
-
-      // If deactivating alert, clear any pending timeout
-      if (updates.isActive === false && alertTimeouts.has(id)) {
-        clearTimeout(alertTimeouts.get(id)!);
-        alertTimeouts.delete(id);
-      }
-
-      const alert = await storage.updateAlert(id, updates, userId);
-      if (!alert) {
-        return res.status(404).json({ message: "Alert not found" });
-      }
-
-      // Broadcast alert update to all user devices
-      await broadcastAlertToAllUserDevices(userId, alert);
-
-      res.json(alert);
-    } catch (error) {
-      console.error("Error updating alert:", error);
-      res.status(500).json({ message: "Failed to update alert" });
-    }
-  });
-
-  app.delete("/api/alerts/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id);
-
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid alert ID" });
-      }
-
-      // Clear any pending timeout for this alert
-      if (alertTimeouts.has(id)) {
-        clearTimeout(alertTimeouts.get(id)!);
-        alertTimeouts.delete(id);
-        console.log(`Cleared timeout for alert ${id}`);
-      }
-
-      // Attempt to delete the alert
-      const success = await storage.deleteAlert(id, userId);
-      if (!success) {
-        return res.status(404).json({ message: "Alert not found" });
-      }
-
-      console.log(`Alert ${id} deleted successfully`);
-
-      // Broadcast alert deletion to all user's devices
-      await broadcastAlertToAllUserDevices(userId, { id, isActive: false, deleted: true });
-
-      res.json({ message: "Alert deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting alert:", error);
-      res.status(500).json({ message: "Failed to delete alert" });
-    }
-  });
-
   // Widget routes
   app.get("/api/widgets", isAuthenticated, async (req: any, res) => {
     try {
@@ -1037,115 +956,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching widgets for player:", error);
       res.status(500).json({ message: "Failed to fetch widgets" });
-    }
-  });
-
-  // Public alerts endpoint for players
-  app.get("/api/player/alerts", isPlayerAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.screen.userId;
-
-      if (!userId) {
-        return res.status(403).json({ message: "Screen is not associated with a user." });
-      }
-
-      const alerts = await storage.getActiveAlerts(userId);
-      res.json(alerts);
-    } catch (error) {
-      console.error("Error fetching alerts for player:", error);
-      res.status(500).json({ message: "Failed to fetch alerts" });
-    }
-  });
-
-  // Expire alert endpoint for players
-  app.post("/api/player/alerts/:id/expire", isPlayerAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.screen.userId;
-      const alertId = parseInt(req.params.id);
-
-      if (!userId) {
-        return res.status(403).json({ message: "Screen is not associated with a user." });
-      }
-
-      await storage.updateAlert(alertId, { isActive: false }, userId);
-      res.json({ message: "Alert expired successfully" });
-    } catch (error) {
-      console.error("Error expiring alert:", error);
-      res.status(500).json({ message: "Failed to expire alert" });
-    }
-  });
-
-  // Fixed alerts API endpoint
-  app.post("/api/alerts/fixed", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { message, backgroundColor = "#ef4444", textColor = "#ffffff", targetScreens = [] } = req.body;
-
-      if (!message?.trim()) {
-        return res.status(400).json({ message: "Message is required for fixed alert" });
-      }
-
-      const alertData = {
-        userId,
-        message: message.trim(),
-        backgroundColor,
-        textColor,
-        duration: 0, // 0 means permanent/fixed
-        isActive: true,
-        targetScreens: Array.isArray(targetScreens) ? targetScreens : [],
-        isFixed: true
-      };
-
-      const validatedData = insertAlertSchema.parse(alertData);
-      const alert = await storage.createAlert(validatedData);
-
-      console.log(`Created fixed alert ${alert.id}`);
-
-      // Broadcast fixed alert to all user devices
-      await broadcastAlertToAllUserDevices(userId, alert);
-
-      res.json(alert);
-    } catch (error: any) {
-      console.error("Error creating fixed alert:", error);
-      res.status(500).json({ message: "Failed to create fixed alert" });
-    }
-  });
-
-  // Get fixed alerts
-  app.get("/api/alerts/fixed", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const alerts = await storage.getAlerts(userId);
-      const fixedAlerts = alerts.filter(alert => alert.isFixed && alert.isActive);
-      res.json(fixedAlerts);
-    } catch (error) {
-      console.error("Error fetching fixed alerts:", error);
-      res.status(500).json({ message: "Failed to fetch fixed alerts" });
-    }
-  });
-
-  // Deactivate fixed alert
-  app.delete("/api/alerts/fixed/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id);
-
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid alert ID" });
-      }
-
-      const alert = await storage.updateAlert(id, { isActive: false }, userId);
-      if (!alert) {
-        return res.status(404).json({ message: "Fixed alert not found" });
-      }
-
-      // Broadcast alert deactivation
-      await broadcastAlertToAllUserDevices(userId, { ...alert, isActive: false });
-
-      res.json({ message: "Fixed alert deactivated successfully" });
-    } catch (error) {
-      console.error("Error deactivating fixed alert:", error);
-      res.status(500).json({ message: "Failed to deactivate fixed alert" });
     }
   });
 

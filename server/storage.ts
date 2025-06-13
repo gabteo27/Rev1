@@ -4,7 +4,7 @@ import {
   playlists,
   playlistItems,
   screens,
-  alerts,
+  alertsTable,
   widgets,
   schedules,
   deployments,
@@ -628,21 +628,21 @@ export class DatabaseStorage implements IStorage {
   async getAlerts(userId: string): Promise<Alert[]> {
     return await db
       .select()
-      .from(alerts)
-      .where(eq(alerts.userId, userId))
-      .orderBy(desc(alerts.createdAt));
+      .from(alertsTable)
+      .where(eq(alertsTable.userId, userId))
+      .orderBy(desc(alertsTable.createdAt));
   }
 
   async getActiveAlerts(userId: string): Promise<Alert[]> {
     return await db
       .select()
-      .from(alerts)
-      .where(and(eq(alerts.userId, userId), eq(alerts.isActive, true)))
-      .orderBy(desc(alerts.createdAt));
+      .from(alertsTable)
+      .where(and(eq(alertsTable.userId, userId), eq(alertsTable.isActive, true)))
+      .orderBy(desc(alertsTable.createdAt));
   }
 
   async createAlert(alert: InsertAlert): Promise<Alert> {
-    const [item] = await db.insert(alerts).values({
+    const [item] = await db.insert(alertsTable).values({
       ...alert,
       isFixed: alert.isFixed || false
     }).returning();
@@ -655,17 +655,17 @@ export class DatabaseStorage implements IStorage {
     userId: string,
   ): Promise<Alert | undefined> {
     const [item] = await db
-      .update(alerts)
+      .update(alertsTable)
       .set({ ...alert, updatedAt: new Date() })
-      .where(and(eq(alerts.id, id), eq(alerts.userId, userId)))
+      .where(and(eq(alertsTable.id, id), eq(alertsTable.userId, userId)))
       .returning();
     return item;
   }
 
   async deleteAlert(id: number, userId: string): Promise<boolean> {
     const result = await db
-      .delete(alerts)
-      .where(and(eq(alerts.id, id), eq(alerts.userId, userId)));
+      .delete(alertsTable)
+      .where(and(eq(alertsTable.id, id), eq(alertsTable.userId, userId)));
     return (result.rowCount ?? 0) > 0;
   }
 
