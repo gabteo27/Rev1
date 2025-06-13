@@ -19,7 +19,7 @@ import {
   insertWidgetSchema,
   insertScheduleSchema,
   insertDeploymentSchema,
-  insertScreenGroupSchema,
+  insertScreenGroupSchema
 } from "@shared/schema";
 import { buildApk } from "./apk-builder";
 
@@ -1748,7 +1748,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Broadcast pause command to all screens inthe previous section.
-the group
       const wssInstance = app.get('wss') as WebSocketServer;
 
       if (group.screenIds) {
