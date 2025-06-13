@@ -767,6 +767,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Store active alert timeouts to prevent duplicates
+  const alertTimeouts = new Map<number, NodeJS.Timeout>();
+
   app.post("/api/alerts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -780,17 +783,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Si la alerta tiene duración, programar auto-eliminación
       if (alert.duration > 0) {
-        setTimeout(async () => {
-          try {
-            await storage.deleteAlert(alert.id, userId);
-            console.log(`Alert ${alert.id} auto-deleted after ${alert.duration} seconds`);
+        // Clear any existing timeout for this alert
+        if (alertTimeouts.has(alert.id)) {
+          clearTimeout(alertTimeouts.get(alert.id)!);
+        }
 
-            // Notificar a los clientes que la alerta fue eliminada
-            broadcastToUser(userId, 'alert-deleted', { alertId: alert.id });
+        const timeoutId = setTimeout(async () => {
+          try {
+            // Check if alert still exists before deleting
+            const existingAlert = await storage.getAlerts(userId).then(alerts => 
+              alerts.find(a => a.id === alert.id && a.isActive)
+            );
+
+            if (existingAlert) {
+              await storage.deleteAlert(alert.id, userId);
+              console.log(`Alert ${alert.id} auto-deleted after ${alert.duration} seconds`);
+
+              // Notificar a los clientes que la alerta fue eliminada
+              broadcastToUser(userId, 'alert-deleted', { alertId: alert.id });
+            }
+
+            // Remove from timeouts map
+            alertTimeouts.delete(alert.id);
           } catch (error) {
             console.error(`Failed to auto-delete alert ${alert.id}:`, error);
+            alertTimeouts.delete(alert.id);
           }
         }, alert.duration * 1000);
+
+        // Store the timeout
+        alertTimeouts.set(alert.id, timeoutId);
       }
 
       res.json(alert);
@@ -805,6 +827,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
       const updates = req.body;
+
+      // If deactivating alert, clear any pending timeout
+      if (updates.isActive === false && alertTimeouts.has(id)) {
+        clearTimeout(alertTimeouts.get(id)!);
+        alertTimeouts.delete(id);
+      }
 
       const alert = await storage.updateAlert(id, updates, userId);
       if (!alert) {
@@ -827,6 +855,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
+
+      // Clear any pending timeout for this alert
+      if (alertTimeouts.has(id)) {
+        clearTimeout(alertTimeouts.get(id)!);
+        alertTimeouts.delete(id);
+      }
 
       const success = await storage.deleteAlert(id, userId);
       if (!success) {
