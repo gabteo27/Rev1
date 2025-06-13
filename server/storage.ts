@@ -392,25 +392,15 @@ export class DatabaseStorage implements IStorage {
 
   async updatePlaylist(id: number, updates: any, userId: string): Promise<Playlist | undefined> {
     try {
-      const updateData: any = { 
-        ...updates, 
-        updatedAt: new Date() 
-      };
-
-      // Only include carousel/scroll fields if they are provided
-      if (updates.carouselDuration !== undefined) {
-        updateData.carouselDuration = updates.carouselDuration;
-      }
-      if (updates.scrollSpeed !== undefined) {
-        updateData.scrollSpeed = updates.scrollSpeed;
-      }
+      // Remove any existing updatedAt and add a proper one
+      const { updatedAt, ...cleanUpdates } = updates;
+      const updateData = { ...cleanUpdates, updatedAt: new Date() };
 
       const [item] = await db
         .update(playlists)
         .set(updateData)
         .where(and(eq(playlists.id, id), eq(playlists.userId, userId)))
         .returning();
-
       return item;
     } catch (error) {
       console.error("Error updating playlist:", error);

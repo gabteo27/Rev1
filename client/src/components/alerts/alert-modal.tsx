@@ -2,17 +2,22 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, X, Monitor } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 interface AlertModalProps {
   open: boolean;
   onClose: () => void;
+  screens: any[];
 }
 
 const colorOptions = [
@@ -33,14 +38,14 @@ const durationOptions = [
   { value: -1, label: "Hasta cerrar manualmente" },
 ];
 
-export default function AlertModal({ open, onClose }: AlertModalProps) {
+export default function AlertModal({ open, onClose, screens }: AlertModalProps) {
   const [message, setMessage] = useState("");
   const [backgroundColor, setBackgroundColor] = useState("#ef4444");
   const [textColor, setTextColor] = useState("#ffffff");
   const [duration, setDuration] = useState(30);
   const [allScreens, setAllScreens] = useState(true);
-  const [mainScreensOnly, setMainScreensOnly] = useState(false);
-  
+  const [selectedScreens, setSelectedScreens] = useState<number[]>([]);
+
   const { toast } = useToast();
 
   const createAlertMutation = useMutation({
@@ -60,7 +65,7 @@ export default function AlertModal({ open, onClose }: AlertModalProps) {
             : 'Permanecerá hasta ser cerrada manualmente.'
         }`,
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
       handleClose();
     },
@@ -91,7 +96,7 @@ export default function AlertModal({ open, onClose }: AlertModalProps) {
       textColor,
       duration: finalDuration,
       isActive: true,
-      targetScreens: allScreens ? [] : [], // Empty array means all screens
+      targetScreens: allScreens ? [] : selectedScreens,
     };
 
     // Use different endpoint for permanent alerts
@@ -101,8 +106,9 @@ export default function AlertModal({ open, onClose }: AlertModalProps) {
         message: message.trim(),
         backgroundColor,
         textColor,
+        targetScreens: allScreens ? [] : selectedScreens,
       };
-      
+
       fetch('/api/alerts/permanent', {
         method: 'POST',
         headers: {
@@ -138,7 +144,7 @@ export default function AlertModal({ open, onClose }: AlertModalProps) {
     setTextColor("#ffffff");
     setDuration(30);
     setAllScreens(true);
-    setMainScreensOnly(false);
+    setSelectedScreens([]);
     onClose();
   };
 
@@ -153,152 +159,237 @@ export default function AlertModal({ open, onClose }: AlertModalProps) {
     setTextColor(getTextColorForBackground(color));
   };
 
+  const handleSubmit = () => {
+    const finalDuration = duration === -1 ? 0 : duration;
+
+    const alertData = {
+      message: message.trim(),
+      backgroundColor,
+      textColor,
+      duration: finalDuration,
+      isActive: true,
+      targetScreens: allScreens ? [] : selectedScreens,
+    };
+
+    createAlertMutation.mutate(alertData);
+  };
+
+  const handleScreenToggle = (screenId: number) => {
+    setSelectedScreens(prev => 
+      prev.includes(screenId)
+        ? prev.filter(id => id !== screenId)
+        : [...prev, screenId]
+    );
+  };
+
+  const onlineScreens = screens.filter((screen: any) => screen.isOnline);
+  const offlineScreens = screens.filter((screen: any) => !screen.isOnline);
+
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <AlertTriangle className="w-5 h-5 mr-2 text-red-600" />
-            Crear Alerta Urgente
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-orange-500" />
+            Nueva Alerta
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Message Input */}
-          <div>
-            <Label htmlFor="message">Mensaje de Alerta *</Label>
+        <div className="space-y-6">
+          {/* Message */}
+          <div className="space-y-2">
+            <Label htmlFor="message">Mensaje de la Alerta</Label>
             <Textarea
               id="message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Ingresa el mensaje de alerta urgente..."
-              rows={3}
-              className="resize-none"
-              maxLength={200}
+              placeholder="Ingresa el mensaje que se mostrará en las pantallas..."
+              className="min-h-20"
             />
-            <div className="text-xs text-slate-500 mt-1">
-              {message.length}/200 caracteres
+          </div>
+
+          {/* Colors */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="backgroundColor">Color de Fondo</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="backgroundColor"
+                  type="color"
+                  value={backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  className="w-16 h-10 p-1 rounded"
+                />
+                <Input
+                  value={backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  placeholder="#ef4444"
+                  className="flex-1"
+                />
+              </div>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="textColor">Color de Texto</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="textColor"
+                  type="color"
+                  value={textColor}
+                  onChange={(e) => setTextColor(e.target.value)}
+                  className="w-16 h-10 p-1 rounded"
+                />
+                <Input
+                  value={textColor}
+                  onChange={(e) => setTextColor(e.target.value)}
+                  placeholder="#ffffff"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Duration */}
+          <div className="space-y-2">
+            <Label htmlFor="duration">Duración</Label>
+            <Select value={duration.toString()} onValueChange={(value) => setDuration(parseInt(value))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar duración..." />
+              </SelectTrigger>
+              <SelectContent>
+                {durationOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value.toString()}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Screen Selection */}
+          <div className="space-y-4">
+            <Label>Pantallas Destino</Label>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="allScreens"
+                checked={allScreens}
+                onCheckedChange={(checked) => {
+                  setAllScreens(!!checked);
+                  if (checked) {
+                    setSelectedScreens([]);
+                  }
+                }}
+              />
+              <Label htmlFor="allScreens" className="text-sm font-normal">
+                Enviar a todas las pantallas
+              </Label>
+            </div>
+
+            {!allScreens && (
+              <div className="space-y-4">
+                <Label className="text-sm text-muted-foreground">
+                  Selecciona las pantallas específicas:
+                </Label>
+
+                <ScrollArea className="h-48 border rounded-lg p-4">
+                  <div className="space-y-3">
+                    {onlineScreens.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-green-600 mb-2">
+                          Pantallas En Línea ({onlineScreens.length})
+                        </h4>
+                        {onlineScreens.map((screen: any) => (
+                          <div key={screen.id} className="flex items-center space-x-2 p-2 hover:bg-muted rounded">
+                            <Checkbox
+                              id={`screen-${screen.id}`}
+                              checked={selectedScreens.includes(screen.id)}
+                              onCheckedChange={() => handleScreenToggle(screen.id)}
+                            />
+                            <Monitor className="w-4 h-4 text-green-500" />
+                            <Label htmlFor={`screen-${screen.id}`} className="text-sm font-normal flex-1">
+                              {screen.name}
+                            </Label>
+                            <Badge variant="outline" className="text-xs">
+                              {screen.location || 'Sin ubicación'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {offlineScreens.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500 mb-2">
+                          Pantallas Desconectadas ({offlineScreens.length})
+                        </h4>
+                        {offlineScreens.map((screen: any) => (
+                          <div key={screen.id} className="flex items-center space-x-2 p-2 hover:bg-muted rounded opacity-60">
+                            <Checkbox
+                              id={`screen-${screen.id}`}
+                              checked={selectedScreens.includes(screen.id)}
+                              onCheckedChange={() => handleScreenToggle(screen.id)}
+                            />
+                            <Monitor className="w-4 h-4 text-gray-400" />
+                            <Label htmlFor={`screen-${screen.id}`} className="text-sm font-normal flex-1">
+                              {screen.name}
+                            </Label>
+                            <Badge variant="secondary" className="text-xs">
+                              Desconectada
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {screens.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Monitor className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No hay pantallas disponibles</p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+
+                {!allScreens && selectedScreens.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>{selectedScreens.length} pantalla(s) seleccionada(s)</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Preview */}
-          {message && (
-            <div>
+          {message.trim() && (
+            <div className="space-y-2">
               <Label>Vista Previa</Label>
-              <div 
-                className="p-4 rounded-lg mt-2 text-center font-medium"
-                style={{ 
-                  backgroundColor,
-                  color: textColor 
-                }}
-              >
-                {message}
-              </div>
+              <Card>
+                <CardContent className="p-4">
+                  <div
+                    className="p-4 rounded-lg text-center font-medium"
+                    style={{
+                      backgroundColor,
+                      color: textColor,
+                    }}
+                  >
+                    {message}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
-
-          {/* Color and Duration */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Color de Fondo</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {colorOptions.map((color) => (
-                  <button
-                    key={color.value}
-                    onClick={() => handleBackgroundColorChange(color.value)}
-                    className={`w-8 h-8 rounded border-2 transition-all ${color.class} ${
-                      backgroundColor === color.value
-                        ? "border-slate-900 scale-110"
-                        : "border-slate-300 hover:border-slate-400"
-                    }`}
-                    title={color.label}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="duration">Duración</Label>
-              <Select 
-                value={duration.toString()} 
-                onValueChange={(value) => setDuration(parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {durationOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value.toString()}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Target Screens */}
-          <div>
-            <Label>Pantallas Objetivo</Label>
-            <div className="space-y-2 mt-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="all-screens"
-                  checked={allScreens}
-                  onCheckedChange={(checked) => {
-                    setAllScreens(checked as boolean);
-                    if (checked) {
-                      setMainScreensOnly(false);
-                    }
-                  }}
-                />
-                <Label htmlFor="all-screens" className="text-sm">
-                  Todas las pantallas
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="main-screens"
-                  checked={mainScreensOnly}
-                  onCheckedChange={(checked) => {
-                    setMainScreensOnly(checked as boolean);
-                    if (checked) {
-                      setAllScreens(false);
-                    }
-                  }}
-                />
-                <Label htmlFor="main-screens" className="text-sm">
-                  Solo pantallas principales
-                </Label>
-              </div>
-            </div>
-          </div>
-
-          {/* Warning */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <div className="flex items-start space-x-2">
-              <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-yellow-800">
-                <p className="font-medium">Alerta Urgente</p>
-                <p>Esta alerta se mostrará inmediatamente en las pantallas seleccionadas, interrumpiendo el contenido actual.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end space-x-2 pt-4 border-t border-slate-200">
-            <Button variant="outline" onClick={handleClose}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleCreateAlert}
-              disabled={createAlertMutation.isPending || !message.trim()}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {createAlertMutation.isPending ? "Enviando..." : "Enviar Alerta"}
-            </Button>
-          </div>
         </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={!message.trim() || createAlertMutation.isPending}
+          >
+            {createAlertMutation.isPending ? "Enviando..." : "Enviar Alerta"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

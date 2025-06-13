@@ -410,6 +410,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updates = req.body;
 
+      // Ensure timestamps are properly formatted
+      if (updates.updatedAt) {
+        updates.updatedAt = new Date(updates.updatedAt);
+      }
+
       const playlist = await storage.updatePlaylist(id, updates, userId);
       if (!playlist) {
         return res.status(404).json({ message: "Playlist not found" });
@@ -1432,10 +1437,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const wssInstance = app.get('wss') as WebSocketServer;
 
     try {
-      console.log(`📡 Broadcasting alert to all devices for user ${userId}`);
+      console.log(`📡 Broadcasting alert to devices for user ${userId}`);
+      console.log(`Alert target screens:`, alertData.targetScreens);
 
       let adminClientsNotified = 0;
       let playerClientsNotified = 0;
+
+      // Get all screens for the user to check which ones should receive the alert
+      const allUserScreens = await storage.getScreens(userId);
+      const targetScreenIds = alertData.targetScreens && alertData.targetScreens.length > 0 
+        ? alertData.targetScreens 
+        : allUserScreens.map(screen => screen.id); // If no specific screens, send to all
+
+      console.log(`Target screen IDs:`, targetScreenIds);
 
       wssInstance.clients.forEach((client: WebSocket) => {
         const clientWithId = client as WebSocketWithId;
@@ -1450,14 +1464,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }));
             adminClientsNotified++;
           }
-          // Send to all player screens for this user
+          // Send to specific player screens for this user
           else if (clientWithId.screenId && clientWithId.userId === userId) {
-            console.log(`✅ Sending alert to player screen ${clientWithId.screenId}`);
-            clientWithId.send(JSON.stringify({
-              type: alertData.deleted ? 'alert-deleted' : 'alert',
-              data: alertData
-            }));
-            playerClientsNotified++;
+            if (targetScreenIds.includes(clientWithId.screenId)) {
+              console.log(`✅ Sending alert to player screen ${clientWithId.screenId}`);
+              clientWithId.send(JSON.stringify({
+                type: alertData.deleted ? 'alert-deleted' : 'alert',
+                data: alertData
+              }));
+              playerClientsNotified++;
+            } else {
+              console.log(`⏭️ Skipping alert for screen ${clientWithId.screenId} (not in target list)`);
+            }
           }
         }
       });
