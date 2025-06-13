@@ -279,29 +279,31 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
               Agregar Contenido
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden" style={{ zIndex: 1000 }}>
-            <DialogHeader className="flex-shrink-0 pb-4">
+          <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col" style={{ zIndex: 1000 }}>
+            <DialogHeader className="flex-shrink-0 border-b pb-4">
               <DialogTitle>Biblioteca de Contenido</DialogTitle>
             </DialogHeader>
 
-            <div className="flex flex-col h-full max-h-[70vh] space-y-4">
-              {/* Búsqueda */}
-              <div className="flex-shrink-0">
-                <Input
-                  placeholder="Buscar contenido..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+            {/* Contenedor principal con scroll */}
+            <div className="flex-1 min-h-0 my-4">
+              <div className="h-full border border-gray-200 rounded-lg bg-gray-50">
+                <ScrollArea className="h-full">
+                  <div className="p-4 space-y-4">
+                    {/* Búsqueda dentro del contenedor */}
+                    <div className="sticky top-0 z-10 bg-gray-50 pb-4">
+                      <Input
+                        placeholder="Buscar contenido..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="bg-white"
+                      />
+                    </div>
 
-              {/* Lista de zonas para agregar contenido con scroll */}
-              <div className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full w-full">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-1">
-                    {zones.map(zone => (
-                      <div key={zone.id} className="border rounded-lg p-4 bg-white">
-                        <h4 className="font-medium mb-3 text-gray-900">{zone.title}</h4>
-                        <div className="max-h-80 overflow-y-auto">
+                    {/* Lista de zonas para agregar contenido */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {zones.map(zone => (
+                        <div key={zone.id} className="border rounded-lg p-4 bg-white shadow-sm">
+                          <h4 className="font-medium mb-3 text-gray-900 sticky top-0 bg-white py-2">{zone.title}</h4>
                           <div className="space-y-2">
                             {filteredContent.map((item: any) => (
                               <div
@@ -328,7 +330,6 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
                                   }}
                                   disabled={addContentMutation.isPending}
                                   className="ml-3 flex-shrink-0 h-8 w-8 p-0"
-                                  style={{ position: 'relative', zIndex: 10 }}
                                 >
                                   <Plus className="w-4 h-4" />
                                 </Button>
@@ -342,10 +343,22 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
                             )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </ScrollArea>
+              </div>
+            </div>
+
+            {/* Botones de acción fijos en la parte inferior */}
+            <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t bg-white">
+              <p className="text-sm text-gray-500">
+                Selecciona contenido para agregar a la zona
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsContentDialogOpen(false)}>
+                  Cancelar
+                </Button>
               </div>
             </div>
           </DialogContent>
