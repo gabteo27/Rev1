@@ -325,6 +325,33 @@ export default function Playlists() {
     },
   });
 
+  const updateItemDurationMutation = useMutation({
+    mutationFn: async ({ itemId, duration }: { itemId: number, duration: number }) => {
+      const response = await apiRequest(`/api/playlist-items/${itemId}`, {
+        method: "PUT",
+        body: JSON.stringify({ customDuration: duration }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      refetchPlaylist();
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la duración.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // --- HANDLERS ---
   const handleCreatePlaylist = () => {
     if (!newPlaylist.name.trim()) {
@@ -742,9 +769,33 @@ export default function Playlists() {
                                           </div>
                                           <div className="flex-1 min-w-0">
                                             <h4 className="font-medium truncate">{item.contentItem?.title || 'Sin título'}</h4>
-                                            <p className="text-xs text-muted-foreground">
-                                              {formatDuration(item.customDuration || item.contentItem?.duration || 0)}
-                                            </p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                              <Input
+                                                type="number"
+                                                value={item.customDuration || item.contentItem?.duration || 10}
+                                                onChange={(e) => {
+                                                  const value = e.target.value;
+                                                  const duration = value === '' ? 10 : parseInt(value) || 10;
+                                                  updateItemDurationMutation.mutate({
+                                                    itemId: item.id,
+                                                    duration: duration
+                                                  });
+                                                }}
+                                                onBlur={(e) => {
+                                                  if (e.target.value === '') {
+                                                    e.target.value = '10';
+                                                    updateItemDurationMutation.mutate({
+                                                      itemId: item.id,
+                                                      duration: 10
+                                                    });
+                                                  }
+                                                }}
+                                                className="w-12 h-5 text-xs text-center"
+                                                min="1"
+                                                placeholder="10"
+                                              />
+                                              <span className="text-xs text-muted-foreground">seg</span>
+                                            </div>
                                           </div>
                                           <Button
                                             variant="ghost"
