@@ -686,41 +686,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update screen
   app.put("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const screenId = parseInt(req.params.id);
       const { name, location, playlistId } = req.body;
+
+      console.log(`Updating screen ${screenId} with data:`, { name, location, playlistId });
 
       const screen = await storage.updateScreen(screenId, {
         name,
         location,
         playlistId
-      }, req.user.id);
+      }, userId);
 
       if (!screen) {
         return res.status(404).json({ message: "Screen not found" });
       }
+
+      console.log(`Screen ${screenId} updated successfully:`, screen);
 
       // Broadcast screen update to all connected clients
       broadcastScreenUpdate(screen);
 
       // If playlist changed, also broadcast playlist change to the specific screen
       if (req.body.hasOwnProperty('playlistId')) {
-        await broadcastPlaylistUpdate(req.user.id, playlistId, 'screen-playlist-updated');
+        console.log(`Broadcasting playlist change for screen ${screenId} to playlist ${playlistId}`);
+        
+        if (playlistId) {
+          await broadcastPlaylistUpdate(userId, playlistId, 'screen-playlist-updated');
+        }
 
         // Send direct update to the affected screen
         const wssInstance = app.get('wss') as WebSocketServer;
+        let messageSent = false;
+        
         wssInstance.clients.forEach((client: WebSocket) => {
           const clientWithId = client as WebSocketWithId;
-          if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === screenId) {
-            clientWithId.send(JSON.stringify({
-              type: 'playlist-change',
-              data: { 
-                newPlaylistId: playlistId,
-                screenId: screenId,
-                timestamp: new Date().toISOString()
-              }
-            }));
+          if (clientWithId.readyState === WebSocket.OPEN) {
+            // Send to admin clients
+            if (clientWithId.userId === userId) {
+              clientWithId.send(JSON.stringify({
+                type: 'screen-playlist-updated',
+                data: { 
+                  screenId: screenId,
+                  playlistId: playlistId,
+                  screen: screen,
+                  timestamp: new Date().toISOString()
+                }
+              }));
+            }
+            // Send to the specific screen
+            else if (clientWithId.screenId === screenId) {
+              clientWithId.send(JSON.stringify({
+                type: 'playlist-change',
+                data: { 
+                  newPlaylistId: playlistId,
+                  screenId: screenId,
+                  timestamp: new Date().toISOString(),
+                  action: 'reload'
+                }
+              }));
+              messageSent = true;
+              console.log(`✅ Sent playlist change to screen ${screenId}`);
+            }
           }
         });
+
+        if (!messageSent && playlistId) {
+          console.log(`⚠️ No connected screen found for screen ${screenId}`);
+        }
       }
 
       res.json(screen);

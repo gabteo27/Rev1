@@ -270,6 +270,13 @@ export default function Dashboard() {
         description: `${variables.action === 'play' ? 'Iniciada' : variables.action === 'pause' ? 'Pausada' : 'Detenida'} en la pantalla seleccionada`,
       });
 
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      if (selectedPlaylist) {
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+      }
+
       // Broadcast update via WebSocket to connected screens
       if (wsManager.isConnected()) {
         wsManager.send({
@@ -287,6 +294,59 @@ export default function Dashboard() {
       toast({
         title: "Error",
         description: error.message || "No se pudo controlar la reproducción",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Update screen playlist mutation
+  const updateScreenPlaylistMutation = useMutation({
+    mutationFn: async ({ screenId, playlistId }: { screenId: string, playlistId: string }) => {
+      const response = await apiRequest(`/api/screens/${screenId}`, {
+        method: "PUT",
+        body: JSON.stringify({ playlistId: playlistId ? parseInt(playlistId) : null }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      toast({
+        title: "Pantalla actualizada",
+        description: "La playlist de la pantalla ha sido cambiada",
+      });
+
+      // Update local state immediately
+      setSelectedPlaylist(variables.playlistId);
+
+      // Invalidate and refresh all relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      if (variables.playlistId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists", variables.playlistId] });
+      }
+
+      // Broadcast screen update
+      if (wsManager.isConnected()) {
+        wsManager.send({
+          type: 'screen-playlist-updated',
+          data: {
+            screenId: variables.screenId,
+            playlistId: variables.playlistId,
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+    },
+    onError: (error: any) => {
+      console.error('Update screen playlist error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la playlist de la pantalla",
         variant: "destructive",
       });
     }
@@ -316,6 +376,16 @@ export default function Dashboard() {
 
     setIsPreviewPlaying(false);
   };
+
+  // Sync selected playlist with selected screen
+  useEffect(() => {
+    if (selectedScreen && Array.isArray(screens)) {
+      const screen = screens.find((s: any) => s.id.toString() === selectedScreen);
+      if (screen && screen.playlistId && screen.playlistId.toString() !== selectedPlaylist) {
+        setSelectedPlaylist(screen.playlistId.toString());
+      }
+    }
+  }, [selectedScreen, screens]);
 
   // Calculate statistics
   const activeScreens = Array.isArray(screens) ? screens.filter((s: any) => s.isOnline).length : 0;
@@ -475,7 +545,19 @@ return (
 
                   <div className="space-y-2">
                     <Label htmlFor="playlist-select">Playlist</Label>
-                    <Select value={selectedPlaylist} onValueChange={setSelectedPlaylist}>
+                    <Select 
+                      value={selectedPlaylist} 
+                      onValueChange={(value) => {
+                        if (selectedScreen && value !== selectedPlaylist) {
+                          updateScreenPlaylistMutation.mutate({
+                            screenId: selectedScreen,
+                            playlistId: value
+                          });
+                        } else {
+                          setSelectedPlaylist(value);
+                        }
+                      }}
+                    >
                       <SelectTrigger id="playlist-select">
                         <SelectValue placeholder="Seleccionar playlist..." />
                       </SelectTrigger>
@@ -487,7 +569,7 @@ return (
                                 <List className="w-4 h-4" />
                                 <span>{playlist.name}</span>
                                 <Badge variant="secondary" className="ml-auto">
-                                  {playlist.items?.length || 0} items
+                                  {playlist.totalItems || playlist.items?.length || 0} items
                                 </Badge>
                               </div>
                             </SelectItem>
@@ -535,11 +617,11 @@ return (
                   <div className="p-3 bg-muted rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium">{selectedPlaylistData.name}</h4>
-                      <Badge>{selectedPlaylistData.items?.length || 0} elementos</Badge>
+                      <Badge>{selectedPlaylistData.totalItems || selectedPlaylistData.items?.length || 0} elementos</Badge>
                     </div>
-                    {playlistDetails && (
+                    {(playlistDetails || selectedPlaylistData) && (
                       <p className="text-sm text-muted-foreground">
-                        Duración total: {formatDuration(playlistDetails.totalDuration || 0)}
+                        Duración total: {formatDuration((playlistDetails?.totalDuration || selectedPlaylistData.totalDuration) || 0)}
                       </p>
                     )}
                   </div>
