@@ -392,11 +392,27 @@ export class DatabaseStorage implements IStorage {
 
   async updatePlaylist(id: number, updates: any, userId: string): Promise<Playlist | undefined> {
     try {
-      // Remove any timestamp fields that might cause issues and create clean update object
+      // Remove any timestamp fields that might cause issues
       const { updatedAt, createdAt, ...cleanUpdates } = updates;
       
-      // Ensure any date values are properly converted
-      const sanitizedUpdates = { ...cleanUpdates };
+      // Sanitize any problematic fields and ensure proper types
+      const sanitizedUpdates: any = {};
+      
+      Object.keys(cleanUpdates).forEach(key => {
+        const value = cleanUpdates[key];
+        
+        // Skip undefined or null values that could cause issues
+        if (value !== undefined && value !== null) {
+          // Convert string numbers to actual numbers where needed
+          if (key === 'carouselDuration' || key === 'scrollSpeed') {
+            sanitizedUpdates[key] = parseInt(value.toString()) || (key === 'carouselDuration' ? 5 : 50);
+          } else if (key === 'isActive') {
+            sanitizedUpdates[key] = Boolean(value);
+          } else {
+            sanitizedUpdates[key] = value;
+          }
+        }
+      });
       
       // Add proper updatedAt timestamp
       sanitizedUpdates.updatedAt = new Date();

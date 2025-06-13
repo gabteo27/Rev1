@@ -219,10 +219,10 @@ export default function PlaylistDetail() {
     
     switch (layout) {
       case 'split_vertical':
-        validZones = ['left', 'right'];
+        validZones = ['left', 'right', 'main'];
         break;
       case 'split_horizontal':
-        validZones = ['top', 'bottom'];
+        validZones = ['top', 'bottom', 'main'];
         break;
       case 'pip_bottom_right':
         validZones = ['main', 'pip'];
@@ -240,6 +240,7 @@ export default function PlaylistDetail() {
     }
     
     // Filter items by zone, defaulting to 'main' for items without zone
+    // Also handle legacy items that might not have a zone set
     return playlistData.items.filter((item: any) => {
       const itemZone = item.zone || 'main';
       return validZones.includes(itemZone);

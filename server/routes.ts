@@ -1455,7 +1455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const clientWithId = client as WebSocketWithId;
 
         if (clientWithId.readyState === WebSocket.OPEN) {
-          // Send to admin users
+          // Send to admin users (no screenId means it's an admin client)
           if (clientWithId.userId === userId && !clientWithId.screenId) {
             console.log(`✅ Sending alert to admin user ${userId}`);
             clientWithId.send(JSON.stringify({
