@@ -806,7 +806,8 @@ export default function Playlists() {
                         </div>
                       </CardHeader>
                       <CardContent className="pt-0 flex-1 overflow-hidden">
-                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                        <ScrollArea className="h-full">
+                        <div className="space-y-2 pr-4">
                           {playlistData?.items
                             ?.filter((item: any) => item.zone === zone.id)
                             ?.sort((a: any, b: any) => a.order - b.order)
@@ -848,6 +849,7 @@ export default function Playlists() {
                             </div>
                           )}
                         </div>
+                        </ScrollArea>
                       </CardContent>
                     </Card>
                   ))}
@@ -860,90 +862,89 @@ export default function Playlists() {
 
       {/* Content Library Modal */}
       <Dialog open={contentLibraryOpen} onOpenChange={setContentLibraryOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0">
 
-<DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
+          {/* 1. ENCABEZADO: Siempre visible arriba */}
+          <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b">
             <DialogTitle>Biblioteca de Contenido</DialogTitle>
             <CardDescription>
-              Selecciona el contenido para agregar a {zones.find(z => z.id === selectedZoneForContent)?.title}
+              Selecciona el contenido para agregar a {zones.find(z => z.id === selectedZoneForContent)?.title || 'la zona seleccionada'}
             </CardDescription>
           </DialogHeader>
 
-          <div className="flex-1 flex flex-col space-y-4 min-h-0">
-            {/* Search */}
-            <div className="flex-shrink-0">
-              <Input
-                placeholder="Buscar contenido..."
-                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}              />
-            </div>
+          {/* 2. BUSCADOR: Siempre visible debajo del encabezado */}
+          <div className="flex-shrink-0 px-6 pt-4 pb-4">
+            <Input
+              placeholder="Buscar contenido por título o categoría..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
-            {/* Content List */}
-            <div className="flex-1 min-h-0">
-              <ScrollArea className="h-full">
-                <div className="space-y-2 pr-4">
-                  {filteredContent.map((item: any) => {
-                    const IconComponent = getContentIcon(item.type);
-                    const iconColor = getFileColor(item.type);
-                    const isSelected = selectedContent.has(item.id);
+          {/* 3. LISTA DE CONTENIDO: Esta es la única parte que crece y se desplaza */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="p-6 pt-0 space-y-2">
+              {filteredContent.map((item: any) => {
+                const IconComponent = getContentIcon(item.type);
+                const iconColor = getFileColor(item.type);
+                const isSelected = selectedContent.has(item.id);
 
-                    return (
-                      <div
-                        key={item.id}
-                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
-                          isSelected ? 'bg-primary/10 border-primary' : 'hover:bg-accent'
-                        }`}
-                        onClick={() => toggleContentSelection(item.id)}
-                      >
-                        <div className="flex items-center space-x-3 flex-1 min-w-0">
-                          <Checkbox 
-                            checked={isSelected}
-                            onChange={() => toggleContentSelection(item.id)}
-                          />
-                          <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center">
-                            {React.cloneElement(IconComponent, { className: `w-4 h-4 ${iconColor}` })}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{item.title}</p>
-                            <p className="text-sm text-muted-foreground">{item.category || "Sin categoría"}</p>
-                          </div>
-                          <Badge variant="outline">
-                            {item.type}
-                          </Badge>
-                        </div>
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                      isSelected ? 'bg-primary/10 border-primary' : 'hover:bg-accent'
+                    }`}
+                    onClick={() => toggleContentSelection(item.id)}
+                  >
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleContentSelection(item.id)}
+                      />
+                      <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center flex-shrink-0">
+                        {React.cloneElement(IconComponent, { className: `w-4 h-4 ${iconColor}` })}
                       </div>
-                    );
-                  })}
-
-                  {filteredContent.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No se encontró contenido</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.title}</p>
+                        <p className="text-sm text-muted-foreground">{item.category || "Sin categoría"}</p>
+                      </div>
+                      <Badge variant="outline">
+                        {item.type}
+                      </Badge>
                     </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
+                  </div>
+                );
+              })}
 
-            {/* Action Buttons - Fixed at bottom */}
-            <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t bg-background">
-              <p className="text-sm text-muted-foreground">
-                {selectedContent.size} elemento(s) seleccionado(s)
-              </p>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setContentLibraryOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button 
-                  onClick={handleAddSelectedContent}
-                  disabled={selectedContent.size === 0 || addMultipleItemsMutation.isPending}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  {addMultipleItemsMutation.isPending ? "Agregando..." : "Agregar contenido"}
-                </Button>
-              </div>
+              {filteredContent.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No se encontró contenido</p>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* 4. BOTONES DE ACCIÓN: Siempre fijos en la parte inferior */}
+          <div className="flex-shrink-0 flex items-center justify-between p-4 border-t bg-background">
+            <p className="text-sm text-muted-foreground">
+              {selectedContent.size} elemento(s) seleccionado(s)
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setContentLibraryOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAddSelectedContent}
+                disabled={selectedContent.size === 0 || addMultipleItemsMutation.isPending}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {addMultipleItemsMutation.isPending ? "Agregando..." : "Agregar contenido"}
+              </Button>
+            </div>
+          </div>
+
         </DialogContent>
       </Dialog>
     </div>
