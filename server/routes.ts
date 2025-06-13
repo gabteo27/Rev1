@@ -884,8 +884,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertAlertSchema.parse(alertData);
       const alert = await storage.createAlert(validatedData);
 
-      // ✅ Usa la nueva función para notificar solo a los clientes del usuario
-      broadcastToUser(userId, 'alert', alert);
+      // Broadcast alert to ALL connected clients for this user (admin and players)
+      await broadcastAlertToAllUserDevices(userId, alert);
 
       // Si la alerta tiene duración, programar auto-eliminación
       if (alert.duration > 0) {
@@ -901,20 +901,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const existingAlert = existingAlerts.find(a => a.id === alert.id && a.isActive);
 
             if (existingAlert) {
-              const success = await storage.deleteAlert(alert.id, userId);
-              if (success) {
-                console.log(`Alert ${alert.id} auto-deleted after ${alert.duration} seconds`);
-                // Notificar a los clientes que la alerta fue eliminada
-                broadcastToUser(userId, 'alert-deleted', { alertId: alert.id });
-              }
-            } else {
-              console.log(`Alert ${alert.id} was already deleted or inactive`);
+              await storage.updateAlert(alert.id, { isActive: false }, userId);
+              console.log(`Alert ${alert.id} auto-expired after ${alert.duration} seconds`);
+              // Notificar a los clientes que la alerta expiró
+              await broadcastAlertToAllUserDevices(userId, { ...existingAlert, isActive: false });
             }
 
             // Remove from timeouts map
             alertTimeouts.delete(alert.id);
           } catch (error) {
-            console.error(`Failed to auto-delete alert ${alert.id}:`, error);
+            console.error(`Failed to auto-expire alert ${alert.id}:`, error);
             alertTimeouts.delete(alert.id);
           }
         }, alert.duration * 1000);
@@ -947,10 +943,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Alert not found" });
       }
 
-      // Broadcast alert update via WebSocket
-      if (alert.isActive) {
-        broadcastAlert(alert);
-      }
+      // Broadcast alert update to all user devices
+      await broadcastAlertToAllUserDevices(userId, alert);
 
       res.json(alert);
     } catch (error) {
@@ -959,34 +953,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Track active deletion requests to prevent duplicates
+  const activeDeletions = new Set<string>();
+
   app.delete("/api/alerts/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
+      const deletionKey = `${userId}-${id}`;
 
-      // Clear any pending timeout for this alert
-      if (alertTimeouts.has(id)) {
-        clearTimeout(alertTimeouts.get(id)!);
-        alertTimeouts.delete(id);
+      // Prevent duplicate deletion requests
+      if (activeDeletions.has(deletionKey)) {
+        return res.status(409).json({ message: "Alert deletion already in progress" });
       }
 
-      // Check if alert exists before attempting deletion
-      const alerts = await storage.getAlerts(userId);
-      const alertExists = alerts.some(alert => alert.id === id);
+      activeDeletions.add(deletionKey);
 
-      if (!alertExists) {
-        return res.status(404).json({ message: "Alert not found" });
+      try {
+        // Clear any pending timeout for this alert
+        if (alertTimeouts.has(id)) {
+          clearTimeout(alertTimeouts.get(id)!);
+          alertTimeouts.delete(id);
+        }
+
+        // Check if alert exists before attempting deletion
+        const alerts = await storage.getAlerts(userId);
+        const alertExists = alerts.some(alert => alert.id === id);
+
+        if (!alertExists) {
+          return res.status(404).json({ message: "Alert not found" });
+        }
+
+        const success = await storage.deleteAlert(id, userId);
+        if (!success) {
+          return res.status(404).json({ message: "Alert not found" });
+        }
+
+        // Broadcast alert deletion to all user's devices
+        await broadcastAlertToAllUserDevices(userId, { id, isActive: false, deleted: true });
+
+        res.json({ message: "Alert deleted successfully" });
+      } finally {
+        activeDeletions.delete(deletionKey);
       }
-
-      const success = await storage.deleteAlert(id, userId);
-      if (!success) {
-        return res.status(404).json({ message: "Alert not found" });
-      }
-
-      // Broadcast alert deletion to all user's clients
-      broadcastToUser(userId, 'alert-deleted', { alertId: id });
-
-      res.json({ message: "Alert deleted successfully" });
     } catch (error) {
       console.error("Error deleting alert:", error);
       res.status(500).json({ message: "Failed to delete alert" });
@@ -1054,6 +1063,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error expiring alert:", error);
       res.status(500).json({ message: "Failed to expire alert" });
+    }
+  });
+
+  // Permanent alerts API endpoint
+  app.post("/api/alerts/permanent", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { message, backgroundColor = "#ef4444", textColor = "#ffffff" } = req.body;
+
+      if (!message?.trim()) {
+        return res.status(400).json({ message: "Message is required for permanent alert" });
+      }
+
+      const alertData = {
+        userId,
+        message: message.trim(),
+        backgroundColor,
+        textColor,
+        duration: 0, // 0 means permanent
+        isActive: true,
+        targetScreens: []
+      };
+
+      const validatedData = insertAlertSchema.parse(alertData);
+      const alert = await storage.createAlert(validatedData);
+
+      // Broadcast permanent alert to all user devices
+      await broadcastAlertToAllUserDevices(userId, alert);
+
+      res.json(alert);
+    } catch (error: any) {
+      console.error("Error creating permanent alert:", error);
+      res.status(500).json({ message: "Failed to create permanent alert" });
+    }
+  });
+
+  // Get permanent alerts
+  app.get("/api/alerts/permanent", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const alerts = await storage.getAlerts(userId);
+      const permanentAlerts = alerts.filter(alert => alert.duration === 0 && alert.isActive);
+      res.json(permanentAlerts);
+    } catch (error) {
+      console.error("Error fetching permanent alerts:", error);
+      res.status(500).json({ message: "Failed to fetch permanent alerts" });
     }
   });
 
@@ -1370,6 +1425,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         client.send(message);
       }
     });
+  }
+
+  // Enhanced function to broadcast alerts to all user devices (admin and players)
+  async function broadcastAlertToAllUserDevices(userId: string, alertData: any) {
+    const wssInstance = app.get('wss') as WebSocketServer;
+
+    try {
+      console.log(`📡 Broadcasting alert to all devices for user ${userId}`);
+
+      let adminClientsNotified = 0;
+      let playerClientsNotified = 0;
+
+      wssInstance.clients.forEach((client: WebSocket) => {
+        const clientWithId = client as WebSocketWithId;
+
+        if (clientWithId.readyState === WebSocket.OPEN) {
+          // Send to admin users
+          if (clientWithId.userId === userId) {
+            console.log(`✅ Sending alert to admin user ${userId}`);
+            clientWithId.send(JSON.stringify({
+              type: alertData.deleted ? 'alert-deleted' : 'alert',
+              data: alertData
+            }));
+            adminClientsNotified++;
+          }
+          // Send to all player screens for this user
+          else if (clientWithId.screenId && clientWithId.userId === userId) {
+            console.log(`✅ Sending alert to player screen ${clientWithId.screenId}`);
+            clientWithId.send(JSON.stringify({
+              type: alertData.deleted ? 'alert-deleted' : 'alert',
+              data: alertData
+            }));
+            playerClientsNotified++;
+          }
+        }
+      });
+
+      console.log(`📊 Alert broadcast complete: ${adminClientsNotified} admin clients, ${playerClientsNotified} player clients notified`);
+
+    } catch (error) {
+      console.error(`Error broadcasting alert:`, error);
+    }
   }
 
   // Enhanced function to broadcast playlist updates to relevant clients (admins and players)

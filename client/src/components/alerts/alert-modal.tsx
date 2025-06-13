@@ -29,6 +29,7 @@ const durationOptions = [
   { value: 30, label: "30 segundos" },
   { value: 60, label: "1 minuto" },
   { value: 300, label: "5 minutos" },
+  { value: 0, label: "Permanente (hasta cerrar manualmente)" },
   { value: -1, label: "Hasta cerrar manualmente" },
 ];
 
@@ -82,16 +83,53 @@ export default function AlertModal({ open, onClose }: AlertModalProps) {
       return;
     }
 
+    const finalDuration = duration === -1 ? 0 : duration; // -1 and 0 both mean manual close
+
     const alertData = {
       message: message.trim(),
       backgroundColor,
       textColor,
-      duration: duration === -1 ? 0 : duration, // 0 means manual close
+      duration: finalDuration,
       isActive: true,
       targetScreens: allScreens ? [] : [], // Empty array means all screens
     };
 
-    createAlertMutation.mutate(alertData);
+    // Use different endpoint for permanent alerts
+    if (finalDuration === 0) {
+      // Use permanent alerts endpoint
+      const permanentAlertData = {
+        message: message.trim(),
+        backgroundColor,
+        textColor,
+      };
+      
+      fetch('/api/alerts/permanent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify(permanentAlertData),
+      })
+      .then(response => response.json())
+      .then(data => {
+        toast({
+          title: "Alerta permanente creada",
+          description: "La alerta permanente ha sido enviada a todas las pantallas.",
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+        handleClose();
+      })
+      .catch(error => {
+        toast({
+          title: "Error al crear alerta permanente",
+          description: error.message || "No se pudo crear la alerta permanente.",
+          variant: "destructive",
+        });
+      });
+    } else {
+      createAlertMutation.mutate(alertData);
+    }
   };
 
   const handleClose = () => {

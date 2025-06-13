@@ -714,6 +714,44 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     }
   };
 
+  // Escuchar actualizaciones de alertas via WebSocket
+  useEffect(() => {
+    if (!websocket) return;
+
+    const handleAlertMessage = (data: any) => {
+      if (data.type === 'alert') {
+        const alert = data.data;
+        if (alert.isActive) {
+          setActiveAlerts(prev => {
+            // Evitar duplicados
+            if (prev.some(a => a.id === alert.id)) {
+              return prev;
+            }
+            return [...prev, alert];
+          });
+        } else {
+          setActiveAlerts(prev => prev.filter(a => a.id !== alert.id));
+        }
+      } else if (data.type === 'alert-deleted') {
+        const alertId = data.data.id || data.data.alertId;
+        setActiveAlerts(prev => prev.filter(a => a.id !== alertId));
+      }
+    };
+
+    websocket.addEventListener('message', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleAlertMessage(data);
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    });
+
+    return () => {
+      // Cleanup will be handled by websocket cleanup
+    };
+  }, [websocket]);
+
   // Función para renderizar el contenido de un item
   const renderContentItem = (item: PlaylistItem) => {
     if (!item?.contentItem) {
