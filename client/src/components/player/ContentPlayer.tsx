@@ -866,18 +866,12 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       return (
         <div style={{ ...styles.container, display: 'flex' }}>
           <div style={{ ...styles.zone, width: '50%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ position: 'absolute', top: '10px', left: '10px', color: 'white', fontSize: '12px', opacity: 0.7, zIndex: 1000 }}>
-              Zona Izquierda ({zoneTrackers['left']?.items?.length || 0} items)
-            </div>
             {renderZone('left') || (              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
                 Sin contenido en zona izquierda
               </div>
             )}
           </div>
           <div style={{ ...styles.zone, width: '50%' }}>
-            <div style={{ position: 'absolute', top: '10px', right: '10px', color: 'white', fontSize: '12px', opacity: 0.7, zIndex: 1000 }}>
-              Zona Derecha ({zoneTrackers['right']?.items?.length || 0} items)
-            </div>
             {renderZone('right') || (
               <div 
  style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
@@ -896,9 +890,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       return (
         <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
           <div style={{ ...styles.zone, height: '50%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ position: 'absolute', top: '10px', left: '10px', color: 'white', fontSize: '12px', opacity: 0.7, zIndex: 1000 }}>
-              Zona Superior ({zoneTrackers['top']?.items?.length || 0} items)
-            </div>
             {renderZone('top') || (
               <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
                 Sin contenido en zona superior
@@ -906,9 +897,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             )}
           </div>
           <div style={{ ...styles.zone, height: '50%' }}>
-            <div style={{ position: 'absolute', bottom: '10px', left: '10px', color: 'white', fontSize: '12px', opacity: 0.7, zIndex: 1000 }}>
-              Zona Inferior ({zoneTrackers['bottom']?.items?.length || 0} items)
-            </div>
             {renderZone('bottom') || (
               <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
                 Sin contenido en zona inferior
@@ -926,9 +914,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       return (
         <div style={{...styles.container, position: 'relative' }}>
           <div style={{...styles.zone}}>
-            <div style={{ position: 'absolute', top: '10px', left: '10px', color: 'white', fontSize: '12px', opacity: 0.7, zIndex: 1000 }}>
-              Principal ({zoneTrackers['main']?.items?.length || 0} items)
-            </div>
             {renderZone('main') || (
               <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
                 Sin contenido principal
@@ -947,9 +932,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
             zIndex: 10
           }}>
-            <div style={{ position: 'absolute', top: '5px', left: '5px', color: 'white', fontSize: '10px', opacity: 0.7, zIndex: 1000 }}>
-              PiP ({zoneTrackers['pip']?.items?.length || 0})
-            </div>
             {renderZone('pip') || (
               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>
                 Sin PiP
@@ -976,9 +958,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     default:
       return (
         <div style={styles.container}>
-          <div style={{ position: 'absolute', top: '10px', left: '10px', color: 'white', fontSize: '12px', opacity: 0.7, zIndex: 1000 }}>
-            Principal ({zoneTrackers['main']?.items?.length || 0} items)
-          </div>
           {renderZone('main') || (
             <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
               Sin contenido
