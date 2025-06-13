@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -237,7 +236,7 @@ export default function Alerts() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
@@ -251,7 +250,7 @@ export default function Alerts() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
@@ -263,7 +262,7 @@ export default function Alerts() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
@@ -340,7 +339,7 @@ export default function Alerts() {
           <Bell className="w-5 h-5 mr-2 text-blue-600" />
           Alertas Temporales
         </h2>
-        
+
         {regularAlerts.length === 0 ? (
           <Card>
             <CardContent className="pt-6">

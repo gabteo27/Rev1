@@ -872,7 +872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const validatedData = insertAlertSchema.parse(alertData);
-      const alert = await storage.createAlert(validatedData);
+      const alert = awaitstorage.createAlert(validatedData);
 
       console.log(`Created fixed alert ${alert.id} for user ${userId}`);
 
