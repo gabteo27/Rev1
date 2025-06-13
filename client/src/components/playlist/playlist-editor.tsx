@@ -282,82 +282,78 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
           <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col" style={{ zIndex: 1000 }}>
             <DialogHeader className="flex-shrink-0 border-b pb-4">
               <DialogTitle>Biblioteca de Contenido</DialogTitle>
+              <p className="text-sm text-gray-500">
+                Selecciona el contenido para agregar a {zones.find(z => z.id === 'pip')?.title || 'Picture-in-Picture'}
+              </p>
             </DialogHeader>
 
-            {/* Contenedor principal con scroll */}
+            {/* Contenedor principal con scroll - área roja */}
             <div className="flex-1 min-h-0 my-4">
-              <div className="h-full border border-gray-200 rounded-lg bg-gray-50">
-                <ScrollArea className="h-full">
-                  <div className="p-4 space-y-4">
-                    {/* Búsqueda dentro del contenedor */}
-                    <div className="sticky top-0 z-10 bg-gray-50 pb-4">
-                      <Input
-                        placeholder="Buscar contenido..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="bg-white"
-                      />
-                    </div>
-
-                    {/* Lista de zonas para agregar contenido */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {zones.map(zone => (
-                        <div key={zone.id} className="border rounded-lg p-4 bg-white shadow-sm">
-                          <h4 className="font-medium mb-3 text-gray-900 sticky top-0 bg-white py-2">{zone.title}</h4>
-                          <div className="space-y-2">
-                            {filteredContent.map((item: any) => (
-                              <div
-                                key={item.id}
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors border"
-                              >
-                                <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                  {getContentIcon(item.type)}
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate text-gray-900">{item.title}</p>
-                                    <p className="text-xs text-gray-500">{item.category || "Sin categoría"}</p>
-                                  </div>
-                                  <Badge className={getContentBadgeColor(item.type)}>
-                                    {item.type}
-                                  </Badge>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    addContentMutation.mutate({ contentId: item.id, zone: zone.id });
-                                    setIsContentDialogOpen(false);
-                                  }}
-                                  disabled={addContentMutation.isPending}
-                                  className="ml-3 flex-shrink-0 h-8 w-8 p-0"
-                                >
-                                  <Plus className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            {filteredContent.length === 0 && (
-                              <div className="text-center py-8 text-gray-500">
-                                <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">No se encontró contenido</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+              <div className="h-full border-2 border-red-500 rounded-lg bg-gray-50 overflow-hidden">
+                <div className="h-full flex flex-col">
+                  {/* Búsqueda fija arriba dentro del contenedor rojo */}
+                  <div className="flex-shrink-0 p-4 border-b bg-gray-50">
+                    <Input
+                      placeholder="Buscar contenido..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="bg-white"
+                    />
                   </div>
-                </ScrollArea>
+
+                  {/* Lista de contenido con scroll */}
+                  <div className="flex-1 overflow-hidden">
+                    <ScrollArea className="h-full">
+                      <div className="p-4 space-y-2">
+                        {filteredContent.map((item: any) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between p-3 bg-white rounded border hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="flex items-center space-x-3 flex-1 min-w-0">
+                              {getContentIcon(item.type)}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate text-gray-900">{item.title}</p>
+                                <p className="text-xs text-gray-500">{item.category || "Sin categoría"}</p>
+                              </div>
+                              <Badge className={getContentBadgeColor(item.type)}>
+                                {item.type}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                        {filteredContent.length === 0 && (
+                          <div className="text-center py-8 text-gray-500">
+                            <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No se encontró contenido</p>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Botones de acción fijos en la parte inferior */}
+            {/* Botones de acción separados fuera del contenedor rojo */}
             <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t bg-white">
               <p className="text-sm text-gray-500">
-                Selecciona contenido para agregar a la zona
+                Selecciona contenido y luego haz clic en "Agregar Contenido"
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsContentDialogOpen(false)}>
                   Cancelar
+                </Button>
+                <Button 
+                  onClick={() => {
+                    // Agregar funcionalidad para agregar contenido seleccionado
+                    setIsContentDialogOpen(false);
+                    toast({ title: "Funcionalidad de agregar contenido pendiente" });
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Agregar Contenido
                 </Button>
               </div>
             </div>
