@@ -376,6 +376,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePlaylist(id: number, userId: string): Promise<boolean> {
+    // First delete all playlist items associated with this playlist
+    await db
+      .delete(playlistItems)
+      .where(eq(playlistItems.playlistId, id));
+
+    // Then delete the playlist itself
     const result = await db
       .delete(playlists)
       .where(and(eq(playlists.id, id), eq(playlists.userId, userId)));

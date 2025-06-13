@@ -431,10 +431,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
 
+      // Get all screens using this playlist before deletion
+      const allScreens = await storage.getScreens(userId);
+      const affectedScreenIds = allScreens.filter(screen => screen.playlistId === id).map(screen => screen.id);
+
       const success = await storage.deletePlaylist(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Playlist not found" });
       }
+
+      // Broadcast playlist deletion to affected screens
+      if (affectedScreenIds.length > 0) {
+        const wssInstance = app.get('wss') as WebSocketServer;
+        
+        wssInstance.clients.forEach((client: WebSocket) => {
+          const clientWithId = client as any;
+          if (clientWithId.readyState === WebSocket.OPEN) {
+            // Send to admin clients
+            if (clientWithId.userId === userId) {
+              clientWithId.send(JSON.stringify({
+                type: 'playlist-deleted',
+                data: { 
+                  playlistId: id,
+                  affectedScreens: affectedScreenIds,
+                  timestamp: new Date().toISOString()
+                }
+              }));
+            }
+            // Send to affected player screens
+            else if (clientWithId.screenId && affectedScreenIds.includes(clientWithId.screenId)) {
+              console.log(`✅ Sending playlist deletion notice to player for screen ${clientWithId.screenId}`);
+              clientWithId.send(JSON.stringify({
+                type: 'playlist-deleted',
+                data: { 
+                  playlistId: id,
+                  screenId: clientWithId.screenId,
+                  timestamp: new Date().toISOString(),
+                  action: 'stop-playback'
+                }
+              }));
+            }
+          }
+        });
+      }
+
       res.json({ message: "Playlist deleted successfully" });
     } catch (error) {
       console.error("Error deleting playlist:", error);

@@ -499,37 +499,38 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
       if (data.type === 'playlist-change') {
         console.log('🔄 Playlist change detected via WebSocket:', data.data);
-        
+
         // Force page reload for playlist assignment changes
         setTimeout(() => {
           console.log('🔄 Reloading page due to playlist assignment change...');
           window.location.reload();
         }, 1000);
       } else if (data.type === 'playlist-content-updated') {
-        console.log('🔄 Playlist content update detected via WebSocket:', data.data);
-        
-        // Check if this update is for our current playlist
-        if (data.data.playlistId === playlistId) {
-          console.log('🎯 Update is for current playlist, refreshing content...');
-          
-          // Invalidate and refetch playlist data immediately
-          queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
-          
-          // Force immediate refetch
-          queryClient.refetchQueries({ 
-            queryKey: ['/api/player/playlists', playlistId],
-            type: 'active'
-          });
-        } else {
-          console.log('ℹ️ Update is for different playlist, ignoring...');
+        console.log('📝 Playlist content updated, refreshing...');
+
+        // Invalidate and refetch playlist data
+        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+        queryClient.refetchQueries({ 
+          queryKey: ['/api/player/playlists', playlistId],
+          type: 'active'
+        });
+
+        // Reset current index if it's out of bounds
+        if (data.playlist && data.playlist.items) {
+          const newItemCount = data.playlist.items.length;
+          //if (currentIndex >= newItemCount && newItemCount > 0) {
+          //  setCurrentIndex(0);
+          //} else if (newItemCount === 0) {
+          //  setIsPlaying(false);
+          //}
         }
       } else if (data.type === 'playlist-update') {
         console.log('🔄 Generic playlist update detected via WebSocket:', data.data);
-        
+
         // Handle generic playlist updates
         if (data.data.playlist?.id === playlistId) {
           console.log('🎯 Playlist update is for current playlist, refreshing...');
-          
+
           // Invalidate and refetch playlist data
           queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
           queryClient.refetchQueries({ 
@@ -557,7 +558,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           if (currentPlaylistId !== lastPlaylistId) {
             console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${currentPlaylistId} (polling)`);
             lastPlaylistId = currentPlaylistId;
-            
+
             // Reload the page to reflect the new playlist
             setTimeout(() => {
               console.log('🔄 Reloading page due to playlist change (polling)...');
@@ -855,7 +856,8 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               Zona Derecha ({zoneTrackers['right']?.items?.length || 0} items)
             </div>
             {renderZone('right') || (
-              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+              <div```typescript
+ style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
                 Sin contenido en zona derecha
               </div>
             )}
