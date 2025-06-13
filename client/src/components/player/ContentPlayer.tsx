@@ -1242,3 +1242,178 @@ const renderLayoutContent = () => {
         return renderSingleZone();
     }
   };
+  const renderCarouselContent = () => {
+    if (!playlist?.items?.length) return null;
+
+    const imageItems = playlist.items.filter(item => item.contentItem?.type === 'image');
+    if (!imageItems.length) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', backgroundColor: '#f0f0f0' }}>
+          <p style={{ color: '#333' }}>No hay imágenes disponibles para el carrusel</p>
+        </div>
+      );
+    }
+
+    const currentImage = imageItems[currentIndex % imageItems.length];
+    return (
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <img
+          src={currentImage.contentItem.url}
+          alt={currentImage.contentItem.title}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.5s' }}
+          onError={(e) => {
+            console.error('Error loading carousel image:', currentImage.contentItem.url);
+          }}
+        />
+        <div style={{ position: 'absolute', bottom: '4px', left: '4px', backgroundColor: 'rgba(0, 0, 0, 0.6)', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8em' }}>
+          {currentIndex + 1} / {imageItems.length}
+        </div>
+      </div>
+    );
+  };
+
+  const renderWebScrollContent = () => {
+    // Only show web content in scroll mode
+    const webItems = playlist?.items?.filter(item => item.contentItem?.type === 'webpage') || [];
+
+    if (webItems.length === 0) {
+      return (
+        <div style={{ ...styles.container, justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ textAlign: 'center', color: 'white' }}>
+            <div style={{ fontSize: '24px', marginBottom: '15px' }}>🌐 Sin páginas web</div>
+            <div style={{ fontSize: '16px', opacity: 0.8 }}>
+              El modo scroll web necesita contenido web para mostrar.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const currentItem = getCurrentItem(webItems, zoneTrackers.main);
+    const scrollSpeed = playlist.scroll_speed || 50;
+
+    return (
+      <div style={styles.container}>
+        {currentItem && (
+          <div style={{
+            width: '100%',
+            height: '100%',
+            overflow: 'hidden'
+          }}>
+            <iframe
+              src={currentItem.contentItem.url}
+              style={{
+                width: '100%',
+                height: '200%', // Make it taller to enable scrolling
+                border: 'none',
+                animation: `scrollDown ${Math.max(30, 60000 / scrollSpeed)}s linear infinite`
+              }}
+              title={currentItem.contentItem.title}
+              onError={(e) => {
+                console.error('Error loading web content:', e);
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderContent = () => {
+    // Handle special layouts
+    if (playlist?.layout === 'carousel') {
+      return renderCarouselContent();
+    }
+
+    if (playlist?.layout === 'web_scroll') {
+      return renderWebScrollContent();
+    }
+
+    // Standard content rendering
+    const mainItems = playlist?.items?.filter(item => item.zone === 'main') || [];
+    const currentItem = getCurrentItem(mainItems, zoneTrackers.main);
+
+    if (!currentItem?.contentItem) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', backgroundColor: '#f0f0f0' }}>
+          <p style={{ color: '#333' }}>No hay contenido para reproducir</p>
+        </div>
+      );
+    }
+
+    const item = currentItem.contentItem;
+
+    switch (item.type) {
+      case 'image':
+        return <ImagePlayer src={item.url} />;
+      case 'video':
+        return <VideoPlayer src={item.url} />;
+      case 'pdf':
+        return <PDFPlayer src={item.url} />;
+      case 'webpage':
+        return <WebpagePlayer src={item.url} />;
+      default:
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', backgroundColor: '#f0f0f0' }}>
+            <p style={{ color: '#333' }}>Tipo de contenido no soportado: {item.type}</p>
+          </div>
+        );
+    }
+  };
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (playlist?.layout === 'carousel') {
+      const timer = setInterval(() => {
+        setCurrentIndex(prevIndex => (prevIndex + 1) % (playlist?.items?.length || 1));
+      }, (playlist.carousel_duration || 5) * 1000); // Cambia cada X segundos
+      return () => clearInterval(timer);
+    }
+  }, [playlist?.layout, playlist?.items?.length, playlist.carousel_duration]);
+
+  useEffect(() => {
+    if (!playlist?.items?.length) return;
+
+    const duration = (playlist.carousel_duration || 5) * 1000;
+
+    // Clear the previous timeout if it exists
+    // Clear the previous timeout if it exists
+
+  }, [currentIndex, playlist]);
+
+  useEffect(() => {
+    if (!playlist?.items?.length) return;
+
+    const duration = (playlist.carousel_duration || 5) * 1000;
+
+  }, [currentIndex, playlist]);
+useEffect(() => {
+    if (!playlist?.items?.length || !isPlaying) return;
+
+    let timer: NodeJS.Timeout;
+
+    if (playlist.layout === 'carousel') {
+      // For carousel, use carouselDuration or default 5 seconds
+      const carouselDuration = (playlist.carousel_duration || 5) * 1000;
+      timer = setTimeout(() => {
+       setCurrentIndex(prevIndex => (prevIndex + 1) % (playlist?.items?.length || 1));
+      }, carouselDuration);
+    } else if (playlist.layout === 'web_scroll') {
+      // For web scroll, use scrollSpeed to calculate duration
+      const scrollDuration = playlist.scroll_speed ? (60000 / playlist.scroll_speed) * 1000 : 10000;
+      timer = setTimeout(() => {
+        //handleContentEnd();
+      }, scrollDuration);
+    } else {
+      // Standard timing for other layouts
+       const mainItems = playlist?.items?.filter(item => item.zone === 'main') || [];
+       const currentItem = getCurrentItem(mainItems, zoneTrackers.main);
+      const currentDuration = (currentItem?.customDuration || currentItem?.contentItem?.duration || 30) * 1000;
+      timer = setTimeout(() => {
+        //handleContentEnd();
+      }, currentDuration);
+    }
+
+    return () => clearTimeout(timer);
+  }, [currentIndex, isPlaying, playlist, zoneTrackers]);
