@@ -629,7 +629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (clientWithId.readyState === WebSocket.OPEN) {
             // Send to player connections for this specific screen
             if (clientWithId.screenId === id) {
-              console.log(`Sending playlist change to player for screen ${id}`);
+              console.log(`✅ Sending playlist change to player for screen ${id}`);
               clientWithId.send(JSON.stringify({
                 type: 'playlist-change',
                 data: { 
@@ -643,7 +643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             // Also send to admin clients for this user
             else if (clientWithId.userId === userId) {
-              console.log(`Sending playlist change notification to admin user ${userId}`);
+              console.log(`✅ Sending playlist change notification to admin user ${userId}`);
               clientWithId.send(JSON.stringify({
                 type: 'playlist-change',
                 data: { 
@@ -656,8 +656,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
+        console.log(`📊 WebSocket clients checked: ${wssInstance.clients.size} total`);
         if (!playerNotified) {
-          console.log(`No active player connection found for screen ${id}, but admin was notified`);
+          console.log(`⚠️ No active player connection found for screen ${id}, but change was broadcast to admin`);
         }
       }
 

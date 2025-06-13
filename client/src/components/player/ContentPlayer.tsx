@@ -479,18 +479,40 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     enabled: !!playlistId, // Solo ejecutar si hay playlist
   });
 
-  // Simplified real-time update system without forced reloads
+  // Real-time update system using WebSocket and polling fallback
   useEffect(() => {
     if (isPreview) return;
+
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) return;
 
     let validationInterval: NodeJS.Timeout;
     let lastPlaylistId = playlistId;
 
-    // Check for playlist changes periodically without forcing reloads
-    const checkForUpdates = () => {
-      const authToken = localStorage.getItem('authToken');
-      if (!authToken) return;
+    // Connect to WebSocket with player authentication
+    console.log('🔌 Connecting player WebSocket...');
+    wsManager.connect(undefined, authToken);
 
+    // Handle WebSocket messages
+    const handleWebSocketMessage = (data: any) => {
+      console.log('🎵 WebSocket message received in player:', data);
+
+      if (data.type === 'playlist-change') {
+        console.log('🔄 Playlist change detected via WebSocket:', data.data);
+        
+        // Force page reload for now to ensure proper playlist update
+        setTimeout(() => {
+          console.log('🔄 Reloading page due to playlist change...');
+          window.location.reload();
+        }, 1000);
+      }
+    };
+
+    // Subscribe to playlist changes
+    const unsubscribePlaylist = wsManager.subscribe('playlist-change', handleWebSocketMessage);
+
+    // Fallback: Check for playlist changes periodically 
+    const checkForUpdates = () => {
       fetch('/api/player/validate-token', {
         headers: {
           'Authorization': `Bearer ${authToken}`
@@ -501,13 +523,14 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
           // Only update if playlist actually changed
           if (currentPlaylistId !== lastPlaylistId) {
-            console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${currentPlaylistId}`);
+            console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${currentPlaylistId} (polling)`);
             lastPlaylistId = currentPlaylistId;
-
-            // Invalidate queries to fetch new data instead of forcing reload
-            queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/player/alerts'] });
+            
+            // Reload the page to reflect the new playlist
+            setTimeout(() => {
+              console.log('🔄 Reloading page due to playlist change (polling)...');
+              window.location.reload();
+            }, 500);
           }
         }
       }).catch(error => {
@@ -515,44 +538,18 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       });
     };
 
-    // Check every 10 seconds instead of every second
-    console.log('🔍 Starting playlist monitoring...');
-    validationInterval = setInterval(checkForUpdates, 10000);
+    // Check every 5 seconds as fallback
+    console.log('🔍 Starting playlist monitoring (fallback)...');
+    validationInterval = setInterval(checkForUpdates, 5000);
 
     return () => {
       if (validationInterval) {
         clearInterval(validationInterval);
       }
+      unsubscribePlaylist();
       console.log('🔍 Stopped playlist monitoring');
     };
-  }, [isPreview, playlistId, queryClient]);
-
-  useEffect(() => {
-    if (isPreview) return;
-
-    const handleWebSocketMessage = (data: any) => {
-      console.log('WebSocket message received:', data);
-
-      if (data.type === 'playlist-change') {
-        console.log('Playlist change detected via WebSocket:', data.data);
-
-        // Instead of reloading, just invalidate queries to refetch data
-        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/player/alerts'] });
-      }
-    };
-
-    // Connect to WebSocket
-    wsManager.connect();
-
-    // Subscribe to playlist changes
-    const unsubscribe = wsManager.subscribe('playlist-change', handleWebSocketMessage);
-
-    return () => {
-      unsubscribe();
-    };
-  }, [isPreview, queryClient]);
+  }, [isPreview, playlistId]);
 
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 

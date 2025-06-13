@@ -36,7 +36,7 @@ class WebSocketManager {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
 
-    console.log('Connecting to WebSocket:', wsUrl);
+    console.log('Connecting to WebSocket:', wsUrl, this.authToken ? '(with player token)' : '(admin mode)');
 
     try {
       this.ws = new WebSocket(wsUrl);
@@ -57,10 +57,10 @@ class WebSocketManager {
 
       // Authenticate after connection
       if (this.userId) {
-        console.log('Authenticating WebSocket connection...');
+        console.log('Authenticating WebSocket connection (admin)...');
         this.send({ type: 'auth', userId: this.userId });
       } else if (this.authToken) {
-        console.log('Authenticating player WebSocket connection...');
+        console.log('Authenticating player WebSocket connection with token:', this.authToken?.substring(0, 8) + '...');
         this.send({ type: 'player-auth', token: this.authToken });
       }
 
