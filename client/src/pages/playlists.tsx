@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
@@ -708,15 +707,15 @@ export default function Playlists() {
 
       {/* Layout Editor Modal */}
       <Dialog open={layoutModalOpen} onOpenChange={setLayoutModalOpen}>
-        <DialogContent className="max-w-6xl max-h-[80vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Editar Layout - {selectedPlaylistForLayout?.name}</DialogTitle>
           </DialogHeader>
-          
+
           {selectedPlaylistForLayout && (
-            <div className="space-y-4">
+            <div className="flex-1 overflow-hidden flex flex-col space-y-4">
               {/* Layout Selection */}
-              <div>
+              <div className="flex-shrink-0">
                 <Label className="text-sm font-medium">Tipo de Layout</Label>
                 <ToggleGroup 
                   type="single" 
@@ -736,135 +735,110 @@ export default function Playlists() {
                     <SplitSquareHorizontal className="h-4 w-4 mr-2"/>
                     Horizontal
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="pip_bottom_right" aria-label="Picture-in-Picture">
+                  <ToggleGroupItem value="pip_bottom_right" aria-label="Picture in picture">
                     <PictureInPicture className="h-4 w-4 mr-2"/>
                     PiP
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
 
-              {/* Layout Zones */}
-              <div className="max-h-96 overflow-y-auto">
-                <DragDropContext onDragEnd={handleDragEnd}>
-                  <div className={`grid gap-4 ${
-                    currentLayout === 'split_vertical' ? 'grid-cols-2' : 
-                    currentLayout === 'split_horizontal' ? 'grid-rows-2 h-80' : 
-                    currentLayout === 'pip_bottom_right' ? 'grid-cols-3 grid-rows-2' :
-                    'grid-cols-1'
-                  }`}>
-                    {zones.map((zone) => (
-                      <Droppable key={zone.id} droppableId={zone.id}>
-                        {(provided, snapshot) => (
-                          <Card className={`${
-                            snapshot.isDraggingOver ? 'border-primary bg-primary/5' : ''
-                          } ${
-                            currentLayout === 'pip_bottom_right' && zone.id === 'main' ? 'col-span-3 row-span-1' :
-                            currentLayout === 'pip_bottom_right' && zone.id === 'pip' ? 'col-span-1 row-span-1' :
-                            ''
-                          }`}>
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center justify-between">
-                                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                  <div className={`w-3 h-3 rounded-full ${
-                                    zone.id === 'main' ? 'bg-blue-500' : 
-                                    zone.id === 'left' ? 'bg-green-500' : 
-                                    zone.id === 'right' ? 'bg-orange-500' : 
-                                    zone.id === 'top' ? 'bg-purple-500' : 
-                                    zone.id === 'bottom' ? 'bg-pink-500' : 
-                                    'bg-red-500'
-                                  }`}></div>
-                                  {zone.title}
-                                  <Badge variant="secondary" className="text-xs px-1 py-0">
-                                    {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
-                                  </Badge>
-                                </CardTitle>
+              {/* Zone Management */}
+              <div className="flex-1 overflow-y-auto">
+                <div className={`grid gap-4 ${
+                  currentLayout === 'split_vertical' ? 'grid-cols-2' :
+                  currentLayout === 'split_horizontal' ? 'grid-cols-1' :
+                  currentLayout === 'pip_bottom_right' ? 'grid-cols-2' :
+                  'grid-cols-1'
+                }`}>
+                  {zones.map(zone => (
+                    <Card key={zone.id} className="flex flex-col">
+                      <CardHeader className="pb-3 flex-shrink-0">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                            {zone.title}
+                            <Badge variant="secondary" className="text-xs">
+                              {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
+                            </Badge>
+                          </CardTitle>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedZoneForContent(zone.id);
+                                  setContentLibraryOpen(true);
+                                }}
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Agregar contenido
+                              </Button>
+                            </DialogTrigger>
+                          </Dialog>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0 flex-1 overflow-hidden">
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {playlistData?.items
+                            ?.filter((item: any) => item.zone === zone.id)
+                            ?.sort((a: any, b: any) => a.order - b.order)
+                            ?.map((item: any) => (
+                              <div key={item.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                                <GripVertical className="w-3 h-3 text-gray-400 cursor-grab flex-shrink-0" />
+                                <div className="w-6 h-6 bg-slate-300 rounded flex items-center justify-center flex-shrink-0">
+                                  {getContentIcon(item.contentItem?.type)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium truncate text-sm">{item.contentItem?.title || 'Sin título'}</h4>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Input
+                                      type="number"
+                                      value={item.customDuration || item.contentItem?.duration || 10}
+                                      onChange={(e) => {
+                                        const value = e.target.value;
+                                        const duration = value === '' ? 10 : parseInt(value) || 10;
+                                        updateItemDurationMutation.mutate({
+                                          itemId: item.id,
+                                          duration: duration
+                                        });
+                                      }}
+                                      onBlur={(e) => {
+                                        if (e.target.value === '') {
+                                          e.target.value = '10';
+                                          updateItemDurationMutation.mutate({
+                                            itemId: item.id,
+                                            duration: 10
+                                          });
+                                        }
+                                      }}
+                                      className="w-12 h-6 text-xs text-center"
+                                      min="1"
+                                      placeholder="10"
+                                    />
+                                    <span className="text-xs text-muted-foreground">seg</span>
+                                  </div>
+                                </div>
                                 <Button
-                                  variant="outline"
+                                  variant="ghost"
                                   size="sm"
-                                  onClick={() => handleOpenContentLibrary(zone.id)}
-                                  className="text-xs h-6"
+                                  className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
+                                  onClick={() => removeItemMutation.mutate(item.id)}
                                 >
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Agregar contenido
+                                  <Trash2 className="w-3 h-3" />
                                 </Button>
                               </div>
-                            </CardHeader>
-                            <CardContent ref={provided.innerRef} {...provided.droppableProps} className="min-h-[100px] space-y-2">
-                              {playlistData?.items?.filter((item: any) => item.zone === zone.id)
-                                .sort((a: any, b: any) => a.order - b.order)
-                                .map((item: any, index: number) => {
-                                  const IconComponent = getContentIcon(item.contentItem?.type || 'unknown');
-                                  const iconColor = getFileColor(item.contentItem?.type || 'unknown');
-
-                                  return (
-                                    <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
-                                      {(provided, snapshot) => (
-                                        <div
-                                          ref={provided.innerRef}
-                                          {...provided.draggableProps}
-                                          className={`flex items-center gap-2 p-2 bg-background border rounded-md text-xs ${
-                                            snapshot.isDragging ? 'shadow-lg bg-accent' : 'hover:bg-accent/50'
-                                          }`}
-                                        >
-                                          <div
-                                            {...provided.dragHandleProps}
-                                            className="flex items-center justify-center w-4 h-4 text-muted-foreground hover:text-foreground cursor-grab"
-                                          >
-                                            <GripVertical className="w-3 h-3" />
-                                          </div>
-                                          <div className="w-5 h-5 bg-muted rounded flex items-center justify-center flex-shrink-0">
-                                            {React.cloneElement(IconComponent, { className: `w-3 h-3 ${iconColor}` })}
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <h4 className="font-medium truncate">{item.contentItem?.title || 'Sin título'}</h4>
-                                            <div className="flex items-center gap-2 mt-1">
-                                              <DurationInput
-                                                itemId={item.id}
-                                                initialDuration={item.customDuration || item.contentItem?.duration || 10}
-                                                onDurationChange={(duration) => {
-                                                  updateItemDurationMutation.mutate({
-                                                    itemId: item.id,
-                                                    duration: duration
-                                                  });
-                                                }}
-                                              />
-                                              <span className="text-xs text-muted-foreground">seg</span>
-                                            </div>
-                                          </div>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => removeItemMutation.mutate(item.id)}
-                                            className="text-red-500 hover:text-red-600 h-5 w-5 p-0"
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </Draggable>
-                                  );
-                                })}
-                              {provided.placeholder}
-                              {(!playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length) && (
-                                <div className="text-center py-6 text-muted-foreground">
-                                  <Play className="h-6 w-6 mx-auto mb-1 opacity-20" />
-                                  <p className="text-xs">Arrastra contenido aquí</p>
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        )}
-                      </Droppable>
-                    ))}
-                  </div>
-                </DragDropContext>
-              </div>
-
-              <div className="flex justify-end pt-4 border-t">
-                <Button onClick={() => setLayoutModalOpen(false)}>
-                  <Check className="w-4 h-4 mr-2" />
-                  Aceptar
-                </Button>
+                            ))}
+                          {(!playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length) && (
+                            <div className="text-center py-6 text-sm text-gray-500">
+                              Sin contenido en esta zona
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
             </div>
           )}
