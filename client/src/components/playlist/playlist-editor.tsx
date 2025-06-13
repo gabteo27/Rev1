@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -47,12 +48,31 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
     queryFn: () => apiRequest('/api/content').then(res => res.json())
   });
 
-  // Estado para gestionar los items seleccionados
+  // Estado para gestionar los items seleccionados y edición
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [isContentDialogOpen, setIsContentDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   const { toast } = useToast();
+
+  // Efecto para inicializar valores de edición cuando cambia playlistData
+  useState(() => {
+    if (playlistData) {
+      setEditName(playlistData.name || "");
+      setEditDescription(playlistData.description || "");
+    }
+  });
+
+  // Sync edit values when playlist data changes
+  useState(() => {
+    if (playlistData && !isEditingInfo) {
+      setEditName(playlistData.name || "");
+      setEditDescription(playlistData.description || "");
+    }
+  });
 
   // Mutaciones para mover, eliminar, etc.
   const moveItemMutation = useMutation({
@@ -112,6 +132,21 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/playlists', playlistId] });
       toast({ title: "Contenido agregado" });
+    }
+  });
+
+  const updatePlaylistMutation = useMutation({
+    mutationFn: async ({ name, description }: { name: string, description?: string }) => {
+      return apiRequest(`/api/playlists/${playlistId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name, description })
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/playlists', playlistId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/playlists'] });
+      setIsEditingInfo(false);
+      toast({ title: "Playlist actualizada" });
     }
   });
 
@@ -177,6 +212,70 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
 
   return (
     <div className="space-y-4">
+      {/* Información de la playlist */}
+      {playlistData && (
+        <div className="bg-white border rounded-lg p-4 mb-4">
+          {!isEditingInfo ? (
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-xl font-bold">{playlistData.name}</h2>
+                {playlistData.description && (
+                  <p className="text-gray-600 mt-1">{playlistData.description}</p>
+                )}
+              </div>
+              <Button variant="outline" onClick={() => setIsEditingInfo(true)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Editar
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="playlist-name">Nombre</Label>
+                <Input
+                  id="playlist-name"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Nombre de la playlist"
+                />
+              </div>
+              <div>
+                <Label htmlFor="playlist-description">Descripción</Label>
+                <Input
+                  id="playlist-description"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Descripción (opcional)"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => {
+                    updatePlaylistMutation.mutate({ 
+                      name: editName, 
+                      description: editDescription 
+                    });
+                  }}
+                  disabled={updatePlaylistMutation.isPending || !editName.trim()}
+                >
+                  {updatePlaylistMutation.isPending ? "Guardando..." : "Guardar"}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsEditingInfo(false);
+                    setEditName(playlistData.name || "");
+                    setEditDescription(playlistData.description || "");
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Botón para agregar contenido */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Editor de Playlist</h3>
@@ -187,7 +286,7 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
               Agregar Contenido
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col z-50">
             <DialogHeader className="flex-shrink-0">
               <DialogTitle>Biblioteca de Contenido</DialogTitle>
             </DialogHeader>
@@ -233,6 +332,7 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
                                     setIsContentDialogOpen(false);
                                   }}
                                   disabled={addContentMutation.isPending}
+                                  className="ml-2 flex-shrink-0 z-10 relative"
                                 >
                                   <Plus className="w-3 h-3" />
                                 </Button>
