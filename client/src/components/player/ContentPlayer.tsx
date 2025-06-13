@@ -19,6 +19,28 @@ const ImagePlayer = ({ src }: { src: string }) => <img src={src} style={styles.m
 const VideoPlayer = ({ src }: { src: string }) => <video src={src} style={styles.media} autoPlay muted loop playsInline />;
 const WebpagePlayer = ({ src }: { src: string }) => <iframe src={src} style={{ ...styles.media, border: 'none' }} title="web-content" />;
 
+// Dedicated PDF Player Component
+const PDFPlayer = ({ src }: { src: string }) => {
+  // Create a PDF viewer URL using PDF.js or Google Docs viewer
+  const pdfViewerUrl = src.startsWith('http') 
+    ? `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
+    : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + src)}&embedded=true`;
+
+  return (
+    <iframe
+      src={pdfViewerUrl}
+      style={{ 
+        ...styles.media, 
+        border: 'none',
+        background: '#f5f5f5'
+      }}
+      title="PDF document"
+      loading="eager"
+      sandbox="allow-scripts allow-same-origin"
+    />
+  );
+};
+
 // YouTube Player Component with autoplay and loop
 const YouTubePlayer = ({ url }: { url: string }) => {
   // Extract YouTube video ID from URL
@@ -754,6 +776,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       case 'video': 
         return <VideoPlayer src={url} />;
       case 'pdf':
+        return <PDFPlayer src={url} />;
       case 'webpage': 
         return <WebpagePlayer src={url} />;
       default: 

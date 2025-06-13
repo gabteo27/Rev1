@@ -323,8 +323,16 @@ export default function Content() {
                         }}
                       />
                     )}
-                    {(item.type === "pdf" || item.type === "webpage" || item.type === "text" || 
-                      (!item.url || item.type === "image" || item.type === "video")) && (
+                    {item.type === "pdf" && item.url && (
+                      <div className="w-full h-full flex items-center justify-center bg-red-50">
+                        <div className="text-center">
+                          {getContentIcon(item.type)}
+                          <div className="text-xs text-gray-600 mt-1">PDF</div>
+                        </div>
+                      </div>
+                    )}
+                    {(item.type === "webpage" || item.type === "text" || 
+                      (!item.url || (item.type !== "image" && item.type !== "video" && item.type !== "pdf"))) && (
                       <div className="w-full h-full flex items-center justify-center">
                         {getContentIcon(item.type)}
                       </div>

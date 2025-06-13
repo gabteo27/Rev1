@@ -269,10 +269,17 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
   };
 
   const getFileType = (file: File) => {
-    if (file.type.startsWith("image/")) return "image";
-    if (file.type.startsWith("video/")) return "video";
-    if (file.type === "application/pdf") return "pdf";
-    return "file";
+    let type = '';
+    if (file.type.startsWith('image/')) {
+        type = 'image';
+      } else if (file.type.startsWith('video/')) {
+        type = 'video';
+      } else if (file.type === 'application/pdf') {
+        type = 'pdf';
+      } else {
+        type = 'webpage'; // Default for other file types
+      }
+    return type;
   };
 
   const handleClose = () => {
@@ -332,8 +339,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
               <input
                 ref={fileInputRef}
                 type="file"
-                multiple
-                accept="image/*,video/mp4,application/pdf"
+                accept="image/*,video/*,.pdf,application/pdf"
                 onChange={handleFileSelect}
                 className="hidden"
               />

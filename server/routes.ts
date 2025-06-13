@@ -443,7 +443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast playlist deletion to affected screens
       if (affectedScreenIds.length > 0) {
         const wssInstance = app.get('wss') as WebSocketServer;
-        
+
         wssInstance.clients.forEach((client: WebSocket) => {
           const clientWithId = client as any;
           if (clientWithId.readyState === WebSocket.OPEN) {
@@ -863,7 +863,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const alertData = { ...req.body, userId };
 
-      const validatedData = insertAlertSchema.parse(alertData);
+      const validatedData = insertAlertSchema.```python
+parse(alertData);
       const alert = await storage.createAlert(validatedData);
 
       // ✅ Usa la nueva función para notificar solo a los clientes del usuario
@@ -955,7 +956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if alert exists before attempting deletion
       const alerts = await storage.getAlerts(userId);
       const alertExists = alerts.some(alert => alert.id === id);
-      
+
       if (!alertExists) {
         return res.status(404).json({ message: "Alert not found" });
       }
@@ -1740,7 +1741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         playbackData.push({
           date: date.toISOString().split('T')[0],
           plays: Math.floor(Math.random() * 200) + 100,
-          views: Math.floor(Math.random() * 1000) + 500,
+          views: Math.floor(Mathnumber() * 1000) + 500,
           duration: Math.floor(Math.random() * 10000) + 5000
         });
       }
