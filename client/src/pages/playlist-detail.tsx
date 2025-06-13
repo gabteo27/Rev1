@@ -227,15 +227,23 @@ export default function PlaylistDetail() {
       case 'pip_bottom_right':
         validZones = ['main', 'pip'];
         break;
+      case 'carousel':
+        validZones = ['main'];
+        break;
+      case 'web_scroll':
+        validZones = ['main'];
+        break;
       case 'single_zone':
       default:
         validZones = ['main'];
         break;
     }
     
-    return playlistData.items.filter((item: any) => 
-      validZones.includes(item.zone || 'main')
-    );
+    // Filter items by zone, defaulting to 'main' for items without zone
+    return playlistData.items.filter((item: any) => {
+      const itemZone = item.zone || 'main';
+      return validZones.includes(itemZone);
+    });
   };
 
   const calculateTotalDuration = () => {

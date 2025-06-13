@@ -392,13 +392,18 @@ export class DatabaseStorage implements IStorage {
 
   async updatePlaylist(id: number, updates: any, userId: string): Promise<Playlist | undefined> {
     try {
-      // Remove any existing updatedAt and add a proper one
-      const { updatedAt, ...cleanUpdates } = updates;
-      const updateData = { ...cleanUpdates, updatedAt: new Date() };
+      // Remove any timestamp fields that might cause issues and create clean update object
+      const { updatedAt, createdAt, ...cleanUpdates } = updates;
+      
+      // Ensure any date values are properly converted
+      const sanitizedUpdates = { ...cleanUpdates };
+      
+      // Add proper updatedAt timestamp
+      sanitizedUpdates.updatedAt = new Date();
 
       const [item] = await db
         .update(playlists)
-        .set(updateData)
+        .set(sanitizedUpdates)
         .where(and(eq(playlists.id, id), eq(playlists.userId, userId)))
         .returning();
       return item;

@@ -75,15 +75,14 @@ export default function Alerts() {
 
       if (remainingTime > 0) {
         const timeoutId = setTimeout(() => {
-          // Only delete if the component is still mounted and the alert still exists
-          queryClient.getQueryData(["/api/alerts"])?.then((currentAlertsData: any) => {
-            const stillExists = currentAlertsData?.find((a: any) => a.id === alert.id && a.isActive);
+          // Check if alert still exists before deleting
+          const currentAlerts = queryClient.getQueryData(["/api/alerts"]) as any[];
+          if (currentAlerts) {
+            const stillExists = currentAlerts.find((a: any) => a.id === alert.id && a.isActive);
             if (stillExists) {
               deleteAlertMutation.mutate(alert.id);
             }
-          }).catch(() => {
-            // Ignore errors when checking current alerts
-          });
+          }
         }, remainingTime * 1000);
 
         timeouts.push(timeoutId);
