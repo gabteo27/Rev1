@@ -742,6 +742,9 @@ export default function Playlists() {
                                           </div>
                                           <div className="flex-1 min-w-0">
                                             <h4 className="font-medium truncate">{item.contentItem?.title || 'Sin título'}</h4>
+                                            <p className="text-xs text-muted-foreground">
+                                              {formatDuration(item.customDuration || item.contentItem?.duration || 0)}
+                                            </p>
                                           </div>
                                           <Button
                                             variant="ghost"
