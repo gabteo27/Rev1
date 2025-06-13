@@ -1293,6 +1293,187 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Screen Groups routes
+  app.get("/api/screen-groups", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groups = await storage.getScreenGroups(userId);
+      res.json(groups);
+    } catch (error) {
+      console.error("Error fetching screen groups:", error);
+      res.status(500).json({ message: "Failed to fetch screen groups" });
+    }
+  });
+
+  app.post("/api/screen-groups", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupData = { ...req.body, userId };
+
+      const validatedData = insertScreenGroupSchema.parse(groupData);
+      const group = await storage.createScreenGroup(validatedData);
+
+      // Broadcast group creation to all user's clients
+      broadcastToUser(userId, 'screen-group-created', group);
+
+      res.json(group);
+    } catch (error) {
+      console.error("Error creating screen group:", error);
+      res.status(500).json({ message: "Failed to create screen group" });
+    }
+  });
+
+  app.put("/api/screen-groups/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+
+      const group = await storage.updateScreenGroup(id, updates, userId);
+      if (!group) {
+        return res.status(404).json({ message: "Screen group not found" });
+      }
+
+      // Broadcast group update to all user's clients
+      broadcastToUser(userId, 'screen-group-updated', group);
+
+      // If playlist changed, broadcast to affected screens
+      if (updates.playlistId !== undefined && group.screenIds) {
+        const wssInstance = app.get('wss') as WebSocketServer;
+        
+        group.screenIds.forEach(screenId => {
+          wssInstance.clients.forEach((client: WebSocket) => {
+            const clientWithId = client as any;
+            if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === screenId) {
+              console.log(`Sending playlist change to screen ${screenId} from group ${id}`);
+              clientWithId.send(JSON.stringify({
+                type: 'playlist-change',
+                data: { 
+                  playlistId: updates.playlistId,
+                  screenId: screenId,
+                  groupId: id,
+                  timestamp: new Date().toISOString(),
+                  action: 'reload'
+                }
+              }));
+            }
+          });
+        });
+      }
+
+      res.json(group);
+    } catch (error) {
+      console.error("Error updating screen group:", error);
+      res.status(500).json({ message: "Failed to update screen group" });
+    }
+  });
+
+  app.delete("/api/screen-groups/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+
+      const success = await storage.deleteScreenGroup(id, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Screen group not found" });
+      }
+
+      // Broadcast group deletion to all user's clients
+      broadcastToUser(userId, 'screen-group-deleted', { groupId: id });
+
+      res.json({ message: "Screen group deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting screen group:", error);
+      res.status(500).json({ message: "Failed to delete screen group" });
+    }
+  });
+
+  app.post("/api/screen-groups/:id/play", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupId = parseInt(req.params.id);
+
+      // Get group data
+      const groups = await storage.getScreenGroups(userId);
+      const group = groups.find(g => g.id === groupId);
+
+      if (!group) {
+        return res.status(404).json({ message: "Screen group not found" });
+      }
+
+      // Broadcast play command to all screens in the group
+      const wssInstance = app.get('wss') as WebSocketServer;
+      
+      if (group.screenIds) {
+        group.screenIds.forEach(screenId => {
+          wssInstance.clients.forEach((client: WebSocket) => {
+            const clientWithId = client as any;
+            if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === screenId) {
+              console.log(`Sending play command to screen ${screenId} from group ${groupId}`);
+              clientWithId.send(JSON.stringify({
+                type: 'group-play',
+                data: { 
+                  groupId: groupId,
+                  screenId: screenId,
+                  action: 'play',
+                  timestamp: new Date().toISOString()
+                }
+              }));
+            }
+          });
+        });
+      }
+
+      res.json({ message: "Play command sent to group", groupId });
+    } catch (error) {
+      console.error("Error playing group:", error);
+      res.status(500).json({ message: "Failed to play group" });
+    }
+  });
+
+  app.post("/api/screen-groups/:id/pause", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupId = parseInt(req.params.id);
+
+      // Get group data
+      const groups = await storage.getScreenGroups(userId);
+      const group = groups.find(g => g.id === groupId);
+
+      if (!group) {
+        return res.status(404).json({ message: "Screen group not found" });
+      }
+
+      // Broadcast pause command to all screens in the group
+      const wssInstance = app.get('wss') as WebSocketServer;
+      
+      if (group.screenIds) {
+        group.screenIds.forEach(screenId => {
+          wssInstance.clients.forEach((client: WebSocket) => {
+            const clientWithId = client as any;
+            if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === screenId) {
+              console.log(`Sending pause command to screen ${screenId} from group ${groupId}`);
+              clientWithId.send(JSON.stringify({
+                type: 'group-pause',
+                data: { 
+                  groupId: groupId,
+                  screenId: screenId,
+                  action: 'pause',
+                  timestamp: new Date().toISOString()
+                }
+              }));
+            }
+          });
+        });
+      }
+
+      res.json({ message: "Pause command sent to group", groupId });
+    } catch (error) {
+      console.error("Error pausing group:", error);
+      res.status(500).json({ message: "Failed to pause group" });
+    }
+  });
+
   // Analytics routes
   app.get("/api/analytics", isAuthenticated, async (req: any, res) => {
     try {

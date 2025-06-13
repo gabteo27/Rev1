@@ -503,7 +503,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           if (currentPlaylistId !== lastPlaylistId) {
             console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${currentPlaylistId}`);
             lastPlaylistId = currentPlaylistId;
-            
+
             // Invalidate queries to fetch new data instead of forcing reload
             queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
             queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
@@ -532,10 +532,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     const handleWebSocketMessage = (data: any) => {
       console.log('WebSocket message received:', data);
-      
+
       if (data.type === 'playlist-change') {
         console.log('Playlist change detected via WebSocket:', data.data);
-        
+
         // Instead of reloading, just invalidate queries to refetch data
         queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
         queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
@@ -545,7 +545,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     // Connect to WebSocket
     wsManager.connect();
-    
+
     // Subscribe to playlist changes
     const unsubscribe = wsManager.subscribe('playlist-change', handleWebSocketMessage);
 

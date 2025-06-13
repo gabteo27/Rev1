@@ -140,7 +140,9 @@ export const screenGroups = pgTable("screen_groups", {
   name: varchar("name").notNull(),
   description: text("description"),
   screenIds: integer("screen_ids").array(),
+  playlistId: integer("playlist_id").references(() => playlists.id),
   syncEnabled: boolean("sync_enabled").default(true),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

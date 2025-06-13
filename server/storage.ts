@@ -8,6 +8,7 @@ import {
   widgets,
   schedules,
   deployments,
+  screenGroups,
   type User,
   type UpsertUser,
   type ContentItem,
@@ -26,6 +27,8 @@ import {
   type InsertSchedule,
   type Deployment,
   type InsertDeployment,
+  type ScreenGroup,
+  type InsertScreenGroup,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, exists, inArray } from "drizzle-orm";
@@ -138,6 +141,12 @@ export interface IStorage {
     deployment: Partial<InsertDeployment>,
     userId: string,
   ): Promise<Deployment | undefined>;
+
+    // Screen Group operations
+    getScreenGroups(userId: string): Promise<ScreenGroup[]>;
+    createScreenGroup(data: InsertScreenGroup): Promise<ScreenGroup>;
+    updateScreenGroup(id: number, updates: Partial<InsertScreenGroup>, userId: string): Promise<ScreenGroup | undefined>;
+    deleteScreenGroup(id: number, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -746,6 +755,32 @@ export class DatabaseStorage implements IStorage {
       .where(eq(screens.authToken, token));
     return screen;
   }
+
+    // Screen Group methods
+    async getScreenGroups(userId: string): Promise<ScreenGroup[]> {
+      return await db.select().from(screenGroups).where(eq(screenGroups.userId, userId));
+    }
+  
+    async createScreenGroup(data: InsertScreenGroup): Promise<ScreenGroup> {
+      const [group] = await db.insert(screenGroups).values(data).returning();
+      return group;
+    }
+  
+    async updateScreenGroup(id: number, updates: Partial<InsertScreenGroup>, userId: string): Promise<ScreenGroup | undefined> {
+      const [group] = await db
+        .update(screenGroups)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(and(eq(screenGroups.id, id), eq(screenGroups.userId, userId)))
+        .returning();
+      return group;
+    }
+  
+    async deleteScreenGroup(id: number, userId: string): Promise<boolean> {
+      const result = await db
+        .delete(screenGroups)
+        .where(and(eq(screenGroups.id, id), eq(screenGroups.userId, userId)));
+      return (result.rowCount ?? 0) > 0;
+    }
 }
 
 export const storage = new DatabaseStorage();

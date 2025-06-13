@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
   Tv,
@@ -21,8 +22,10 @@ import {
   Edit,
   Eye,
   EyeOff,
+  Users
 } from "lucide-react";
 import { ScreenPreview } from "@/components/screen/ScreenPreview";
+import ScreenGroups from "./screen-groups";
 
 
 const initialPairFormState = { pairingCode: "", name: "", location: "", playlistId: "" };
@@ -139,13 +142,7 @@ export default function Screens() {
     <div className="flex flex-col h-full">
       <Header
         title="Pantallas"
-        subtitle="Gestiona tus dispositivos de visualización"
-        actions={
-          <Button onClick={() => setIsPairModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Pantalla
-          </Button>
-        }
+        subtitle="Gestiona tus dispositivos de visualización y grupos"
       />
 
       {/* MODAL PARA EMPAREJAR PANTALLA */}
@@ -238,59 +235,118 @@ export default function Screens() {
           )}
         </DialogContent>
       </Dialog>
-      {/* LISTA DE PANTALLAS */}
-      <div className="flex-1 px-4 sm:px-6 py-6 overflow-auto">
-        {screens.length === 0 ? (
-          <Card className="border-dashed"><CardContent className="p-12 text-center">...</CardContent></Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {screens.map((screen) => (
-              <Card key={screen.id} className="flex flex-col hover:shadow-md transition-shadow">
-                {/* ✅ MODIFICADO: Se añade flex-col y flex-grow para una estructura flexible vertical. El padding se hace responsivo. */}
-                <CardContent className="p-4 md:p-5 flex-grow flex flex-col">
+      {/* PESTAÑAS PRINCIPALES */}
+      <div className="flex-1 flex flex-col">
+        <Tabs defaultValue="screens" className="flex-1 flex flex-col">
+          <TabsList className="grid w-full max-w-md mx-4 sm:mx-6 mt-4 grid-cols-2">
+            <TabsTrigger value="screens" className="flex items-center gap-2">
+              <Monitor className="w-4 h-4" />
+              Pantallas
+            </TabsTrigger>
+            <TabsTrigger value="groups" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Grupos
+            </TabsTrigger>
+          </TabsList>
 
-                  {/* ✅ MODIFICADO: La sección del header ahora tiene más espacio y el título es truncado si es muy largo. */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0"><Tv className="w-5 h-5 text-slate-500"/></div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-slate-900 leading-tight text-base lg:text-lg truncate" title={screen.name}>{screen.name}</h4>
-                        {screen.location && <p className="text-sm text-slate-500 truncate">{screen.location}</p>}
-                      </div>
-                    </div>
-                    <div className="flex-shrink-0">
-                        {getStatusBadge(screen.isOnline, screen.lastSeen)}
-                    </div>
-                  </div>
-                  <ScreenPreview screen={screen} onPlayClick={setLivePreviewScreenId} />
-                  {/* ✅ MODIFICADO: La sección de contenido ahora ocupa el espacio sobrante. */}
-                  <div className="flex-grow my-4 space-y-2 text-sm">
-                    <div className="text-slate-600">
-                      <span className="font-medium text-slate-700">Playlist:</span> {playlists.find(p => p.id === screen.playlistId)?.name || <span className="italic">Ninguna</span>}
-                    </div>
-                    <div className="text-slate-600">
-                      <span className="font-medium text-slate-700">Última vez online:</span> {formatDate(screen.lastSeen)}
-                    </div>
-                  </div>
-
-                  {/* ✅ MODIFICADO: Las acciones ahora están en un contenedor separado que se alinea al final. */}
-                  <div className="pt-4 border-t flex justify-end items-center space-x-1">
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={() => window.open(`/screen-player?screenId=${screen.id}`, '_blank')}
-                      title="Abrir en nueva pestaña"
-                    >
-                      <Monitor className="w-4 h-4" />
+          <TabsContent value="screens" className="flex-1 flex flex-col mt-0">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b">
+              <div>
+                <h2 className="text-lg font-semibold">Lista de Pantallas</h2>
+                <p className="text-sm text-slate-600">Gestiona tus dispositivos individuales</p>
+              </div>
+              <Button onClick={() => setIsPairModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nueva Pantalla
+              </Button>
+            </div>
+            
+            <div className="flex-1 px-4 sm:px-6 py-6 overflow-auto">
+              {screens.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="p-12 text-center">
+                    <Tv className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-slate-900 mb-2">No hay pantallas</h3>
+                    <p className="text-slate-500 mb-4">
+                      Conecta tu primera pantalla para comenzar
+                    </p>
+                    <Button onClick={() => setIsPairModalOpen(true)}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Emparejar Primera Pantalla
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleEditScreen(screen)} title="Editar"><Edit className="w-4 h-4" /></Button>
-                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => deleteMutation.mutate(screen.id)} disabled={deleteMutation.isPending} title="Eliminar"><Trash2 className="w-4 h-4" /></Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {screens.map((screen) => (
+                    <Card key={screen.id} className="flex flex-col hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 md:p-5 flex-grow flex flex-col">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Tv className="w-5 h-5 text-slate-500"/>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-slate-900 leading-tight text-base lg:text-lg truncate" title={screen.name}>
+                                {screen.name}
+                              </h4>
+                              {screen.location && <p className="text-sm text-slate-500 truncate">{screen.location}</p>}
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0">
+                            {getStatusBadge(screen.isOnline, screen.lastSeen)}
+                          </div>
+                        </div>
+                        
+                        <ScreenPreview screen={screen} onPlayClick={setLivePreviewScreenId} />
+                        
+                        <div className="flex-grow my-4 space-y-2 text-sm">
+                          <div className="text-slate-600">
+                            <span className="font-medium text-slate-700">Playlist:</span> {
+                              playlists.find(p => p.id === screen.playlistId)?.name || 
+                              <span className="italic">Ninguna</span>
+                            }
+                          </div>
+                          <div className="text-slate-600">
+                            <span className="font-medium text-slate-700">Última vez online:</span> {formatDate(screen.lastSeen)}
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t flex justify-end items-center space-x-1">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => window.open(`/screen-player?screenId=${screen.id}`, '_blank')}
+                            title="Abrir en nueva pestaña"
+                          >
+                            <Monitor className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleEditScreen(screen)} title="Editar">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="text-red-500 hover:text-red-600" 
+                            onClick={() => deleteMutation.mutate(screen.id)} 
+                            disabled={deleteMutation.isPending} 
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="groups" className="flex-1 flex flex-col mt-0">
+            <ScreenGroups />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
