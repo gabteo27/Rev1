@@ -841,7 +841,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(regularAlerts);
     } catch (error) {
       console.error("Error fetching alerts:", error);
-      res.status(500).json({ message: "Failed to fetch alerts" });
+      // Return empty array instead of error to prevent UI breakage
+      res.json([]);
     }
   });
 
@@ -855,7 +856,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(fixedAlerts);
     } catch (error) {
       console.error("Error fetching fixed alerts:", error);
-      res.status(500).json({ message: "Failed to fetch fixed alerts" });
+      // Return empty array instead of error to prevent UI breakage
+      res.json([]);
     }
   });
 

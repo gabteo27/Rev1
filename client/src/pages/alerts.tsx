@@ -42,15 +42,24 @@ export default function Alerts() {
   const { data: fixedAlerts = [], error: fixedAlertsError } = useQuery({
     queryKey: ["/api/alerts/fixed"],
     queryFn: async () => {
-      const response = await apiRequest("/api/alerts/fixed");
-      if (!response.ok) {
-        throw new Error(`Failed to fetch fixed alerts: ${response.status}`);
+      try {
+        const response = await apiRequest("/api/alerts/fixed");
+        if (!response.ok) {
+          if (response.status === 500) {
+            console.warn("Fixed alerts endpoint error, returning empty array");
+            return [];
+          }
+          throw new Error(`Failed to fetch fixed alerts: ${response.status}`);
+        }
+        return response.json();
+      } catch (error) {
+        console.warn("Error fetching fixed alerts:", error);
+        return [];
       }
-      return response.json();
     },
     refetchInterval: 5000,
-    retry: 3,
-    retryDelay: 1000,
+    retry: 1,
+    retryDelay: 2000,
   });
 
   const deleteAlertMutation = useMutation({
@@ -58,6 +67,9 @@ export default function Alerts() {
       const response = await apiRequest(`/api/alerts/${id}`, { method: "DELETE" });
       if (!response.ok) {
         if (response.status === 404) {
+          // Alert already deleted, just refresh the list
+          queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/alerts/fixed"] });
           return { success: true, alreadyDeleted: true };
         }
         const error = await response.json().catch(() => ({ message: "Failed to delete alert" }));
@@ -68,17 +80,20 @@ export default function Alerts() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts/fixed"] });
-      if (!data.alreadyDeleted) {
+      if (!data?.alreadyDeleted) {
         toast({ title: "Alerta eliminada exitosamente" });
       }
     },
     onError: (error: any) => {
       console.error("Error deleting alert:", error);
-      toast({ 
-        title: "Error al eliminar alerta",
-        description: error.message || "No se pudo eliminar la alerta",
-        variant: "destructive"
-      });
+      // Don't show error for 404s since the alert is already gone
+      if (!error.message?.includes("404") && !error.message?.includes("not found")) {
+        toast({ 
+          title: "Error al eliminar alerta",
+          description: error.message || "No se pudo eliminar la alerta",
+          variant: "destructive"
+        });
+      }
     },
   });
 

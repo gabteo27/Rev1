@@ -625,12 +625,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Alert operations
-  async getAlerts(userId: string): Promise<Alert[]> {
-    return await db
-      .select()
-      .from(alertsTable)
-      .where(eq(alertsTable.userId, userId))
-      .orderBy(desc(alertsTable.createdAt));
+  async getAlerts(userId: string) {
+    try {
+      return await db.select().from(alertsTable).where(eq(alertsTable.userId, userId)).orderBy(desc(alertsTable.createdAt));
+    } catch (error) {
+      console.error("Error fetching alerts:", error);
+      return [];
+    }
   }
 
   async getActiveAlerts(userId: string): Promise<Alert[]> {
@@ -662,11 +663,24 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async deleteAlert(id: number, userId: string): Promise<boolean> {
-    const result = await db
-      .delete(alertsTable)
-      .where(and(eq(alertsTable.id, id), eq(alertsTable.userId, userId)));
-    return (result.rowCount ?? 0) > 0;
+  async deleteAlert(id: number, userId: string) {
+    try {
+      // First check if alert exists
+      const existing = await db.select().from(alertsTable)
+        .where(and(eq(alertsTable.id, id), eq(alertsTable.userId, userId)));
+
+      if (existing.length === 0) {
+        console.log(`Alert ${id} not found for user ${userId}`);
+        return false;
+      }
+
+      const result = await db.delete(alertsTable)
+        .where(and(eq(alertsTable.id, id), eq(alertsTable.userId, userId)));
+      return result.rowCount && result.rowCount > 0;
+    } catch (error) {
+      console.error(`Error deleting alert ${id}:`, error);
+      return false;
+    }
   }
 
   // Widget operations

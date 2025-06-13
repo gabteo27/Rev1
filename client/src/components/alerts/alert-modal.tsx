@@ -32,6 +32,13 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
     isFixed: false
   });
 
+  const [message, setMessage] = useState("");
+  const [backgroundColor, setBackgroundColor] = useState("#ef4444");
+  const [textColor, setTextColor] = useState("#ffffff");
+  const [duration, setDuration] = useState(30);
+  const [targetScreens, setTargetScreens] = useState<number[]>([]);
+  const [isFixed, setIsFixed] = useState(false);
+
   useEffect(() => {
     if (alert) {
       setFormData({
@@ -42,6 +49,12 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
         targetScreens: Array.isArray(alert.targetScreens) ? alert.targetScreens : [],
         isFixed: alert.isFixed || false
       });
+      setMessage(alert.message || "");
+      setBackgroundColor(alert.backgroundColor || "#ef4444");
+      setTextColor(alert.textColor || "#ffffff");
+      setDuration(alert.duration || 30);
+      setTargetScreens(Array.isArray(alert.targetScreens) ? alert.targetScreens : []);
+      setIsFixed(alert.isFixed || false);
     } else {
       setFormData({
         message: "",
@@ -51,6 +64,12 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
         targetScreens: [],
         isFixed: false
       });
+      setMessage("");
+      setBackgroundColor("#ef4444");
+      setTextColor("#ffffff");
+      setDuration(30);
+      setTargetScreens([]);
+      setIsFixed(false);
     }
   }, [alert, open]);
 
@@ -66,7 +85,7 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({ message: "Failed to save alert" }));
         throw new Error(error.message || "Failed to save alert");
       }
 
@@ -79,9 +98,17 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
       });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/alerts/fixed"] });
+      // Reset form
+      setMessage("");
+      setBackgroundColor("#ef4444");
+      setTextColor("#ffffff");
+      setDuration(30);
+      setTargetScreens([]);
+      setIsFixed(false);
       onClose();
     },
     onError: (error: any) => {
+      console.error("Error creating alert:", error);
       toast({
         title: "Error",
         description: error.message || `No se pudo ${alert ? 'actualizar' : 'crear'} la alerta.`,
@@ -121,6 +148,9 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
         ? [...prev.targetScreens, screenId]
         : prev.targetScreens.filter(id => id !== screenId)
     }));
+    setTargetScreens(checked 
+      ? [...targetScreens, screenId]
+      : targetScreens.filter(id => id !== screenId));
   };
 
   const colorPresets = [
@@ -158,11 +188,15 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
           <div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg">
             <Switch
               checked={formData.isFixed}
-              onCheckedChange={(checked) => setFormData(prev => ({ 
-                ...prev, 
-                isFixed: checked,
-                duration: checked ? 0 : 30
-              }))}
+              onCheckedChange={(checked) => {
+                setFormData(prev => ({ 
+                  ...prev, 
+                  isFixed: checked,
+                  duration: checked ? 0 : 30
+                }));
+                setIsFixed(checked);
+                setDuration(checked ? 0 : 30);
+              }}
             />
             <div className="flex-1">
               <Label className="text-sm font-medium">
@@ -188,7 +222,10 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
             <Textarea
               id="message"
               value={formData.message}
-              onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, message: e.target.value }));
+                setMessage(e.target.value);
+              }}
               placeholder="Ingresa el mensaje de la alerta..."
               className="min-h-[80px]"
               required
@@ -205,7 +242,11 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
                 min="1"
                 max="3600"
                 value={formData.duration}
-                onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) || 30 }))}
+                onChange={(e) => {
+                  const parsedDuration = parseInt(e.target.value) || 30;
+                  setFormData(prev => ({ ...prev, duration: parsedDuration }));
+                  setDuration(parsedDuration);
+                }}
                 required
               />
               <p className="text-xs text-muted-foreground">
@@ -231,11 +272,15 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
                         ? "#000"
                         : "transparent"
                   }}
-                  onClick={() => setFormData(prev => ({
-                    ...prev,
-                    backgroundColor: preset.bg,
-                    textColor: preset.text
-                  }))}
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      backgroundColor: preset.bg,
+                      textColor: preset.text
+                    }));
+                    setBackgroundColor(preset.bg);
+                    setTextColor(preset.text);
+                  }}
                 >
                   <div className="text-xs font-medium">{preset.name}</div>
                 </button>
@@ -252,13 +297,19 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
                   id="backgroundColor"
                   type="color"
                   value={formData.backgroundColor}
-                  onChange={(e) => setFormData(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, backgroundColor: e.target.value }));
+                    setBackgroundColor(e.target.value);
+                  }}
                   className="w-16 h-10 p-1 rounded"
                 />
                 <Input
                   type="text"
                   value={formData.backgroundColor}
-                  onChange={(e) => setFormData(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, backgroundColor: e.target.value }));
+                    setBackgroundColor(e.target.value);
+                  }}
                   className="flex-1"
                   placeholder="#ef4444"
                 />
@@ -272,13 +323,19 @@ export default function AlertModal({ open, onClose, screens = [], alert }: Alert
                   id="textColor"
                   type="color"
                   value={formData.textColor}
-                  onChange={(e) => setFormData(prev => ({ ...prev, textColor: e.target.value }))}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, textColor: e.target.value }));
+                    setTextColor(e.target.value);
+                  }}
                   className="w-16 h-10 p-1 rounded"
                 />
                 <Input
                   type="text"
                   value={formData.textColor}
-                  onChange={(e) => setFormData(prev => ({ ...prev, textColor: e.target.value }))}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, textColor: e.target.value }));
+                    setTextColor(e.target.value);
+                  }}
                   className="flex-1"
                   placeholder="#ffffff"
                 />
