@@ -23,7 +23,10 @@ import {
   Trash2,
   Edit,
   Download,
-  Folder
+  Folder,
+  Search,
+  Grid3X3,
+  List
 } from "lucide-react";
 
 export default function Content() {
@@ -31,6 +34,8 @@ export default function Content() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingContent, setEditingContent] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { toast } = useToast();
 
   const { data: content = [], isLoading, error, refetch } = useQuery({
@@ -165,9 +170,16 @@ export default function Content() {
 
   const categories = ["Promociones", "Institucional", "Noticias", "Entretenimiento", "Información"];
 
-  const filteredContent = selectedCategory 
-    ? content.filter((item: any) => item.category === selectedCategory)
-    : content;
+  const filteredContent = content.filter((item: any) => {
+    const matchesCategory = selectedCategory ? item.category === selectedCategory : true;
+    const matchesSearch = searchTerm ? 
+      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+      : true;
+    return matchesCategory && matchesSearch;
+  });
 
   const handleEdit = (item: any) => {
     setEditingContent({
@@ -251,30 +263,63 @@ export default function Content() {
       />
 
       <div className="flex-1 px-6 py-6 overflow-y-auto min-h-0">
-        {/* Category Filter */}
-        <div className="mb-6">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={selectedCategory === null ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategory(null)}
-            >
-              Todos
-            </Button>
-            {categories.map((category) => (
+        {/* Search and Controls */}
+        <div className="mb-6 space-y-4">
+          {/* Search Bar */}
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Buscar contenido..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Controls Row */}
+          <div className="flex items-center justify-between">
+            {/* Category Filter */}
+            <div className="flex flex-wrap gap-2">
               <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
+                variant={selectedCategory === null ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => setSelectedCategory(null)}
               >
-                {category}
+                Todos
               </Button>
-            ))}
+              {categories.map((category) => (
+                <Button
+                  key={category}
+                  variant={selectedCategory === category ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant={viewMode === "grid" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Content Grid */}
+        {/* Content Display */}
         {!filteredContent || filteredContent.length === 0 ? (
           <Card className="border-dashed border-2">
             <CardContent className="p-12 text-center">
@@ -282,10 +327,12 @@ export default function Content() {
                 <Folder className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">
-                {selectedCategory ? `No hay contenido en ${selectedCategory}` : "No tienes contenido aún"}
+                {searchTerm ? "No se encontró contenido" :
+                 selectedCategory ? `No hay contenido en ${selectedCategory}` : "No tienes contenido aún"}
               </h3>
               <p className="text-muted-foreground mb-6">
-                {selectedCategory 
+                {searchTerm ? "Intenta con otro término de búsqueda." :
+                 selectedCategory 
                   ? "Intenta seleccionar otra categoría o sube nuevo contenido."
                   : "Comienza subiendo imágenes, videos, PDFs o agregando páginas web."
                 }
@@ -296,7 +343,8 @@ export default function Content() {
               </Button>
             </CardContent>
           </Card>
-        ) : (
+        ) : viewMode === "grid" ? (
+          /* Grid View */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredContent.map((item: any) => (
               <Card key={item.id} className="hover:shadow-lg transition-shadow">
@@ -416,6 +464,115 @@ export default function Content() {
                       <Button size="sm" className="h-8 px-3 text-xs">
                         Usar
                       </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          /* List View */
+          <div className="space-y-4">
+            {filteredContent.map((item: any) => (
+              <Card key={item.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-4">
+                    {/* Content Preview */}
+                    <div className="w-20 h-16 bg-muted rounded-lg flex-shrink-0 overflow-hidden">
+                      {item.type === "image" && item.url ? (
+                        <img 
+                          src={item.url} 
+                          alt={item.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          {getContentIcon(item.type)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0 mr-4">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h4 className="font-semibold truncate">
+                              {item.title}
+                            </h4>
+                            <Badge className={getContentBadgeColor(item.type)}>
+                              {item.type}
+                            </Badge>
+                          </div>
+                          
+                          {item.description && (
+                            <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
+                              {item.description}
+                            </p>
+                          )}
+
+                          <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                            <div className="flex items-center">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              {formatDate(item.createdAt)}
+                            </div>
+                            {item.fileSize && (
+                              <div className="flex items-center">
+                                <Download className="w-3 h-3 mr-1" />
+                                {formatFileSize(item.fileSize)}
+                              </div>
+                            )}
+                            {item.category && (
+                              <Badge variant="outline" className="text-xs">
+                                {item.category}
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Tags */}
+                          {item.tags && item.tags.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {item.tags.slice(0, 4).map((tag: string, index: number) => (
+                                <Badge key={index} variant="secondary" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {item.tags.length > 4 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{item.tags.length - 4}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-2"
+                            onClick={() => handleEdit(item)}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-2 text-red-600 hover:text-red-700"
+                            onClick={() => deleteMutation.mutate(item.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                          <Button size="sm" className="h-8 px-3 text-xs">
+                            Usar
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
