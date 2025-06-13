@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
@@ -15,17 +16,17 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Plus, List, FileText, GripVertical, Trash2, Edit, Settings, Layout,
   SplitSquareHorizontal, SplitSquareVertical, PictureInPicture, Image, Video, Globe, Type,
-  Eye, Clock, Play
+  Eye, Clock, Play, Check
 } from "lucide-react";
 
 // Tipos para mayor claridad
 type Playlist = any;
 type PlaylistItem = any;
 type ContentItem = any;
-type FullPlaylistItem = PlaylistItem & { contentItem: ContentItem };
 
 // Definición de las zonas para cada layout
 const LAYOUT_ZONES: Record<string, { id: string; title: string }[]> = {
@@ -36,13 +37,16 @@ const LAYOUT_ZONES: Record<string, { id: string; title: string }[]> = {
 };
 
 export default function Playlists() {
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | null>(null);
-  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [layoutModalOpen, setLayoutModalOpen] = useState(false);
+  const [contentLibraryOpen, setContentLibraryOpen] = useState(false);
   const [newPlaylist, setNewPlaylist] = useState({ name: "", description: "", layout: "single_zone" });
   const [editingPlaylist, setEditingPlaylist] = useState<any>(null);
+  const [selectedPlaylistForLayout, setSelectedPlaylistForLayout] = useState<any>(null);
+  const [selectedZoneForContent, setSelectedZoneForContent] = useState<string>("");
+  const [selectedContent, setSelectedContent] = useState<Set<number>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
   // --- QUERIES ---
@@ -82,13 +86,13 @@ export default function Playlists() {
     retry: 1,
   });
 
-  const { data: playlistData, isLoading: playlistLoading, refetch: refetchPlaylist } = useQuery({
-    queryKey: ["/api/playlists", selectedPlaylistId],
-    enabled: !!selectedPlaylistId,
+  const { data: playlistData, refetch: refetchPlaylist } = useQuery({
+    queryKey: ["/api/playlists", selectedPlaylistForLayout?.id],
+    enabled: !!selectedPlaylistForLayout?.id,
     queryFn: async () => {
-      if (!selectedPlaylistId) return null;
+      if (!selectedPlaylistForLayout?.id) return null;
       try {
-        const response = await apiRequest(`/api/playlists/${selectedPlaylistId}`);
+        const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}`);
         if (!response.ok) {
           throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
@@ -168,7 +172,7 @@ export default function Playlists() {
 
   const updateLayoutMutation = useMutation({
     mutationFn: async (layout: string) => {
-      const response = await apiRequest(`/api/playlists/${selectedPlaylistId}`, {
+      const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}`, {
         method: "PUT",
         body: JSON.stringify({ layout }),
         headers: {
@@ -181,7 +185,8 @@ export default function Playlists() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
+      refetchPlaylist();
       toast({
         title: "Layout actualizado",
         description: "El layout de la playlist se ha cambiado.",
@@ -196,31 +201,39 @@ export default function Playlists() {
     },
   });
 
-  const addItemMutation = useMutation({
-    mutationFn: async ({ contentItemId, zone }: { contentItemId: number, zone: string }) => {
+  const addMultipleItemsMutation = useMutation({
+    mutationFn: async ({ contentIds, zone }: { contentIds: number[], zone: string }) => {
       const currentItems = playlistData?.items?.filter((item: any) => item.zone === zone) || [];
-      const response = await apiRequest(`/api/playlists/${selectedPlaylistId}/items`, {
-        method: "POST",
-        body: JSON.stringify({ 
-          contentItemId, 
-          order: currentItems.length,
-          zone: zone || 'main'
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      let order = currentItems.length;
+
+      const promises = contentIds.map(async (contentItemId) => {
+        const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}/items`, {
+          method: "POST",
+          body: JSON.stringify({ 
+            contentItemId, 
+            order: order++,
+            zone: zone || 'main'
+          }),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
       });
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      return response.json();
+
+      return Promise.all(promises);
     },
     onSuccess: () => {
       refetchPlaylist();
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      setContentLibraryOpen(false);
+      setSelectedContent(new Set());
       toast({
         title: "Contenido agregado",
-        description: "El elemento se ha agregado a la playlist.",
+        description: `Se agregaron ${selectedContent.size} elementos a la playlist.`,
       });
     },
     onError: (error: any) => {
@@ -259,36 +272,37 @@ export default function Playlists() {
     },
   });
 
-  const bulkDeleteMutation = useMutation({
-    mutationFn: async (itemIds: number[]) => {
-      await Promise.all(itemIds.map(async id => {
-        const response = await apiRequest(`/api/playlist-items/${id}`, { method: "DELETE" });
-        if (!response.ok) {
-          throw new Error(`Error deleting item ${id}`);
-        }
-        return response;
-      }));
+  const deletePlaylistMutation = useMutation({
+    mutationFn: async (playlistId: number) => {
+      const response = await apiRequest(`/api/playlists/${playlistId}`, {
+        method: "DELETE"
+      });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response;
     },
     onSuccess: () => {
-      toast({ title: "Elementos eliminados" });
-      setSelectedItems(new Set());
-      refetchPlaylist();
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      toast({
+        title: "Playlist eliminada",
+        description: "La playlist se ha eliminado correctamente.",
+      });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "No se pudieron eliminar algunos elementos.",
+        description: error.message || "No se pudo eliminar la playlist.",
         variant: "destructive",
       });
     },
   });
 
-  const updateItemDurationMutation = useMutation({
-    mutationFn: async ({ itemId, duration }: { itemId: number, duration: number }) => {
+  const moveItemMutation = useMutation({
+    mutationFn: async ({ itemId, newZone, newOrder }: { itemId: number, newZone: string, newOrder: number }) => {
       const response = await apiRequest(`/api/playlist-items/${itemId}`, {
         method: "PUT",
-        body: JSON.stringify({ customDuration: duration }),
+        body: JSON.stringify({ zone: newZone, order: newOrder }),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -305,34 +319,7 @@ export default function Playlists() {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "No se pudo actualizar la duración.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deletePlaylistMutation = useMutation({
-    mutationFn: async (playlistId: number) => {
-      const response = await apiRequest(`/api/playlists/${playlistId}`, {
-        method: "DELETE"
-      });
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      setSelectedPlaylistId(null);
-      toast({
-        title: "Playlist eliminada",
-        description: "La playlist se ha eliminado correctamente.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo eliminar la playlist.",
+        description: error.message || "No se pudo mover el elemento.",
         variant: "destructive",
       });
     },
@@ -374,36 +361,25 @@ export default function Playlists() {
     }
   };
 
-  const moveItemMutation = useMutation({
-    mutationFn: async ({ itemId, newZone, newOrder }: { itemId: number, newZone: string, newOrder: number }) => {
-      const response = await apiRequest(`/api/playlist-items/${itemId}`, {
-        method: "PUT",
-        body: JSON.stringify({ zone: newZone, order: newOrder }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+  const handleOpenLayoutEditor = (playlist: any) => {
+    setSelectedPlaylistForLayout(playlist);
+    setLayoutModalOpen(true);
+  };
+
+  const handleOpenContentLibrary = (zone: string) => {
+    setSelectedZoneForContent(zone);
+    setSelectedContent(new Set());
+    setContentLibraryOpen(true);
+  };
+
+  const handleAddSelectedContent = () => {
+    if (selectedContent.size > 0) {
+      addMultipleItemsMutation.mutate({ 
+        contentIds: Array.from(selectedContent), 
+        zone: selectedZoneForContent 
       });
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      refetchPlaylist();
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      toast({
-        title: "Elemento movido",
-        description: "El elemento se ha movido correctamente.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo mover el elemento.",
-        variant: "destructive",
-      });
-    },
-  });
+    }
+  };
 
   const handleDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -413,22 +389,24 @@ export default function Playlists() {
     const newZone = destination.droppableId;
     const newOrder = destination.index;
 
-    // Solo mover si cambió la zona o el orden
     if (source.droppableId !== destination.droppableId || source.index !== destination.index) {
       moveItemMutation.mutate({ itemId, newZone, newOrder });
     }
   };
 
-  const toggleItemSelected = (itemId: number) => {
-    const newSelection = new Set(selectedItems);
-    if (newSelection.has(itemId)) newSelection.delete(itemId);
-    else newSelection.add(itemId);
-    setSelectedItems(newSelection);
+  const toggleContentSelection = (contentId: number) => {
+    const newSelection = new Set(selectedContent);
+    if (newSelection.has(contentId)) {
+      newSelection.delete(contentId);
+    } else {
+      newSelection.add(contentId);
+    }
+    setSelectedContent(newSelection);
   };
 
   // --- HELPERS ---
   const getContentIcon = (type: string) => {
-    const iconProps = { className: "w-5 h-5" };
+    const iconProps = { className: "w-4 h-4" };
     switch (type) {
       case "image": return <Image {...iconProps} />;
       case "video": return <Video {...iconProps} />;
@@ -453,7 +431,11 @@ export default function Playlists() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Allow content to be used multiple times in different zones
+  const filteredContent = allContent.filter((item: any) =>
+    item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.category?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const currentLayout = playlistData?.layout || 'single_zone';
   const zones = LAYOUT_ZONES[currentLayout as keyof typeof LAYOUT_ZONES] || [];
 
@@ -471,8 +453,8 @@ export default function Playlists() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Header 
-        title="Editor de Playlists" 
-        subtitle="Crea y gestiona layouts y secuencias de contenido"
+        title="Gestión de Playlists" 
+        subtitle="Crea y administra tus listas de reproducción"
         actions={
           <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
             <DialogTrigger asChild>
@@ -533,339 +515,80 @@ export default function Playlists() {
         }
       />
 
-      <div className="flex-1 grid grid-cols-1 xl:grid-cols-6 gap-4 p-4 min-h-0">
-
-        {/* COLUMNA 1: LISTA DE PLAYLISTS */}
-        <Card className="xl:col-span-1 flex flex-col max-h-full">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <List className="h-4 w-4" />
-              Playlists ({playlists.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto space-y-2 min-h-0">
-            {playlists.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <List className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                <p className="text-xs">No hay playlists</p>
+      <div className="flex-1 p-6 overflow-y-auto">
+        <div className="max-w-6xl mx-auto">
+          {playlists.length === 0 ? (
+            <Card className="flex items-center justify-center h-64">
+              <div className="text-center text-muted-foreground">
+                <List className="mx-auto h-12 w-12 opacity-50 mb-4" />
+                <p className="text-lg font-medium mb-2">No hay playlists</p>
+                <p className="text-sm">Crea tu primera playlist para comenzar.</p>
               </div>
-            ) : (
-              playlists.map((playlist: any) => (
-                <div
-                  key={playlist.id}
-                  className={`p-2 border rounded-md cursor-pointer transition-all text-xs ${
-                    selectedPlaylistId === playlist.id ? 'bg-primary/10 border-primary' : 'hover:bg-accent'
-                  }`}
-                  onClick={() => setSelectedPlaylistId(playlist.id)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate text-sm">{playlist.name}</h3>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <span>{playlist.totalItems || 0} items</span>
-                        <span>{Math.floor((playlist.totalDuration || 0) / 60)}m</span>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {playlists.map((playlist: any) => (
+                <Card key={playlist.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-lg truncate">{playlist.name}</CardTitle>
+                        <CardDescription className="mt-1">
+                          {playlist.description || "Sin descripción"}
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-1 ml-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditPlaylist(playlist)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeletePlaylist(playlist.id)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex gap-1 ml-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditPlaylist(playlist);
-                        }}
-                        className="h-5 w-5 p-0"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeletePlaylist(playlist.id);
-                        }}
-                        className="h-5 w-5 p-0 text-red-500 hover:text-red-600"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{playlist.totalItems || 0} elementos</span>
+                      <span>{Math.floor((playlist.totalDuration || 0) / 60)} min</span>
                     </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        {/* COLUMNAS 2-4: EDITOR VISUAL */}
-        <div className="xl:col-span-4 flex flex-col gap-4 overflow-hidden">
-          {selectedPlaylistId ? (
-            <>
-              {/* Controles de Layout */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Layout className="h-4 w-4" />
-                        Layout: {playlistData?.name || 'Cargando...'}
-                      </CardTitle>
-                      <CardDescription className="text-xs">Selecciona la distribución de zonas</CardDescription>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {playlist.layout === 'single_zone' ? 'Completa' :
+                         playlist.layout === 'split_vertical' ? 'Vertical' :
+                         playlist.layout === 'split_horizontal' ? 'Horizontal' :
+                         'PiP'}
+                      </Badge>
+                      {playlist.isActive && (
+                        <Badge variant="default" className="text-xs">
+                          Activa
+                        </Badge>
+                      )}
                     </div>
                     <Button 
                       variant="outline" 
-                      size="sm"
-                      onClick={() => setPreviewModalOpen(true)}
+                      className="w-full"
+                      onClick={() => handleOpenLayoutEditor(playlist)}
                     >
-                      <Eye className="w-4 h-4 mr-1" />
-                      Preview
+                      <Layout className="w-4 h-4 mr-2" />
+                      Editar Layout
                     </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-3">
-                  <ToggleGroup 
-                    type="single" 
-                    value={currentLayout} 
-                    onValueChange={(val) => val && updateLayoutMutation.mutate(val)}
-                    className="justify-start gap-1"
-                  >
-                    <ToggleGroupItem value="single_zone" aria-label="Pantalla completa" className="text-xs px-2 py-1">
-                      <Layout className="h-3 w-3 mr-1"/>
-                      Completa
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="split_vertical" aria-label="División vertical" className="text-xs px-2 py-1">
-                      <SplitSquareVertical className="h-3 w-3 mr-1"/>
-                      Vertical
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="split_horizontal" aria-label="División horizontal" className="text-xs px-2 py-1">
-                      <SplitSquareHorizontal className="h-3 w-3 mr-1"/>
-                      Horizontal
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="pip_bottom_right" aria-label="Picture-in-Picture" className="text-xs px-2 py-1">
-                      <PictureInPicture className="h-3 w-3 mr-1"/>
-                      PiP
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                </CardContent>
-              </Card>
-
-              {/* Editor de Zonas */}
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {playlistLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  </div>
-                ) : (
-                  <>
-                    {selectedItems.size > 0 && (
-                      <div className="p-3 bg-primary/10 rounded-md mb-4 flex items-center gap-3 sticky top-0 z-10 border border-primary/20">
-                        <Checkbox 
-                          checked={selectedItems.size > 0}
-                          onCheckedChange={() => setSelectedItems(new Set())}
-                        />
-                        <p className="text-sm font-medium">{selectedItems.size} elementos seleccionados</p>
-                        <Button 
-                          variant="destructive" 
-                          size="sm" 
-                          onClick={() => bulkDeleteMutation.mutate([...selectedItems])}
-                          disabled={bulkDeleteMutation.isPending}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2"/> 
-                          Eliminar
-                        </Button>
-                      </div>
-                    )}
-
-                    <DragDropContext onDragEnd={handleDragEnd}>
-                      <div className={`grid gap-3 ${
-                        currentLayout === 'split_vertical' ? 'grid-cols-2' : 
-                        currentLayout === 'split_horizontal' ? 'grid-rows-2 h-96' : 
-                        currentLayout === 'pip_bottom_right' ? 'grid-cols-3 grid-rows-2' :
-                        'grid-cols-1'
-                      }`}>
-                        {zones.map((zone, zoneIndex) => (
-                          <Droppable key={zone.id} droppableId={zone.id}>
-                            {(provided, snapshot) => (
-                              <Card className={`${
-                                snapshot.isDraggingOver ? 'border-primary bg-primary/5' : ''
-                              } ${
-                                currentLayout === 'pip_bottom_right' && zone.id === 'main' ? 'col-span-3 row-span-1' :
-                                currentLayout === 'pip_bottom_right' && zone.id === 'pip' ? 'col-span-1 row-span-1' :
-                                ''
-                              }`}>
-                                <CardHeader className="pb-2">
-                                  <CardTitle className="text-xs font-medium flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${zone.id === 'main' ? 'bg-blue-500' : zone.id === 'left' ? 'bg-green-500' : zone.id === 'right' ? 'bg-orange-500' : zone.id === 'top' ? 'bg-purple-500' : zone.id === 'bottom' ? 'bg-pink-500' : 'bg-red-500'}`}></div>
-                                    {zone.title}
-                                    <Badge variant="secondary" className="ml-auto text-xs px-1 py-0">
-                                      {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
-                                    </Badge>
-                                  </CardTitle>
-                                </CardHeader>
-                                <CardContent ref={provided.innerRef} {...provided.droppableProps} className="min-h-[120px] space-y-1">
-                                  {playlistData?.items?.filter((item: any) => item.zone === zone.id)
-                                    .sort((a: any, b: any) => a.order - b.order)
-                                    .map((item: any, index: number) => {
-                                      const IconComponent = getContentIcon(item.contentItem?.type || 'unknown');
-                                      const iconColor = getFileColor(item.contentItem?.type || 'unknown');
-
-                                      return (
-                                        <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
-                                          {(provided, snapshot) => (
-                                            <div
-                                              ref={provided.innerRef}
-                                              {...provided.draggableProps}
-                                              className={`flex items-center gap-2 p-2 bg-background border rounded-md transition-all text-xs ${
-                                                snapshot.isDragging ? 'shadow-lg bg-accent' : 'hover:bg-accent/50'
-                                              }`}
-                                            >
-                                              <Checkbox 
-                                                checked={selectedItems.has(item.id)} 
-                                                onCheckedChange={() => toggleItemSelected(item.id)} 
-                                                className="scale-75"
-                                              />
-                                              <div
-                                                {...provided.dragHandleProps}
-                                                className="flex items-center justify-center w-4 h-4 text-muted-foreground hover:text-foreground cursor-grab"
-                                              >
-                                                <GripVertical className="w-3 h-3" />
-                                              </div>
-                                              <div className="w-6 h-6 bg-muted rounded flex items-center justify-center flex-shrink-0">
-                                                {React.cloneElement(IconComponent, { className: `w-3 h-3 ${iconColor}` })}
-                                              </div>
-                                              <div className="flex-1 min-w-0">
-                                                <h4 className="font-medium text-xs truncate">{item.contentItem?.title || 'Sin título'}</h4>
-                                                <div className="flex items-center gap-1 mt-0.5">
-                                                  <Badge variant="outline" className="text-xs px-1 py-0 h-4">
-                                                    {item.contentItem?.type || 'unknown'}
-                                                  </Badge>
-                                                </div>
-                                              </div>
-                                              <div className="flex items-center gap-1">
-                                                <Input
-                                                  type="number"
-                                                  value={item.customDuration || item.contentItem?.duration || 0}
-                                                  onChange={(e) => {
-                                                    const newDuration = parseInt(e.target.value) || 0;
-                                                    if (newDuration > 0) {
-                                                      updateItemDurationMutation.mutate({ 
-                                                        itemId: item.id, 
-                                                        duration: newDuration 
-                                                      });
-                                                    }
-                                                  }}
-                                                  className="w-12 text-xs h-6 px-1 text-center"
-                                                  min="1"
-                                                />
-                                                <span className="text-xs text-muted-foreground">s</span>
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  onClick={() => removeItemMutation.mutate(item.id)}
-                                                  disabled={removeItemMutation.isPending}
-                                                  className="text-red-500 hover:text-red-600 h-6 w-6 p-0"
-                                                >
-                                                  <Trash2 className="w-3 h-3" />
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          )}
-                                        </Draggable>
-                                      );
-                                    })}
-                                  {provided.placeholder}
-                                  {(!playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length) && (
-                                    <div className="text-center py-4 text-muted-foreground">
-                                      <Play className="h-6 w-6 mx-auto mb-1 opacity-20" />
-                                      <p className="text-xs">Arrastra aquí</p>
-                                    </div>
-                                  )}
-                                </CardContent>
-                              </Card>
-                            )}
-                          </Droppable>
-                        ))}
-                      </div>
-                    </DragDropContext>
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            <Card className="flex items-center justify-center h-full">
-              <div className="text-center text-muted-foreground">
-                <List className="mx-auto h-12 w-12 opacity-50 mb-4" />
-                <p className="text-lg font-medium mb-2">Selecciona una playlist</p>
-                <p className="text-sm">Elige una playlist para comenzar a editar su contenido y layout.</p>
-              </div>
-            </Card>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </div>
-
-        {/* COLUMNA 6: BIBLIOTECA DE CONTENIDO */}
-        <Card className="xl:col-span-1 flex flex-col max-h-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <FileText className="h-4 w-4" />
-              Biblioteca
-            </CardTitle>
-            <CardDescription className="text-xs">Haz clic para agregar a zona específica</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto space-y-1 min-h-0">
-            {allContent.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <FileText className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                <p className="text-xs">No hay contenido</p>
-              </div>
-            ) : (
-              allContent.map((item: any) => {
-                const IconComponent = getContentIcon(item.type);
-                const iconColor = getFileColor(item.type);
-
-                return (
-                  <div
-                    key={item.id}
-                    className="group border rounded-lg transition-all hover:shadow-sm"
-                  >
-                    <div className="flex items-center gap-2 p-2">
-                      <div className="w-6 h-6 bg-muted rounded flex items-center justify-center flex-shrink-0">
-                        {React.cloneElement(IconComponent, { className: `w-3 h-3 ${iconColor}` })}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-xs truncate">{item.title}</h4>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Badge variant="outline" className="text-xs px-1 py-0 h-3">
-                            {item.type}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">{formatDuration(item.duration || 0)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Zone Selection Buttons */}
-                    {selectedPlaylistId && (
-                      <div className="border-t p-1 space-y-1">
-                        {zones.map(zone => (
-                          <Button
-                            key={zone.id}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => addItemMutation.mutate({ contentItemId: item.id, zone: zone.id })}
-                            disabled={addItemMutation.isPending}
-                            className="w-full justify-start h-6 text-xs px-2"
-                          >
-                            <div className={`w-2 h-2 rounded-full mr-1 ${zone.id === 'main' ? 'bg-blue-500' : zone.id === 'left' ? 'bg-green-500' : zone.id === 'right' ? 'bg-orange-500' : zone.id === 'top' ? 'bg-purple-500' : zone.id === 'bottom' ? 'bg-pink-500' : 'bg-red-500'}`}></div>
-                            {zone.title}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* Edit Playlist Modal */}
@@ -908,23 +631,242 @@ export default function Playlists() {
         </DialogContent>
       </Dialog>
 
-      {/* Preview Modal */}
-      <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
-        <DialogContent className="max-w-4xl">
+      {/* Layout Editor Modal */}
+      <Dialog open={layoutModalOpen} onOpenChange={setLayoutModalOpen}>
+        <DialogContent className="max-w-6xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>Vista Previa de Playlist</DialogTitle>
+            <DialogTitle>Editar Layout - {selectedPlaylistForLayout?.name}</DialogTitle>
           </DialogHeader>
-          {selectedPlaylistId && (
-            <div className="aspect-video bg-black rounded-lg overflow-hidden">
-              <iframe 
-                src={`/screen-player?playlistId=${selectedPlaylistId}&preview=true`} 
-                className="w-full h-full" 
-                frameBorder="0"
-                title="Vista previa de la playlist"
-                allowFullScreen
-              />
+          
+          {selectedPlaylistForLayout && (
+            <div className="space-y-4">
+              {/* Layout Selection */}
+              <div>
+                <Label className="text-sm font-medium">Tipo de Layout</Label>
+                <ToggleGroup 
+                  type="single" 
+                  value={currentLayout} 
+                  onValueChange={(val) => val && updateLayoutMutation.mutate(val)}
+                  className="justify-start gap-2 mt-2"
+                >
+                  <ToggleGroupItem value="single_zone" aria-label="Pantalla completa">
+                    <Layout className="h-4 w-4 mr-2"/>
+                    Completa
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="split_vertical" aria-label="División vertical">
+                    <SplitSquareVertical className="h-4 w-4 mr-2"/>
+                    Vertical
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="split_horizontal" aria-label="División horizontal">
+                    <SplitSquareHorizontal className="h-4 w-4 mr-2"/>
+                    Horizontal
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="pip_bottom_right" aria-label="Picture-in-Picture">
+                    <PictureInPicture className="h-4 w-4 mr-2"/>
+                    PiP
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+
+              {/* Layout Zones */}
+              <div className="max-h-96 overflow-y-auto">
+                <DragDropContext onDragEnd={handleDragEnd}>
+                  <div className={`grid gap-4 ${
+                    currentLayout === 'split_vertical' ? 'grid-cols-2' : 
+                    currentLayout === 'split_horizontal' ? 'grid-rows-2 h-80' : 
+                    currentLayout === 'pip_bottom_right' ? 'grid-cols-3 grid-rows-2' :
+                    'grid-cols-1'
+                  }`}>
+                    {zones.map((zone) => (
+                      <Droppable key={zone.id} droppableId={zone.id}>
+                        {(provided, snapshot) => (
+                          <Card className={`${
+                            snapshot.isDraggingOver ? 'border-primary bg-primary/5' : ''
+                          } ${
+                            currentLayout === 'pip_bottom_right' && zone.id === 'main' ? 'col-span-3 row-span-1' :
+                            currentLayout === 'pip_bottom_right' && zone.id === 'pip' ? 'col-span-1 row-span-1' :
+                            ''
+                          }`}>
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                  <div className={`w-3 h-3 rounded-full ${
+                                    zone.id === 'main' ? 'bg-blue-500' : 
+                                    zone.id === 'left' ? 'bg-green-500' : 
+                                    zone.id === 'right' ? 'bg-orange-500' : 
+                                    zone.id === 'top' ? 'bg-purple-500' : 
+                                    zone.id === 'bottom' ? 'bg-pink-500' : 
+                                    'bg-red-500'
+                                  }`}></div>
+                                  {zone.title}
+                                  <Badge variant="secondary" className="text-xs px-1 py-0">
+                                    {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
+                                  </Badge>
+                                </CardTitle>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenContentLibrary(zone.id)}
+                                  className="text-xs h-6"
+                                >
+                                  <Plus className="w-3 h-3 mr-1" />
+                                  Agregar contenido
+                                </Button>
+                              </div>
+                            </CardHeader>
+                            <CardContent ref={provided.innerRef} {...provided.droppableProps} className="min-h-[100px] space-y-2">
+                              {playlistData?.items?.filter((item: any) => item.zone === zone.id)
+                                .sort((a: any, b: any) => a.order - b.order)
+                                .map((item: any, index: number) => {
+                                  const IconComponent = getContentIcon(item.contentItem?.type || 'unknown');
+                                  const iconColor = getFileColor(item.contentItem?.type || 'unknown');
+
+                                  return (
+                                    <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
+                                      {(provided, snapshot) => (
+                                        <div
+                                          ref={provided.innerRef}
+                                          {...provided.draggableProps}
+                                          className={`flex items-center gap-2 p-2 bg-background border rounded-md text-xs ${
+                                            snapshot.isDragging ? 'shadow-lg bg-accent' : 'hover:bg-accent/50'
+                                          }`}
+                                        >
+                                          <div
+                                            {...provided.dragHandleProps}
+                                            className="flex items-center justify-center w-4 h-4 text-muted-foreground hover:text-foreground cursor-grab"
+                                          >
+                                            <GripVertical className="w-3 h-3" />
+                                          </div>
+                                          <div className="w-5 h-5 bg-muted rounded flex items-center justify-center flex-shrink-0">
+                                            {React.cloneElement(IconComponent, { className: `w-3 h-3 ${iconColor}` })}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <h4 className="font-medium truncate">{item.contentItem?.title || 'Sin título'}</h4>
+                                          </div>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => removeItemMutation.mutate(item.id)}
+                                            className="text-red-500 hover:text-red-600 h-5 w-5 p-0"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  );
+                                })}
+                              {provided.placeholder}
+                              {(!playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length) && (
+                                <div className="text-center py-6 text-muted-foreground">
+                                  <Play className="h-6 w-6 mx-auto mb-1 opacity-20" />
+                                  <p className="text-xs">Arrastra contenido aquí</p>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                      </Droppable>
+                    ))}
+                  </div>
+                </DragDropContext>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t">
+                <Button onClick={() => setLayoutModalOpen(false)}>
+                  <Check className="w-4 h-4 mr-2" />
+                  Aceptar
+                </Button>
+              </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Content Library Modal */}
+      <Dialog open={contentLibraryOpen} onOpenChange={setContentLibraryOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Biblioteca de Contenido</DialogTitle>
+            <CardDescription>
+              Selecciona el contenido para agregar a {zones.find(z => z.id === selectedZoneForContent)?.title}
+            </CardDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Search */}
+            <Input
+              placeholder="Buscar contenido..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+
+            {/* Content List */}
+            <ScrollArea className="h-96">
+              <div className="space-y-2">
+                {filteredContent.map((item: any) => {
+                  const IconComponent = getContentIcon(item.type);
+                  const iconColor = getFileColor(item.type);
+                  const isSelected = selectedContent.has(item.id);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                        isSelected ? 'bg-primary/10 border-primary' : 'hover:bg-accent'
+                      }`}
+                      onClick={() => toggleContentSelection(item.id)}
+                    >
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <Checkbox 
+                          checked={isSelected}
+                          onChange={() => toggleContentSelection(item.id)}
+                        />
+                        <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center">
+                          {React.cloneElement(IconComponent, { className: `w-4 h-4 ${iconColor}` })}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{item.title}</p>
+                          <p className="text-sm text-muted-foreground">{item.category || "Sin categoría"}</p>
+                        </div>
+                        <Badge variant="outline">
+                          {item.type}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDuration(item.duration || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {filteredContent.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No se encontró contenido</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+
+            <div className="flex items-center justify-between pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                {selectedContent.size} elemento(s) seleccionado(s)
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setContentLibraryOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleAddSelectedContent}
+                  disabled={selectedContent.size === 0 || addMultipleItemsMutation.isPending}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  {addMultipleItemsMutation.isPending ? "Agregando..." : "Agregar contenido"}
+                </Button>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
