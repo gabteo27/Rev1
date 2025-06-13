@@ -394,13 +394,13 @@ export class DatabaseStorage implements IStorage {
     try {
       // Remove any timestamp fields that might cause issues
       const { updatedAt, createdAt, ...cleanUpdates } = updates;
-      
+
       // Sanitize any problematic fields and ensure proper types
       const sanitizedUpdates: any = {};
-      
+
       Object.keys(cleanUpdates).forEach(key => {
         const value = cleanUpdates[key];
-        
+
         // Skip undefined or null values that could cause issues
         if (value !== undefined && value !== null) {
           // Convert string numbers to actual numbers where needed
@@ -413,7 +413,7 @@ export class DatabaseStorage implements IStorage {
           }
         }
       });
-      
+
       // Add proper updatedAt timestamp
       sanitizedUpdates.updatedAt = new Date();
 

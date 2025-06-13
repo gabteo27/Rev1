@@ -19,6 +19,7 @@ import {
   insertWidgetSchema,
   insertScheduleSchema,
   insertDeploymentSchema,
+  insertScreenGroupSchema,
 } from "@shared/schema";
 import { buildApk } from "./apk-builder";
 
@@ -715,7 +716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If playlist changed, also broadcast playlist change to the specific screen
       if (req.body.hasOwnProperty('playlistId')) {
         console.log(`Broadcasting playlist change for screen ${screenId} to playlist ${playlistId}`);
-        
+
         if (playlistId) {
           await broadcastPlaylistUpdate(userId, playlistId, 'screen-playlist-updated');
         }
@@ -723,7 +724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Send direct update to the affected screen
         const wssInstance = app.get('wss') as WebSocketServer;
         let messageSent = false;
-        
+
         wssInstance.clients.forEach((client: WebSocket) => {
           const clientWithId = client as WebSocketWithId;
           if (clientWithId.readyState === WebSocket.OPEN) {
@@ -869,7 +870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/alerts/active", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.claims.claims.sub;
       const alerts = await storage.getActiveAlerts(userId);
       res.json(alerts);
     } catch (error) {
@@ -1746,7 +1747,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Screen group not found" });
       }
 
-      // Broadcast pause command to all screens in the group
+      // Broadcast pause command to all screens inthe previous section.
+the group
       const wssInstance = app.get('wss') as WebSocketServer;
 
       if (group.screenIds) {
