@@ -336,6 +336,18 @@ class WebSocketManager {
     console.log('WebSocket disconnected and cleaned up');
   }
 
+  onMessage(callback: (event: MessageEvent) => void) {
+    if (this.ws) {
+      this.ws.addEventListener('message', callback);
+    }
+  }
+
+  removeMessageListener(callback: (event: MessageEvent) => void) {
+    if (this.ws) {
+      this.ws.removeEventListener('message', callback);
+    }
+  }
+
   getConnectionState() {
     return this.ws?.readyState || WebSocket.CLOSED;
   }

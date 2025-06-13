@@ -413,11 +413,11 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }
     },
     enabled: !!playlistId,
-    refetchInterval: isPreview ? 5000 : false, // Very frequent checks for player
-    staleTime: isPreview ? 30000 : 0, // Always consider player data stale
-    gcTime: 0, // Don't cache data
+    refetchInterval: isPreview ? 30000 : false, // Reduce frequency for preview
+    staleTime: isPreview ? 30000 : 60000, // Cache data longer
+    gcTime: 300000, // Keep cache for 5 minutes
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchOnReconnect: true,
   });
 
@@ -479,16 +479,15 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     enabled: !!playlistId, // Solo ejecutar si hay playlist
   });
 
-  // Enhanced real-time update system with aggressive polling and forced reloads
+  // Simplified real-time update system without forced reloads
   useEffect(() => {
     if (isPreview) return;
 
-    let pollingInterval: NodeJS.Timeout;
+    let validationInterval: NodeJS.Timeout;
     let lastPlaylistId = playlistId;
-    let lastValidationTime = Date.now();
 
-    // Very aggressive polling function that forces reload on any change
-    const pollForChanges = () => {
+    // Check for playlist changes periodically without forcing reloads
+    const checkForUpdates = () => {
       const authToken = localStorage.getItem('authToken');
       if (!authToken) return;
 
@@ -499,67 +498,31 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }).then(res => res.json()).then(data => {
         if (data.valid && data.screen) {
           const currentPlaylistId = data.screen.playlistId;
-          const currentTime = Date.now();
 
-          // Check if playlist changed or if we haven't validated in a while
+          // Only update if playlist actually changed
           if (currentPlaylistId !== lastPlaylistId) {
-            console.log(`🔄 PLAYLIST CHANGE DETECTED: ${lastPlaylistId} -> ${currentPlaylistId}`);
-            console.log('🚀 FORCING IMMEDIATE RELOAD...');
-
-            // Store the new playlist ID
+            console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${currentPlaylistId}`);
             lastPlaylistId = currentPlaylistId;
-
-            // Force immediate reload without delay
-            window.location.reload();
-            return;
-          }
-
-          // Also check if the current playlist content has changed by comparing query cache
-          if (currentPlaylistId && currentTime - lastValidationTime > 5000) {
-            lastValidationTime = currentTime;
-
-            // Check if playlist data in cache is stale
-            const cachedPlaylist = queryClient.getQueryData(['/api/player/playlists', currentPlaylistId]);
-            if (cachedPlaylist) {
-              // Force refresh playlist data
-              queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', currentPlaylistId] });
-              queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/player/alerts'] });
-            }
+            
+            // Invalidate queries to fetch new data instead of forcing reload
+            queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/player/alerts'] });
           }
         }
       }).catch(error => {
-        console.error('Polling error:', error);
-        // If polling fails, still try to reload to recover
-        if (Date.now() - lastValidationTime > 30000) {
-          console.log('🔧 Polling failed for too long, forcing reload to recover...');
-          window.location.reload();
-        }
+        console.error('Validation error:', error);
       });
     };
 
-    // Start very aggressive polling (every 1 second)
-    console.log('🔍 Starting aggressive playlist monitoring...');
-    pollingInterval = setInterval(pollForChanges, 1000);
-
-    // Also poll immediately
-    pollForChanges();
-
-    // Set up visibility change handler to poll when tab becomes visible
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        console.log('🔍 Tab became visible, checking for changes...');
-        pollForChanges();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Check every 10 seconds instead of every second
+    console.log('🔍 Starting playlist monitoring...');
+    validationInterval = setInterval(checkForUpdates, 10000);
 
     return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
+      if (validationInterval) {
+        clearInterval(validationInterval);
       }
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       console.log('🔍 Stopped playlist monitoring');
     };
   }, [isPreview, playlistId, queryClient]);
@@ -567,46 +530,29 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   useEffect(() => {
     if (isPreview) return;
 
-    const messageHandler = (event: MessageEvent) => {
-      try {
-        const message = JSON.parse(event.data);
-        console.log('WebSocket message received:', message);
+    const handleWebSocketMessage = (data: any) => {
+      console.log('WebSocket message received:', data);
+      
+      if (data.type === 'playlist-change') {
+        console.log('Playlist change detected via WebSocket:', data.data);
+        
+        // Instead of reloading, just invalidate queries to refetch data
+        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/player/widgets'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/player/alerts'] });
+      }
+    };
 
-            if (message.type === 'playlist-change') {
-              console.log('Playlist change detected via WebSocket:', message.data);
-
-              // Only reload if the change is for this screen
-              if (message.data?.screenId && message.data?.action === 'reload') {
-                const authToken = localStorage.getItem('authToken');
-
-                // Verify this is for our screen
-                fetch('/api/player/validate-token', {
-                  headers: {
-                    'Authorization': `Bearer ${authToken}`
-                  }
-                }).then(res => res.json()).then(data => {
-                  if (data.valid && data.screen && data.screen.id === message.data.screenId) {
-                    console.log('🔄 Reloading due to playlist change for this screen');
-                    window.location.reload();
-                  }
-                }).catch(error => {
-                  console.error('Failed to validate screen for playlist change:', error);
-                });
-              }
-            }
-          } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-          }
-        };
-
-        wsManager.connect();
-
-    wsManager.onMessage(messageHandler);
+    // Connect to WebSocket
+    wsManager.connect();
+    
+    // Subscribe to playlist changes
+    const unsubscribe = wsManager.subscribe('playlist-change', handleWebSocketMessage);
 
     return () => {
-      wsManager.removeMessageListener(messageHandler);
+      unsubscribe();
     };
-  }, [isPreview]);
+  }, [isPreview, queryClient]);
 
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 
