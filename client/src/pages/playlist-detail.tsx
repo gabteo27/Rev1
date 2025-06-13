@@ -1,4 +1,4 @@
-import { useState, useEffect, startTransition } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
@@ -51,10 +51,7 @@ export default function PlaylistDetail() {
 
   useEffect(() => {
     if (playlist) {
-      // ✅ CORRECCIÓN: Usar startTransition para evitar error de suspensión
-      startTransition(() => {
-        setPlaylistData(playlist);
-      });
+      setPlaylistData(playlist);
     }
   }, [playlist]);
 
@@ -179,24 +176,21 @@ export default function PlaylistDetail() {
   const handleDragEnd = (result: any) => {
     if (!result.destination || !playlistData?.items) return;
 
-    // ✅ CORRECCIÓN: Usar startTransition para una actualización de UI no bloqueante
-    startTransition(() => {
-      const items = Array.from(playlistData.items);
-      const [reorderedItem] = items.splice(result.source.index, 1);
-      items.splice(result.destination.index, 0, reorderedItem);
+    const items = Array.from(playlistData.items);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
 
-      const itemOrders = items.map((item: any, index: number) => ({
-        id: item.id,
-        order: index,
-      }));
+    const itemOrders = items.map((item: any, index: number) => ({
+      id: item.id,
+      order: index,
+    }));
 
-      setPlaylistData({
-        ...playlistData,
-        items: items
-      });
-
-      reorderMutation.mutate(itemOrders);
+    setPlaylistData({
+      ...playlistData,
+      items: items
     });
+
+    reorderMutation.mutate(itemOrders);
   };
 
   const handleDurationChange = (itemId: number, duration: string) => {
