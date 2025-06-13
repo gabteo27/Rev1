@@ -284,11 +284,36 @@ export class DatabaseStorage implements IStorage {
 
   // Playlist operations  
   async getPlaylists(userId: string): Promise<any[]> {
-    const playlistsData = await db
-      .select()
-      .from(playlists)
-      .where(eq(playlists.userId, userId))
-      .orderBy(desc(playlists.createdAt));
+    let playlistsData;
+
+    try {
+      playlistsData = await db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.userId, userId))
+        .orderBy(desc(playlists.createdAt));
+    } catch (error) {
+      console.error("Error fetching playlists with all columns:", error);
+      // If there's a column error, try with basic fields only
+      playlistsData = await db
+        .select({
+          id: playlists.id,
+          userId: playlists.userId,
+          name: playlists.name,
+          description: playlists.description,
+          layout: playlists.layout,
+          isActive: playlists.isActive,
+          totalDuration: playlists.totalDuration,
+          createdAt: playlists.createdAt,
+          updatedAt: playlists.updatedAt,
+          // Set default values for missing columns
+          carouselDuration: 5,
+          scrollSpeed: 50
+        })
+        .from(playlists)
+        .where(eq(playlists.userId, userId))
+        .orderBy(desc(playlists.createdAt));
+    }
 
     // Get items count and total duration for each playlist
     const enrichedPlaylists = await Promise.all(
@@ -313,6 +338,9 @@ export class DatabaseStorage implements IStorage {
           ...playlist,
           totalItems: items.length,
           totalDuration,
+          // Ensure these fields exist with defaults
+          carouselDuration: playlist.carouselDuration || 5,
+          scrollSpeed: playlist.scrollSpeed || 50
         };
       })
     );

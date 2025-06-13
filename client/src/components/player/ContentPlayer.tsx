@@ -998,3 +998,247 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       );
   }
 }
+
+const renderPiPBottomRight = () => {
+    const mainItems = playlist?.items?.filter(item => item.zone === 'main') || [];
+    const pipItems = playlist?.items?.filter(item => item.zone === 'pip') || [];
+
+    const currentMainItem = getCurrentItem(mainItems, zoneTrackers.main);
+    const currentPipItem = getCurrentItem(pipItems, zoneTrackers.pip);
+
+    return (
+      <div style={styles.container}>
+        {/* Main content */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 1
+        }}>
+          {currentMainItem && renderContentItem(currentMainItem)}
+        </div>
+
+        {/* PiP content */}
+        {currentPipItem && (
+          <div style={{
+            position: 'absolute',
+            bottom: '20px',
+            right: '20px',
+            width: '300px',
+            height: '200px',
+            zIndex: 2,
+            border: '2px solid white',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }}>
+            {renderContentItem(currentPipItem)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderCarousel = () => {
+    // Only show images in carousel mode
+    const imageItems = playlist?.items?.filter(item => item.contentItem?.type === 'image') || [];
+
+    if (imageItems.length === 0) {
+      return (
+        <div style={{ ...styles.container, justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ textAlign: 'center', color: 'white' }}>
+            <div style={{ fontSize: '24px', marginBottom: '15px' }}>🖼️ Sin imágenes</div>
+            <div style={{ fontSize: '16px', opacity: 0.8 }}>
+              El modo carrusel necesita imágenes para mostrar.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const currentItem = getCurrentItem(imageItems, zoneTrackers.main);
+    const carouselDuration = playlist.carousel_duration || 5;
+
+    // Override duration for carousel
+    const itemWithCustomDuration = currentItem ? {
+      ...currentItem,
+      customDuration: carouselDuration,
+      contentItem: {
+        ...currentItem.contentItem,
+        duration: carouselDuration
+      }
+    } : null;
+
+    return (
+      <div style={styles.container}>
+        {itemWithCustomDuration && (
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: '#000'
+          }}>
+            <img
+              src={itemWithCustomDuration.contentItem.url}
+              alt={itemWithCustomDuration.contentItem.title}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain'
+              }}
+              onError={(e) => {
+                console.error('Error loading carousel image:', e);
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderWebScroll = () => {
+    // Only show web content in scroll mode
+    const webItems = playlist?.items?.filter(item => item.contentItem?.type === 'webpage') || [];
+
+    if (webItems.length === 0) {
+      return (
+        <div style={{ ...styles.container, justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ textAlign: 'center', color: 'white' }}>
+            <div style={{ fontSize: '24px', marginBottom: '15px' }}>🌐 Sin páginas web</div>
+            <div style={{ fontSize: '16px', opacity: 0.8 }}>
+              El modo scroll web necesita contenido web para mostrar.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const currentItem = getCurrentItem(webItems, zoneTrackers.main);
+    const scrollSpeed = playlist.scroll_speed || 50;
+
+    return (
+      <div style={styles.container}>
+        {currentItem && (
+          <div style={{
+            width: '100%',
+            height: '100%',
+            overflow: 'hidden'
+          }}>
+            <iframe
+              src={currentItem.contentItem.url}
+              style={{
+                width: '100%',
+                height: '200%', // Make it taller to enable scrolling
+                border: 'none',
+                animation: `scrollDown ${Math.max(30, 60000 / scrollSpeed)}s linear infinite`
+              }}
+              title={currentItem.contentItem.title}
+              onError={(e) => {
+                console.error('Error loading web content:', e);
+              }}
+            />
+          </div>
+        )}
+        <style>
+          {`
+            @keyframes scrollDown {
+              0% { transform: translateY(0); }
+              100% { transform: translateY(-50%); }
+            }
+          `}
+        </style>
+      </div>
+    );
+  };
+  const getCurrentItem = (items: PlaylistItem[], tracker: ZoneTracker | undefined) => {
+    if (!tracker || items.length === 0) {
+      return null;
+    }
+    return items[tracker.currentIndex];
+  };
+
+  const renderSingleZone = () => {
+    const mainItems = playlist?.items?.filter(item => item.zone === 'main') || [];
+    const currentItem = getCurrentItem(mainItems, zoneTrackers.main);
+
+    return (
+      <div style={styles.container}>
+        {currentItem && renderContentItem(currentItem)}
+      </div>
+    );
+  };
+
+  const renderSplitVertical = () => {
+    const leftItems = playlist?.items?.filter(item => item.zone === 'left') || [];
+    const rightItems = playlist?.items?.filter(item => item.zone === 'right') || [];
+
+    const currentLeftItem = getCurrentItem(leftItems, zoneTrackers.left);
+    const currentRightItem = getCurrentItem(rightItems, zoneTrackers.right);
+
+    return (
+      <div style={{ ...styles.container, display: 'flex' }}>
+        <div style={{ ...styles.zone, width: '50%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+          {currentLeftItem && renderContentItem(currentLeftItem)}
+        </div>
+        <div style={{ ...styles.zone, width: '50%' }}>
+          {currentRightItem && renderContentItem(currentRightItem)}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSplitHorizontal = () => {
+    const topItems = playlist?.items?.filter(item => item.zone === 'top') || [];
+    const bottomItems = playlist?.items?.filter(item => item.zone === 'bottom') || [];
+
+    const currentTopItem = getCurrentItem(topItems, zoneTrackers.top);
+    const currentBottomItem = getCurrentItem(bottomItems, zoneTrackers.bottom);
+
+    return (
+      <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ ...styles.zone, height: '50%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+          {currentTopItem && renderContentItem(currentTopItem)}
+        </div>
+        <div style={{ ...styles.zone, height: '50%' }}>
+          {currentBottomItem && renderContentItem(currentBottomItem)}
+        </div>
+      </div>
+    );
+  };
+
+const renderLayoutContent = () => {
+    if (!playlist?.items || playlist.items.length === 0) {
+      return (
+        <div style={{ ...styles.container, justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ textAlign: 'center', color: 'white' }}>
+            <div style={{ fontSize: '24px', marginBottom: '15px' }}>📋 Playlist vacía</div>
+            <div style={{ fontSize: '16px', opacity: 0.8 }}>
+              Esta playlist no tiene contenido para mostrar.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const layout = playlist.layout || 'single_zone';
+
+    switch (layout) {
+      case 'single_zone':
+        return renderSingleZone();
+      case 'split_vertical':
+        return renderSplitVertical();
+      case 'split_horizontal':
+        return renderSplitHorizontal();
+      case 'pip_bottom_right':
+        return renderPiPBottomRight();
+      case 'carousel':
+        return renderCarousel();
+      case 'web_scroll':
+        return renderWebScroll();
+      default:
+        return renderSingleZone();
+    }
+  };

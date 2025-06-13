@@ -279,6 +279,9 @@ export const insertPlaylistSchema = createInsertSchema(playlists).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).partial({
+  carouselDuration: true,
+  scrollSpeed: true,
 });
 
 export const insertPlaylistItemSchema = createInsertSchema(playlistItems).omit({
