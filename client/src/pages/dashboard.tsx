@@ -111,6 +111,15 @@ export default function Dashboard() {
 
     // Wait for WebSocket to be connected before subscribing
     const setupSubscriptions = () => {
+      // Set up polling as fallback regardless of WebSocket status
+      const pollingInterval = setInterval(() => {
+        // Poll for updates every 5 seconds as fallback
+        queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      }, 5000);
+
+      unsubscribeFunctions.push(() => clearInterval(pollingInterval));
+
       if (!wsManager.isConnected()) {
         setTimeout(setupSubscriptions, 1000);
         return;

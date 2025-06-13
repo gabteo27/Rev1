@@ -468,14 +468,53 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     enabled: !!playlistId, // Solo ejecutar si hay playlist
   });
 
-  // WebSocket listener for playlist changes (only for actual player, not preview)
+  // Enhanced real-time update system with polling fallback
   useEffect(() => {
     if (isPreview) return;
 
     let ws: WebSocket | null = null;
     let reconnectTimeout: NodeJS.Timeout;
+    let pollingInterval: NodeJS.Timeout;
     let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
+    const maxReconnectAttempts = 3; // Reduced attempts
+    let lastPlaylistId = playlistId;
+    let wsConnected = false;
+
+    // Polling fallback function
+    const pollForChanges = () => {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) return;
+
+      fetch('/api/player/validate-token', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      }).then(res => res.json()).then(data => {
+        if (data.valid && data.screen) {
+          const currentPlaylistId = data.screen.playlistId;
+          
+          // Check if playlist changed
+          if (currentPlaylistId !== lastPlaylistId) {
+            console.log(`Polling detected playlist change: ${lastPlaylistId} -> ${currentPlaylistId}`);
+            lastPlaylistId = currentPlaylistId;
+            
+            // Force refresh
+            queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/playlists'] });
+            
+            setTimeout(() => {
+              console.log('Reloading player due to polling-detected change...');
+              window.location.reload();
+            }, 500);
+          }
+        }
+      }).catch(error => {
+        console.error('Polling error:', error);
+      });
+    };
+
+    // Start aggressive polling (every 3 seconds)
+    pollingInterval = setInterval(pollForChanges, 3000);
 
     const connectWebSocket = () => {
       try {
@@ -485,6 +524,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
         ws.onopen = () => {
           console.log('Player WebSocket connected for real-time updates');
+          wsConnected = true;
           reconnectAttempts = 0;
           const authToken = localStorage.getItem('authToken');
           if (authToken) {
@@ -518,16 +558,15 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
                     // Check if this change is for our screen
                     if (messageScreenId === currentScreenId) {
                       console.log(`Playlist change is for our screen! New playlist: ${newPlaylistId}, Current: ${playlistId}`);
+                      lastPlaylistId = newPlaylistId;
                       
                       // Force refresh all playlist queries
                       queryClient.invalidateQueries({ queryKey: ['/api/player/playlists'] });
                       queryClient.invalidateQueries({ queryKey: ['/api/playlists'] });
                       
-                      // Reload the page to get the new playlist
-                      setTimeout(() => {
-                        console.log('Reloading player to apply playlist change...');
-                        window.location.reload();
-                      }, 500);
+                      // Immediate reload
+                      console.log('Reloading player to apply playlist change...');
+                      window.location.reload();
                     }
                   }
                 }).catch(error => {
@@ -550,17 +589,22 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
         ws.onclose = (event) => {
           console.log('Player WebSocket disconnected:', event.code, event.reason);
+          wsConnected = false;
+          
+          // Only attempt limited reconnection
           if (reconnectAttempts < maxReconnectAttempts) {
             reconnectAttempts++;
-            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
+            const delay = Math.min(2000 * reconnectAttempts, 10000);
             console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
             reconnectTimeout = setTimeout(connectWebSocket, delay);
+          } else {
+            console.log('Max WebSocket reconnection attempts reached, relying on polling');
           }
         };
 
         ws.onerror = (error) => {
           console.error('Player WebSocket error:', error);
-          // Don't attempt reconnection immediately on error
+          wsConnected = false;
           if (ws) {
             ws.close();
           }
@@ -568,28 +612,25 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
       } catch (error) {
         console.error('Failed to connect to WebSocket:', error);
-        if (reconnectAttempts < maxReconnectAttempts) {
-          reconnectAttempts++;
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
-          console.log(`WebSocket connection failed, retrying in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
-          reconnectTimeout = setTimeout(connectWebSocket, delay);
-        } else {
-          console.error('Max WebSocket reconnection attempts reached, stopping reconnection');
-        }
+        wsConnected = false;
       }
     };
 
+    // Try to connect WebSocket but don't rely on it exclusively
     connectWebSocket();
 
     return () => {
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
       if (ws) {
         ws.close();
       }
     };
-  }, [isPreview]);
+  }, [isPreview, playlistId]);
 
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 

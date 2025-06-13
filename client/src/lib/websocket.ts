@@ -10,8 +10,8 @@ interface WebSocketMessage {
 class WebSocketManager {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
+  private maxReconnectAttempts = 3;
+  private reconnectDelay = 2000;
   private isReconnecting = false;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private authUser: any = null;
@@ -71,7 +71,7 @@ class WebSocketManager {
               this.ws.close();
             }
             reject(new Error('WebSocket connection timeout'));
-          }, 10000);
+          }, 5000);
 
           this.ws.onopen = async () => {
             clearTimeout(connectionTimeout);
