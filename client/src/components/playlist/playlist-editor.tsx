@@ -187,62 +187,66 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
               Agregar Contenido
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[80vh]">
-            <DialogHeader>
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle>Biblioteca de Contenido</DialogTitle>
             </DialogHeader>
 
-            <ScrollArea className="max-h-[70vh]">
-              <div className="space-y-4">
-                {/* Búsqueda */}
+            <div className="flex-1 flex flex-col space-y-4 min-h-0">
+              {/* Búsqueda */}
+              <div className="flex-shrink-0">
                 <Input
                   placeholder="Buscar contenido..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-
-                {/* Lista de zonas para agregar contenido */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {zones.map(zone => (
-                    <div key={zone.id} className="border rounded-lg p-4">
-                      <h4 className="font-medium mb-3">{zone.title}</h4>
-                      <ScrollArea className="h-64">
-                        <div className="space-y-2">
-                          {filteredContent.map((item: any) => (
-                            <div
-                              key={item.id}
-                              className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
-                            >
-                              <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                {getContentIcon(item.type)}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">{item.title}</p>
-                                  <p className="text-xs text-gray-500">{item.category || "Sin categoría"}</p>
-                                </div>
-                                <Badge className={getContentBadgeColor(item.type)}>
-                                  {item.type}
-                                </Badge>
-                              </div>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  addContentMutation.mutate({ contentId: item.id, zone: zone.id });
-                                  setIsContentDialogOpen(false);
-                                }}
-                                disabled={addContentMutation.isPending}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  ))}
-                </div>
               </div>
-            </ScrollArea>
-          </DialogContent>
+
+              {/* Lista de zonas para agregar contenido */}
+              <div className="flex-1 min-h-0">
+                <ScrollArea className="h-full">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-4">
+                    {zones.map(zone => (
+                      <div key={zone.id} className="border rounded-lg p-4">
+                        <h4 className="font-medium mb-3">{zone.title}</h4>
+                        <ScrollArea className="h-64">
+                          <div className="space-y-2">
+                            {filteredContent.map((item: any) => (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+                              >
+                                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                  {getContentIcon(item.type)}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{item.title}</p>
+                                    <p className="text-xs text-gray-500">{item.category || "Sin categoría"}</p>
+                                  </div>
+                                  <Badge className={getContentBadgeColor(item.type)}>
+                                    {item.type}
+                                  </Badge>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    addContentMutation.mutate({ contentId: item.id, zone: zone.id });
+                                    setIsContentDialogOpen(false);
+                                  }}
+                                  disabled={addContentMutation.isPending}
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+          </DialogContent></old_str>
         </Dialog>
       </div>
 
