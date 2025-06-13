@@ -863,8 +863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const alertData = { ...req.body, userId };
 
-      const validatedData = insertAlertSchema.```python
-parse(alertData);
+      const validatedData = insertAlertSchema.parse(alertData);
       const alert = await storage.createAlert(validatedData);
 
       // ✅ Usa la nueva función para notificar solo a los clientes del usuario
@@ -1741,7 +1740,7 @@ parse(alertData);
         playbackData.push({
           date: date.toISOString().split('T')[0],
           plays: Math.floor(Math.random() * 200) + 100,
-          views: Math.floor(Mathnumber() * 1000) + 500,
+          views: Math.floor(Math.random() * 1000) + 500,
           duration: Math.floor(Math.random() * 10000) + 5000
         });
       }

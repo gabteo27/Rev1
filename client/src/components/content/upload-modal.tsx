@@ -203,6 +203,15 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
       return;
     }
 
+    if (url.trim()) {
+      toast({
+        title: "Error",
+        description: "No puedes subir archivos y una URL al mismo tiempo. Elige una opción.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!title.trim()) {
       toast({
         title: "Error",
@@ -231,6 +240,15 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
       toast({
         title: "Error",
         description: "La URL y el título son requeridos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedFiles.length > 0) {
+      toast({
+        title: "Error",
+        description: "No puedes agregar una URL y subir archivos al mismo tiempo. Elige una opción.",
         variant: "destructive",
       });
       return;
@@ -381,10 +399,20 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
             </div>
           )}
 
+          {/* Separator */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">O</span>
+            </div>
+          </div>
+
           {/* URL Input */}
           <div>
             <Label htmlFor="url" className="text-sm font-medium text-slate-700 mb-2 block">
-              O ingresa una URL
+              Agregar página web por URL
             </Label>
             <div className="flex space-x-2">
               <div className="flex-1 relative">
@@ -396,16 +424,22 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://ejemplo.com/pagina-web"
                   className="pl-10"
+                  disabled={selectedFiles.length > 0}
                 />
               </div>
               <Button
                 onClick={handleUrlSubmit}
-                disabled={urlMutation.isPending || !url || !title}
+                disabled={urlMutation.isPending || !url || !title || selectedFiles.length > 0}
                 className="bg-green-600 hover:bg-green-700"
               >
                 {urlMutation.isPending ? "Agregando..." : "Agregar URL"}
               </Button>
             </div>
+            {selectedFiles.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Elimina los archivos seleccionados para agregar una URL
+              </p>
+            )}
           </div>
 
           {/* Content Details */}

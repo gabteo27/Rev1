@@ -860,7 +860,8 @@ export default function Playlists() {
 
       {/* Content Library Modal */}
       <Dialog open={contentLibraryOpen} onOpenChange={setContentLibraryOpen}>
-        <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+        
+<DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Biblioteca de Contenido</DialogTitle>
             <CardDescription>

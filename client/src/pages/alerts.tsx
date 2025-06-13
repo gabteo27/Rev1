@@ -21,28 +21,29 @@ export default function Alerts() {
     mutationFn: async (id: number) => {
       const response = await apiRequest(`/api/alerts/${id}`, { method: "DELETE" });
       if (!response.ok) {
-        const error = await response.json();
         // Don't throw error if alert was already deleted
-        if (response.status === 404 && error.message === "Alert not found") {
-          return; // Silently ignore if already deleted
+        if (response.status === 404) {
+          return null; // Silently ignore if already deleted
         }
+        const error = await response.json().catch(() => ({ message: "Failed to delete alert" }));
         throw new Error(error.message || "Failed to delete alert");
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-      toast({ title: "Alerta eliminada" });
+      // Only show success message if the alert was actually deleted (not 404)
+      if (data !== null) {
+        toast({ title: "Alerta eliminada" });
+      }
     },
     onError: (error: any) => {
-      // Only show error if it's not "already deleted"
-      if (!error.message?.includes("Alert not found")) {
-        toast({ 
-          title: "Error al eliminar alerta",
-          description: error.message,
-          variant: "destructive"
-        });
-      }
+      console.error("Error deleting alert:", error);
+      toast({ 
+        title: "Error al eliminar alerta",
+        description: error.message || "No se pudo eliminar la alerta",
+        variant: "destructive"
+      });
     },
   });
 
@@ -61,6 +62,8 @@ export default function Alerts() {
 
   // Auto-delete alerts when their duration expires
   useEffect(() => {
+    if (!alerts || alerts.length === 0) return;
+
     const activeAlerts = alerts.filter((alert: any) => alert.isActive && alert.duration > 0);
     const timeouts: NodeJS.Timeout[] = [];
 
@@ -72,20 +75,23 @@ export default function Alerts() {
 
       if (remainingTime > 0) {
         const timeoutId = setTimeout(() => {
-          // Check if alert still exists before deleting
-          const currentAlerts = alerts.filter((a: any) => a.id === alert.id && a.isActive);
-          if (currentAlerts.length > 0) {
-            deleteAlertMutation.mutate(alert.id);
-          }
+          // Only delete if the component is still mounted and the alert still exists
+          queryClient.getQueryData(["/api/alerts"])?.then((currentAlertsData: any) => {
+            const stillExists = currentAlertsData?.find((a: any) => a.id === alert.id && a.isActive);
+            if (stillExists) {
+              deleteAlertMutation.mutate(alert.id);
+            }
+          }).catch(() => {
+            // Ignore errors when checking current alerts
+          });
         }, remainingTime * 1000);
 
         timeouts.push(timeoutId);
       } else if (elapsedTime >= alert.duration) {
-        // Alert should have already expired, delete it immediately (but check if it exists)
-        const currentAlerts = alerts.filter((a: any) => a.id === alert.id && a.isActive);
-        if (currentAlerts.length > 0) {
+        // Alert should have already expired, delete it immediately
+        setTimeout(() => {
           deleteAlertMutation.mutate(alert.id);
-        }
+        }, 100);
       }
     });
 
@@ -93,7 +99,7 @@ export default function Alerts() {
     return () => {
       timeouts.forEach(timeout => clearTimeout(timeout));
     };
-  }, [alerts, deleteAlertMutation]);
+  }, [alerts, deleteAlertMutation, queryClient]);
 
   const formatDuration = (seconds: number) => {
     if (seconds === 0) return "Manual";
