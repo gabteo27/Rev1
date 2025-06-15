@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="PlayerScene" extends="Scene">
+
+  <script type="text/brightscript" uri="pkg:/components/PlayerScene.brs" />
+
+  <children>
+    <Rectangle
+      id="background"
+      color="0x000000FF"
+      width="1920"
+      height="1080" />
+
+    <Poster
+      id="imagePlayer"
+      width="1920"
+      height="1080"
+      visible="false" />
+
+    <Video
+      id="videoPlayer"
+      width="1920"
+      height="1080"
+      visible="false" />
+
+    <Label
+      id="statusLabel"
+      text="Iniciando reproductor..."
+      width="1800"
+      height="48"
+      horizAlign="center"
+      vertAlign="center"
+      translation="[60, 516]" />
+  </children>
+</component>

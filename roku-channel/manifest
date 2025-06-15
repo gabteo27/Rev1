@@ -1,0 +1,13 @@
+title=Mi Reproductor Digital
+major_version=1
+minor_version=0
+build_version=1
+
+# Icono que se muestra en la pantalla de inicio de Roku
+mm_icon_focus_hd=pkg:/images/logo_hd.png
+
+# Pantalla de carga al iniciar
+splash_screen_hd=pkg:/images/logo_hd.png
+
+# La primera escena que se debe cargar
+initial_scene=PlayerScene

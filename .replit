@@ -18,3 +18,8 @@ externalPort = 80
 
 [nix]
 channel = "stable-24_05"
+
+[deployment]
+deploymentTarget = "cloudrun"
+build = "npm install"
+run = ["sh", "-c", "npm start"]
