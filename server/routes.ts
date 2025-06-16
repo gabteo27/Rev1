@@ -1261,7 +1261,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path: "/ws",
+    handleProtocols: (protocols, req) => {
+      // Acepta cualquier protocolo propuesto por el cliente
+      return protocols.values().next().value || false;
+    }
+  });
 
   interface WebSocketWithId extends WebSocket {
     userId?: string;
