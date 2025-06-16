@@ -773,8 +773,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete screen
   app.delete("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const screenId = parseInt(req.params.id);
-      await storage.deleteScreen(screenId, req.user.id);
+      
+      const success = await storage.deleteScreen(screenId, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Screen not found" });
+      }
+      
+      // Broadcast screen deletion to all connected clients
+      const wssInstance = app.get('wss') as WebSocketServer;
+      wssInstance.clients.forEach((client: WebSocket) => {
+        const clientWithId = client as any;
+        if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
+          clientWithId.send(JSON.stringify({
+            type: 'screen-deleted',
+            data: { screenId, timestamp: new Date().toISOString() }
+          }));
+        }
+      });
+      
       res.json({ message: "Screen deleted successfully" });
     } catch (error) {
       console.error("Error deleting screen:", error);
@@ -1288,6 +1306,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle ping/pong for heartbeat
         if (parsed.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong' }));
+          return;
+        }
+
+        // Handle player heartbeat
+        if (parsed.type === 'player-heartbeat' && (ws as any).screenId) {
+          try {
+            const screenId = (ws as any).screenId;
+            const userId = (ws as any).userId;
+            
+            if (userId) {
+              await storage.updateScreen(screenId, {
+                isOnline: true,
+                lastSeen: new Date(),
+              }, userId);
+              
+              console.log(`💓 Heartbeat received from screen ${screenId}`);
+              
+              // Send heartbeat acknowledgment
+              ws.send(JSON.stringify({ 
+                type: 'heartbeat-ack', 
+                timestamp: new Date().toISOString() 
+              }));
+            }
+          } catch (error) {
+            console.error('Error processing player heartbeat:', error);
+          }
           return;
         }
 

@@ -426,15 +426,15 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }
     },
     enabled: !!playlistId,
-    refetchInterval: isPreview ? 30000 : false,
-    staleTime: isPreview ? 30000 : 60000,
+    refetchInterval: isPreview ? 30000 : false, // Solo polling en preview
+    staleTime: isPreview ? 30000 : Infinity, // Cache infinito en player
     gcTime: 300000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
+    refetchOnReconnect: false, // No refetch automático en player
   });
 
-  // Query para obtener alertas activas
+  // Query para obtener alertas activas (solo en preview, en player se maneja por WebSocket)
   const { data: alerts = [] } = useQuery<Alert[]>({
     queryKey: [isPreview ? '/api/alerts/active' : '/api/player/alerts'],
     queryFn: () => {
@@ -455,8 +455,8 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         });
       }
     },
-    refetchInterval: 5000,
-    enabled: !!playlistId,
+    refetchInterval: isPreview ? 10000 : false, // Solo polling en preview
+    enabled: isPreview ? !!playlistId : false, // Solo habilitado en preview
   });
 
   // Actualizar alertas activas cuando cambian
@@ -491,14 +491,14 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     enabled: !!playlistId,
   });
 
-  // Real-time update system using WebSocket and polling fallback
+  // Real-time update system using WebSocket with heartbeat
   useEffect(() => {
     if (isPreview) return;
 
     const authToken = localStorage.getItem('authToken');
     if (!authToken) return;
 
-    let validationInterval: NodeJS.Timeout;
+    let heartbeatInterval: NodeJS.Timeout;
     let lastPlaylistId = playlistId;
 
     // Connect to WebSocket with player authentication
@@ -511,8 +511,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
       if (data.type === 'playlist-content-updated' && data.data?.playlistId === playlistId) {
         console.log('🔄 Playlist content updated, refreshing...');
-
-        // Invalidate and refetch playlist data
         queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
         queryClient.refetchQueries({ 
           queryKey: ['/api/player/playlists', playlistId],
@@ -523,36 +521,18 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       if (data.type === 'playlist-change') {
         const newPlaylistId = data.data?.newPlaylistId;
         const messageScreenId = data.data?.screenId;
-    
-        // Check if this message is for our screen or if we should check our assigned playlist
         const screenId = localStorage.getItem('screenId');
+        
         if (messageScreenId === screenId || !messageScreenId) {
           if (newPlaylistId !== lastPlaylistId) {
             console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} (WebSocket)`);
             lastPlaylistId = newPlaylistId;
-
-            // Reload the page to reflect the new playlist
             setTimeout(() => {
               console.log('🔄 Reloading page due to playlist change (WebSocket)...');
               window.location.reload();
             }, 500);
           }
         }
-      }
-
-      if (data.type === 'playback-control') {
-        console.log(`🎮 Playback control received: ${data.data?.action}`);
-        // Handle playback control commands (play, pause, stop)
-        //const action = data.data?.action;
-        //if (action === 'play') {
-        //  setCurrentItemIndex(0);
-        //  setIsPlaying(true);
-        //} else if (action === 'pause') {
-        //  setIsPlaying(false);
-        //} else if (action === 'stop') {
-        //  setIsPlaying(false);
-        //  setCurrentItemIndex(0);
-        //}
       }
 
       if (data.type === 'screen-playlist-updated') {
@@ -562,8 +542,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
         if (messageScreenId === screenId) {
           console.log(`🔄 Screen playlist updated to ${newPlaylistId} (WebSocket)`);
-
-          // Reload page to reflect playlist change
           setTimeout(() => {
             console.log('🔄 Reloading page due to screen playlist update...');
             window.location.reload();
@@ -577,48 +555,46 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     const unsubscribePlaybackControl = wsManager.subscribe('playback-control', handleWebSocketMessage);
     const unsubscribeScreenPlaylist = wsManager.subscribe('screen-playlist-updated', handleWebSocketMessage);
     
-        // Fallback: Check for playlist changes periodically 
-        const checkForUpdates = () => {
-          fetch('/api/player/validate-token', {
-            headers: {
-              'Authorization': `Bearer ${authToken}`
-            }
-          }).then(res => res.json()).then(data => {
-            if (data.valid && data.screen) {
-              const currentPlaylistId = data.screen.playlistId;
-    
-              // Only update if playlist actually changed
-              if (currentPlaylistId !== lastPlaylistId) {
-                console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${currentPlaylistId} (polling)`);
-                lastPlaylistId = currentPlaylistId;
-    
-                // Reload the page to reflect the new playlist
-                setTimeout(() => {
-                  console.log('🔄 Reloading page due to playlist change (polling)...');
-                  window.location.reload();
-                }, 500);
-              }
-            }
-          }).catch(error => {
-            console.error('Validation error:', error);
-          });
-        };
-    
-        // Check every 5 seconds as fallback
-        console.log('🔍 Starting playlist monitoring (fallback)...');
-        validationInterval = setInterval(checkForUpdates, 5000);
-    
-        return () => {
-          if (validationInterval) {
-            clearInterval(validationInterval);
+    // Heartbeat cada 1 minuto
+    const sendHeartbeat = () => {
+      if (wsManager.isConnected()) {
+        wsManager.send({ 
+          type: 'player-heartbeat', 
+          timestamp: new Date().toISOString(),
+          screenId: localStorage.getItem('screenId')
+        });
+      } else {
+        // Fallback HTTP heartbeat si WebSocket no está conectado
+        fetch('/api/screens/heartbeat', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
           }
-          unsubscribePlaylistChange();
-          unsubscribePlaylistContent();
-          unsubscribePlaybackControl();
-          unsubscribeScreenPlaylist();
-          console.log('🔍 Stopped playlist monitoring');
-        };
-      }, [isPreview, playlistId]);
+        }).catch(error => {
+          console.error('HTTP Heartbeat failed:', error);
+        });
+      }
+    };
+
+    // Enviar heartbeat cada 60 segundos (1 minuto)
+    console.log('💓 Starting heartbeat (1 minute interval)...');
+    heartbeatInterval = setInterval(sendHeartbeat, 60000);
+    
+    // Enviar heartbeat inicial
+    sendHeartbeat();
+    
+    return () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
+      unsubscribePlaylistChange();
+      unsubscribePlaylistContent();
+      unsubscribePlaybackControl();
+      unsubscribeScreenPlaylist();
+      console.log('💓 Stopped heartbeat and monitoring');
+    };
+  }, [isPreview, playlistId]);
 
   // Inicializa o actualiza los trackers cuando la playlist cambia
   useEffect(() => {

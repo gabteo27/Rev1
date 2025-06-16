@@ -69,9 +69,15 @@ export default function Screens() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/screens/${id}`, { method: "DELETE" }),
+    mutationFn: async (id: number) => {
+      const response = await apiRequest(`/api/screens/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
     onSuccess: () => {
-      toast({ title: "Pantalla eliminada" });
+      toast({ title: "Pantalla eliminada", description: "La pantalla ha sido eliminada correctamente" });
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     },
     onError: (error: any) => toast({ title: "Error", description: error.message || "No se pudo eliminar la pantalla.", variant: "destructive" })
@@ -261,7 +267,7 @@ export default function Screens() {
               </Button>
             </div>
             
-            <div className="flex-1 px-4 sm:px-6 py-6 overflow-auto">
+            <div className="flex-1 px-4 sm:px-6 py-6 overflow-y-auto max-h-[calc(100vh-200px)]">
               {screens.length === 0 ? (
                 <Card className="border-dashed">
                   <CardContent className="p-12 text-center">
@@ -328,7 +334,11 @@ export default function Screens() {
                             size="sm" 
                             variant="ghost" 
                             className="text-red-500 hover:text-red-600" 
-                            onClick={() => deleteMutation.mutate(screen.id)} 
+                            onClick={() => {
+                              if (confirm(`¿Estás seguro de que quieres eliminar la pantalla "${screen.name}"?`)) {
+                                deleteMutation.mutate(screen.id);
+                              }
+                            }} 
                             disabled={deleteMutation.isPending} 
                             title="Eliminar"
                           >
