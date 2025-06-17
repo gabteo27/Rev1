@@ -1,4 +1,4 @@
-CREATE TYPE "public"."layout_type" AS ENUM('single_zone', 'split_vertical', 'split_horizontal', 'pip_bottom_right', 'carousel', 'web_scroll');--> statement-breakpoint
+CREATE TYPE "public"."layout_type" AS ENUM('single_zone', 'split_vertical', 'split_horizontal', 'pip_bottom_right', 'carousel', 'web_scroll', 'grid_2x2', 'grid_3x3', 'sidebar_left', 'sidebar_right', 'header_footer', 'triple_vertical', 'triple_horizontal', 'custom_layout');--> statement-breakpoint
 CREATE TABLE "alerts" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
@@ -58,6 +58,7 @@ CREATE TABLE "playlists" (
 	"layout" "layout_type" DEFAULT 'single_zone' NOT NULL,
 	"carousel_duration" integer DEFAULT 5,
 	"scroll_speed" integer DEFAULT 50,
+	"custom_layout_config" jsonb,
 	"is_active" boolean DEFAULT false,
 	"total_duration" integer DEFAULT 0,
 	"created_at" timestamp DEFAULT now(),

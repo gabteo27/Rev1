@@ -873,6 +873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const alerts = await storage.getAlerts(userId);
       // Filter out fixed alerts from regular alerts endpoint
+      ```python
       const regularAlerts = alerts.filter(alert => !alert.isFixed);
       res.json(regularAlerts);
     } catch (error) {
@@ -1417,9 +1418,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on("close", async () => {
         const clientUserId = (ws as any).userId;
         const clientScreenId = (ws as any).screenId;
-        
+
         console.log(`Client disconnected (User: ${clientUserId || 'unauthenticated'}, Screen: ${clientScreenId || 'none'})`);
-        
+
         // If this was a player client, mark screen as offline after a delay
         if (clientScreenId && clientUserId) {
           setTimeout(async () => {
@@ -1761,8 +1762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Screen group not found" });
       }
 
-      // Broadcast play command to all screens in the group
-      const wssInstance = app.get('wss') as WebSocketServer;
+      // Broadcast play command to all screens in the groupconst wssInstance = app.get('wss') as WebSocketServer;
 
       if (group.screenIds) {
         group.screenIds.forEach(screenId => {
