@@ -1,5 +1,5 @@
 import { Switch, Route, Redirect } from "wouter";
-import { lazy, Suspense, type PropsWithChildren } from "react";
+import { lazy, Suspense, useEffect, type PropsWithChildren } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -17,12 +17,11 @@ import Scheduling from "@/pages/scheduling";
 import Widgets from "@/pages/widgets";
 import Deployment from "@/pages/deployment";
 import NotFound from "@/pages/not-found";
-import Sidebar from "@/components/layout/sidebar";
+import AppSidebar from "@/components/layout/sidebar";
 import Settings from "@/pages/settings";
 import Analytics from "@/pages/analytics";
 import ScreenPlayer from "@/pages/screen-player";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { useEffect } from "react";
 import { wsManager } from "@/lib/websocket";
 
 const PlaylistDetail = lazy(() => import("./pages/playlist-detail"));
@@ -41,7 +40,7 @@ const Loading = () => (
 const AdminLayout = ({ children }: PropsWithChildren) => (
   <SidebarProvider>
     <div className="flex h-screen bg-slate-50 dark:bg-background">
-      <Sidebar />
+      <AppSidebar />
       <div className="lg:pl-sidebar flex-1 flex flex-col overflow-hidden">
         <Suspense fallback={<Loading />}>
           {children}
