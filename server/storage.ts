@@ -512,36 +512,50 @@ export class DatabaseStorage implements IStorage {
 
   async deletePlaylistItem(id: number, userId: string): Promise<boolean> {
     try {
-      // First get the playlist item to verify ownership and get playlist ID
-      const existing = await this.getPlaylistItemWithUser(id, userId);
+      console.log(`🗑️ Starting deletePlaylistItem for item ${id}, user ${userId}`);
       
-      if (!existing) {
-        console.log(`❌ Playlist item ${id} not found or access denied for user ${userId}`);
+      // First verify the item exists and get playlist info
+      const itemWithPlaylist = await db
+        .select({
+          itemId: playlistItems.id,
+          playlistId: playlistItems.playlistId,
+          playlistUserId: playlists.userId
+        })
+        .from(playlistItems)
+        .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+        .where(eq(playlistItems.id, id))
+        .limit(1);
+
+      if (itemWithPlaylist.length === 0) {
+        console.log(`❌ Playlist item ${id} not found in database`);
         return false;
       }
 
-      const playlistId = existing.playlistId;
+      const { playlistId, playlistUserId } = itemWithPlaylist[0];
 
-      // Delete the item with proper where clause
+      // Verify user ownership
+      if (playlistUserId !== userId) {
+        console.log(`❌ User ${userId} does not own playlist ${playlistId} for item ${id}`);
+        return false;
+      }
+
+      console.log(`✅ Verified playlist item ${id} belongs to user ${userId} in playlist ${playlistId}`);
+
+      // Delete the item directly
       const result = await db
         .delete(playlistItems)
-        .where(and(
-          eq(playlistItems.id, id),
-          exists(
-            db.select().from(playlists)
-              .where(and(
-                eq(playlists.id, playlistItems.playlistId),
-                eq(playlists.userId, userId)
-              ))
-          )
-        ));
+        .where(eq(playlistItems.id, id));
 
       const success = (result.rowCount ?? 0) > 0;
 
       if (success) {
-        console.log(`✅ Successfully deleted playlist item ${id} from playlist ${playlistId}`);
+        console.log(`✅ Successfully deleted playlist item ${id}`);
         // Recalculate total duration
-        await this.updatePlaylistDuration(playlistId);
+        try {
+          await this.updatePlaylistDuration(playlistId);
+        } catch (durationError) {
+          console.warn(`Warning: Failed to update playlist duration:`, durationError);
+        }
       } else {
         console.log(`❌ Failed to delete playlist item ${id} - no rows affected`);
       }

@@ -831,20 +831,35 @@ export default function Playlists() {
 
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: number) => {
-      console.log(`🗑️ Deleting playlist item ${itemId}`);
-      await apiRequest(`/api/playlist-items/${itemId}`, {
+      console.log(`🗑️ Starting deletion of playlist item ${itemId}`);
+      
+      const response = await apiRequest(`/api/playlist-items/${itemId}`, {
         method: "DELETE"
       });
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Server error: ${response.status} - ${errorData}`);
+      }
+      
+      console.log(`✅ Server confirmed deletion of item ${itemId}`);
       return itemId;
     },
     onSuccess: async (itemId: number) => {
       console.log(`✅ Successfully deleted item ${itemId}`);
       
-      // Invalidate and refetch queries
+      // Invalidate queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId] });
+      if (selectedPlaylistForLayout?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
+      }
       
-      await refetchPlaylist();
+      // Refetch playlist data
+      try {
+        await refetchPlaylist();
+      } catch (refetchError) {
+        console.warn("Warning: Failed to refetch playlist:", refetchError);
+      }
 
       toast({
         title: "Elemento eliminado",
@@ -855,8 +870,8 @@ export default function Playlists() {
       console.error("❌ Error removing item:", error);
       
       toast({
-        title: "Error",
-        description: error.message || "No se pudo eliminar el elemento.",
+        title: "Error al eliminar",
+        description: error.message || "No se pudo eliminar el elemento. Intenta recargar la página.",
         variant: "destructive",
       });
     },
@@ -953,15 +968,34 @@ export default function Playlists() {
     },
   });
 
-  // Handle item removal with debouncing to prevent multiple calls
+  // Track items being deleted to prevent duplicates
+  const [deletingItems, setDeletingItems] = useState<Set<number>>(new Set());
+
+  // Handle item removal with proper state tracking
   const handleRemoveFromPlaylist = async (itemId: number) => {
-    if (removeItemMutation.isPending) {
-      console.log("Delete already in progress, ignoring...");
+    // Prevent duplicate deletion attempts
+    if (deletingItems.has(itemId) || removeItemMutation.isPending) {
+      console.log(`❌ Item ${itemId} deletion already in progress`);
       return;
     }
     
-    console.log(`Starting removal of item ${itemId}`);
-    removeItemMutation.mutate(itemId);
+    // Add to deleting set
+    setDeletingItems(prev => new Set(prev).add(itemId));
+    
+    console.log(`🗑️ Starting removal of item ${itemId}`);
+    
+    try {
+      await removeItemMutation.mutateAsync(itemId);
+    } catch (error) {
+      console.error(`❌ Failed to delete item ${itemId}:`, error);
+    } finally {
+      // Remove from deleting set regardless of success/failure
+      setDeletingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    }
   };
 
   const handleZoneSettingChange = async (zoneId: string, setting: string, value: string) => {
@@ -1906,9 +1940,9 @@ export default function Playlists() {
                                       size="sm"
                                       className="text-red-500 hover:text-red-700 p-1 h-auto"
                                       onClick={() => handleRemoveFromPlaylist(item.id)}
-                                      disabled={removeItemMutation.isPending}
+                                      disabled={deletingItems.has(item.id) || removeItemMutation.isPending}
                                     >
-                                      {removeItemMutation.isPending ? (
+                                      {deletingItems.has(item.id) ? (
                                         <div className="w-3 h-3 animate-spin rounded-full border border-red-500 border-t-transparent" />
                                       ) : (
                                         <Trash2 className="w-3 h-3" />
