@@ -580,6 +580,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🗑️ Attempting to delete playlist item ${id} for user ${userId}`);
 
+      // Validate the ID is a valid number
+      if (isNaN(id) || id <= 0) {
+        console.log(`❌ Invalid playlist item ID: ${req.params.id}`);
+        return res.status(400).json({ message: "Invalid playlist item ID" });
+      }
+
       // Get the playlistId associated with this item BEFORE deleting it.
       const playlistItem = await storage.getPlaylistItemWithUser(id, userId);
 
@@ -590,43 +596,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ Found playlist item ${id} in playlist ${playlistItem.playlistId}`);
 
-      // Delete the item directly from database
-      const result = await db.delete(playlistItems)
-        .where(and(
-          eq(playlistItems.id, id),
-          exists(
-            db.select().from(playlists)
-              .where(and(
-                eq(playlists.id, playlistItems.playlistId),
-                eq(playlists.userId, userId)
-              ))
-          )
-        ));
+      // Delete the item directly from database with better error handling
+      try {
+        const result = await db.delete(playlistItems)
+          .where(and(
+            eq(playlistItems.id, id),
+            exists(
+              db.select().from(playlists)
+                .where(and(
+                  eq(playlists.id, playlistItems.playlistId),
+                  eq(playlists.userId, userId)
+                ))
+            )
+          ));
 
-      if (!result.rowCount || result.rowCount === 0) {
-        console.log(`❌ Failed to delete playlist item ${id}`);
-        return res.status(404).json({ message: "Playlist item not found" });
+        if (!result.rowCount || result.rowCount === 0) {
+          console.log(`❌ Failed to delete playlist item ${id} - no rows affected`);
+          return res.status(404).json({ message: "Playlist item not found or already deleted" });
+        }
+
+        console.log(`✅ Playlist item ${id} deleted from playlist ${playlistItem.playlistId}`);
+
+      } catch (dbError) {
+        console.error(`❌ Database error deleting playlist item ${id}:`, dbError);
+        return res.status(500).json({ message: "Database error during deletion" });
       }
 
-      console.log(`✅ Playlist item ${id} deleted from playlist ${playlistItem.playlistId}`);
-
       // Update playlist duration
-      await storage.updatePlaylistDuration(playlistItem.playlistId);
+      try {
+        await storage.updatePlaylistDuration(playlistItem.playlistId);
+      } catch (durationError) {
+        console.warn(`⚠️ Warning: Failed to update playlist duration for playlist ${playlistItem.playlistId}:`, durationError);
+        // Don't fail the request for this
+      }
 
       // Broadcast to both admin and player clients
-      await broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-item-deleted');
+      try {
+        await broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-item-deleted');
 
-      // Also broadcast specific deletion event for immediate UI updates
-      broadcastToUser(userId, 'playlist-item-deleted', {
-        itemId: id,
-        playlistId: playlistItem.playlistId,
-        timestamp: new Date().toISOString()
-      });
+        // Also broadcast specific deletion event for immediate UI updates
+        broadcastToUser(userId, 'playlist-item-deleted', {
+          itemId: id,
+          playlistId: playlistItem.playlistId,
+          timestamp: new Date().toISOString()
+        });
+      } catch (broadcastError) {
+        console.warn(`⚠️ Warning: Failed to broadcast playlist update:`, broadcastError);
+        // Don't fail the request for this
+      }
 
       res.json({ message: "Playlist item deleted successfully" });
     } catch (error) {
       console.error("Error deleting playlist item:", error);
-      res.status(500).json({ message: "Failed to delete playlist item" });
+      res.status(500).json({ message: "Failed to delete playlist item", error: error.message });
     }
   });
 

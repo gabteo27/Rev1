@@ -392,6 +392,11 @@ export class DatabaseStorage implements IStorage {
 
   async updatePlaylist(id: number, updates: any, userId: string): Promise<Playlist | undefined> {
     try {
+      // Validate input parameters
+      if (!id || !userId) {
+        throw new Error('Invalid parameters: id and userId are required');
+      }
+
       // Remove any timestamp fields that might cause issues
       const { updatedAt, createdAt, ...cleanUpdates } = updates;
 
@@ -414,6 +419,12 @@ export class DatabaseStorage implements IStorage {
         }
       });
 
+      // Only proceed if there are actual updates to make
+      if (Object.keys(sanitizedUpdates).length === 0) {
+        console.log('No valid updates provided, skipping update');
+        return await this.getPlaylist(id, userId);
+      }
+
       // Add proper updatedAt timestamp
       sanitizedUpdates.updatedAt = new Date();
 
@@ -424,6 +435,12 @@ export class DatabaseStorage implements IStorage {
         .set(sanitizedUpdates)
         .where(and(eq(playlists.id, id), eq(playlists.userId, userId)))
         .returning();
+      
+      if (!item) {
+        console.log(`Playlist ${id} not found or no permission for user ${userId}`);
+        return undefined;
+      }
+
       return item;
     } catch (error) {
       console.error("Error updating playlist:", error);
@@ -899,22 +916,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPlaylistItemWithUser(id: number, userId: string): Promise<(PlaylistItem & { playlistId: number }) | undefined> {
-    const result = await db
-      .select({
-        id: playlistItems.id,
-        playlistId: playlistItems.playlistId,
-        contentItemId: playlistItems.contentItemId,
-        order: playlistItems.order,
-        zone: playlistItems.zone,
-        customDuration: playlistItems.customDuration,
-        createdAt: playlistItems.createdAt
-      })
-      .from(playlistItems)
-      .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
-      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)))
-      .limit(1);
-    
-    return result[0];
+    try {
+      const result = await db
+        .select({
+          id: playlistItems.id,
+          playlistId: playlistItems.playlistId,
+          contentItemId: playlistItems.contentItemId,
+          order: playlistItems.order,
+          zone: playlistItems.zone,
+          customDuration: playlistItems.customDuration,
+          createdAt: playlistItems.createdAt
+        })
+        .from(playlistItems)
+        .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+        .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)))
+        .limit(1);
+      
+      return result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error(`Error fetching playlist item ${id} for user ${userId}:`, error);
+      return undefined;
+    }
   }
 }
 

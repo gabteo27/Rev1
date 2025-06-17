@@ -975,7 +975,7 @@ export default function Playlists() {
     if (!selectedPlaylistForLayout) return;
 
     try {
-      // Parse current settings
+      // Parse current settings safely
       let currentSettings: any = {};
       try {
         if (playlistData?.zoneSettings) {
@@ -1001,31 +1001,45 @@ export default function Playlists() {
         zoneId, 
         setting, 
         value, 
-        currentSettings,
+        playlistId: selectedPlaylistForLayout.id,
         newZoneSettings 
       });
+
+      // Use only the specific field we want to update
+      const updatePayload = {
+        zoneSettings: JSON.stringify(newZoneSettings)
+      };
 
       const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          zoneSettings: JSON.stringify(newZoneSettings)
-        }),
+        body: JSON.stringify(updatePayload),
       });
 
       if (!response.ok) {
-          const errorData = await response.text();
-          throw new Error(`Error ${response.status}: ${errorData}`);
+        const errorData = await response.text();
+        throw new Error(`Error ${response.status}: ${errorData}`);
       }
 
-      // Refetch to update the UI
-      await refetchPlaylist();
+      // Update local state optimistically
+      queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout.id], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          zoneSettings: JSON.stringify(newZoneSettings)
+        };
+      });
+
+      // Refetch to ensure consistency
+      setTimeout(async () => {
+        await refetchPlaylist();
+      }, 100);
 
       toast({
         title: "Configuración actualizada",
-        description: `El ajuste de contenido se ha actualizada para ${zoneId}.`,
+        description: `El ajuste de contenido se ha actualizado para ${zoneId}.`,
       });
     } catch (error: any) {
       console.error("Error updating zone settings:", error);
