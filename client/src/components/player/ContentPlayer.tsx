@@ -696,11 +696,15 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     }
   };
 
-  // Escuchar actualizaciones de alertas via WebSocket
+  // Escuchar actualizaciones de alertas via WebSocket con caducidad automática
   useEffect(() => {
     if (isPreview) return;
 
+    const alertTimers = new Map<number, NodeJS.Timeout>();
+
     const handleAlertMessage = (data: any) => {
+      console.log('🔔 Alert message received:', data);
+      
       if (data.type === 'alert') {
         const alert = data.data;
         if (alert.isActive) {
@@ -709,23 +713,50 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             if (prev.some(a => a.id === alert.id)) {
               return prev;
             }
+            
+            // Configurar auto-caducidad si la alerta tiene duración
+            if (alert.duration && alert.duration > 0 && !alert.isFixed) {
+              const timer = setTimeout(() => {
+                console.log(`⏰ Alert ${alert.id} expired after ${alert.duration} seconds`);
+                setActiveAlerts(current => current.filter(a => a.id !== alert.id));
+                alertTimers.delete(alert.id);
+              }, alert.duration * 1000);
+              
+              alertTimers.set(alert.id, timer);
+            }
+            
             return [...prev, alert];
           });
         } else {
           setActiveAlerts(prev => prev.filter(a => a.id !== alert.id));
+          // Limpiar timer si existe
+          const timer = alertTimers.get(alert.id);
+          if (timer) {
+            clearTimeout(timer);
+            alertTimers.delete(alert.id);
+          }
         }
       } else if (data.type === 'alert-deleted') {
         const alertId = data.data.id || data.data.alertId;
         setActiveAlerts(prev => prev.filter(a => a.id !== alertId));
+        // Limpiar timer si existe
+        const timer = alertTimers.get(alertId);
+        if (timer) {
+          clearTimeout(timer);
+          alertTimers.delete(alertId);
+        }
       }
     };
 
     const unsubscribeAlert = wsManager.subscribe('alert', handleAlertMessage);
     const unsubscribeAlertDeleted = wsManager.subscribe('alert-deleted', handleAlertMessage);
 
+    // Cleanup timers on unmount
     return () => {
       unsubscribeAlert();
       unsubscribeAlertDeleted();
+      alertTimers.forEach(timer => clearTimeout(timer));
+      alertTimers.clear();
     };
   }, [isPreview]);
 

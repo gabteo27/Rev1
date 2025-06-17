@@ -42,6 +42,67 @@ export default function Screens() {
   const { data: screens = [], isLoading } = useQuery<Screen[]>({ queryKey: ["/api/screens"], retry: false });
   const { data: playlists = [] } = useQuery<Playlist[]>({ queryKey: ["/api/playlists"], retry: false });
 
+  // WebSocket subscriptions for real-time updates
+  useEffect(() => {
+    const unsubscribeFunctions: (() => void)[] = [];
+
+    // Wait for WebSocket connection
+    const setupSubscriptions = () => {
+      if (!wsManager.isConnected()) {
+        setTimeout(setupSubscriptions, 1000);
+        return;
+      }
+
+      // Subscribe to screen deletion
+      unsubscribeFunctions.push(
+        wsManager.subscribe('screen-deleted', (data) => {
+          console.log('Screen deleted via WebSocket:', data);
+          toast({
+            title: "Pantalla Eliminada",
+            description: `${data.screenName || 'La pantalla'} ha sido eliminada`,
+            variant: "destructive"
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+        })
+      );
+
+      // Subscribe to screen status changes
+      unsubscribeFunctions.push(
+        wsManager.subscribe('screen-status-changed', (data) => {
+          console.log('Screen status changed:', data);
+          queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+          
+          const statusText = data.isOnline ? 'conectó' : 'desconectó';
+          toast({
+            title: `Pantalla ${statusText}`,
+            description: `${data.screenName || 'Una pantalla'} se ${statusText}`,
+            variant: data.isOnline ? "default" : "destructive"
+          });
+        })
+      );
+
+      // Subscribe to screen updates
+      unsubscribeFunctions.push(
+        wsManager.subscribe('screen-update', (data) => {
+          console.log('Screen updated via WebSocket:', data);
+          queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+        })
+      );
+    };
+
+    setupSubscriptions();
+
+    return () => {
+      unsubscribeFunctions.forEach(unsubscribe => {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.error('Error unsubscribing from WebSocket event:', error);
+        }
+      });
+    };
+  }, [toast]);
+
   // --- MUTACIONES ---
 
   const completePairingMutation = useMutation({

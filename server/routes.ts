@@ -23,6 +23,7 @@ import {
   type Alert
 } from "@shared/schema";
 import { buildApk } from "./apk-builder";
+import { eq, and, desc, asc, exists, inArray, lt } from "drizzle-orm";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -775,12 +776,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const screenId = parseInt(req.params.id);
-      
+
       const success = await storage.deleteScreen(screenId, userId);
       if (!success) {
         return res.status(404).json({ message: "Screen not found" });
       }
-      
+
       // Broadcast screen deletion to all connected clients
       const wssInstance = app.get('wss') as WebSocketServer;
       wssInstance.clients.forEach((client: WebSocket) => {
@@ -792,7 +793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }));
         }
       });
-      
+
       res.json({ message: "Screen deleted successfully" });
     } catch (error) {
       console.error("Error deleting screen:", error);
@@ -890,7 +891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const validatedData = insertAlertSchema.parse(alertData);
-      const alert = awaitstorage.createAlert(validatedData);
+      const alert = await storage.createAlert(validatedData);
 
       console.log(`Created fixed alert ${alert.id} for user ${userId}`);
 
@@ -1314,15 +1315,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             const screenId = (ws as any).screenId;
             const userId = (ws as any).userId;
-            
+
             if (userId) {
               await storage.updateScreen(screenId, {
                 isOnline: true,
                 lastSeen: new Date(),
               }, userId);
-              
+
               console.log(`💓 Heartbeat received from screen ${screenId}`);
-              
+
               // Send heartbeat acknowledgment
               ws.send(JSON.stringify({ 
                 type: 'heartbeat-ack', 

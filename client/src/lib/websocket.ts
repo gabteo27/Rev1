@@ -110,15 +110,37 @@ class WebSocketManager {
         return;
       }
 
-      // Log received messages for debugging
-      console.log('WebSocket message received:', message.type, message.data);
+      if (message.type === 'heartbeat-ack') {
+        return;
+      }
 
-      // Notify subscribers
+      if (message.type === 'connection_established') {
+        console.log('WebSocket connection established');
+        return;
+      }
+
+      if (message.type === 'screen-disconnected') {
+        console.log('Screen disconnected by server:', message.data);
+        // Reload page if this screen was disconnected
+        if (message.data?.reason === 'Screen deleted') {
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        }
+        return;
+      }
+
+      // Log received messages for debugging (excluding frequent messages)
+      if (!['ping', 'pong', 'heartbeat-ack'].includes(message.type)) {
+        console.log('WebSocket message received:', message.type, message.data);
+      }
+
+      // Notify subscribers with the entire message object
       const callbacks = this.subscribers.get(message.type);
       if (callbacks) {
         callbacks.forEach(callback => {
           try {
-            callback(message.data);
+            callback({ type: message.type, data: message.data });
           } catch (error) {
             console.error('Error in WebSocket callback:', error);
           }
