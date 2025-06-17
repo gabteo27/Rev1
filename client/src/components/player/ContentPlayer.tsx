@@ -1044,6 +1044,231 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         </div>
       );
 
+    case 'grid_3x3':
+      return (
+        <div style={{ ...styles.container, display: 'grid', gridTemplate: '1fr 1fr 1fr / 1fr 1fr 1fr', gap: '2px' }}>
+          {Array.from({length: 9}, (_, i) => {
+            const zoneId = `grid_${i + 1}`;
+            return (
+              <div key={zoneId} style={{ ...styles.zone, backgroundColor: '#111' }}>
+                {renderZone(zoneId) || (
+                  <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>
+                    Celda {i + 1}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+          
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
+        </div>
+      );
+
+    case 'sidebar_right':
+      return (
+        <div style={{ ...styles.container, display: 'flex' }}>
+          <div style={{ ...styles.zone, width: '75%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('main') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Contenido Principal
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, width: '25%' }}>
+            {renderZone('sidebar') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Barra Lateral
+              </div>
+            )}
+          </div>
+
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+          
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
+        </div>
+      );
+
+    case 'header_footer':
+      return (
+        <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ ...styles.zone, height: '15%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('header') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Cabecera
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, height: '70%' }}>
+            {renderZone('main') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Contenido Principal
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, height: '15%', borderTop: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('footer') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Pie de Página
+              </div>
+            )}
+          </div>
+
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+          
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
+        </div>
+      );
+
+    case 'triple_vertical':
+      return (
+        <div style={{ ...styles.container, display: 'flex' }}>
+          <div style={{ ...styles.zone, width: '33.33%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('left') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Izquierda
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, width: '33.33%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('center') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Centro
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, width: '33.33%' }}>
+            {renderZone('right') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Derecha
+              </div>
+            )}
+          </div>
+
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+          
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
+        </div>
+      );
+
+    case 'triple_horizontal':
+      return (
+        <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ ...styles.zone, height: '33.33%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('top') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Superior
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, height: '33.33%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('middle') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Medio
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, height: '33.33%' }}>
+            {renderZone('bottom') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Inferior
+              </div>
+            )}
+          </div>
+
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+          
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
+        </div>
+      );
+
+    case 'carousel':
+      return (
+        <div style={styles.container}>
+          {renderZone('main') || (
+            <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+              Carrusel sin contenido
+            </div>
+          )}
+
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
+        </div>
+      );
+
+    case 'web_scroll':
+      return (
+        <div style={styles.container}>
+          {renderZone('main') || (
+            <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+              Scroll Web sin contenido
+            </div>
+          )}
+
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
+        </div>
+      );
+
     case 'custom_layout':
       // Renderizar layout personalizado
       if (playlist?.customLayoutConfig) {

@@ -33,7 +33,7 @@ type Playlist = any;
 type PlaylistItem = any;
 type ContentItem = any;
 
-// Componente para el editor de layout personalizado (Beta)
+// Componente para el editor de layout personalizado mejorado
 const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
   playlist: any;
   onZoneClick: (zoneId: string) => void;
@@ -46,6 +46,24 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
   ]);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [resizeDirection, setResizeDirection] = useState<string>('');
+
+  // Cargar configuración personalizada existente si está disponible
+  React.useEffect(() => {
+    if (playlist?.customLayoutConfig) {
+      try {
+        const customConfig = JSON.parse(playlist.customLayoutConfig);
+        if (customConfig.zones && customConfig.zones.length > 0) {
+          setZones(customConfig.zones);
+        }
+      } catch (e) {
+        console.error('Error loading custom layout config:', e);
+      }
+    }
+  }, [playlist?.customLayoutConfig]);
 
   const handleZoneResize = (zoneId: string, newDimensions: any) => {
     setZones(prev => prev.map(zone => 
@@ -74,10 +92,125 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
     }
   };
 
+  const saveCustomLayout = async () => {
+    try {
+      const customConfig = { zones };
+      const response = await apiRequest(`/api/playlists/${playlist.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ 
+          customLayoutConfig: JSON.stringify(customConfig) 
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Layout guardado",
+          description: "La configuración personalizada se ha guardado correctamente.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo guardar la configuración del layout.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Manejadores de mouse para drag y resize
+  const handleMouseDown = (e: React.MouseEvent, zoneId: string, action: 'drag' | 'resize', direction?: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isEditing) return;
+    
+    setSelectedZone(zoneId);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const container = (e.currentTarget as HTMLElement).parentElement?.getBoundingClientRect();
+    
+    if (container) {
+      setDragStart({
+        x: ((e.clientX - container.left) / container.width) * 100,
+        y: ((e.clientY - container.top) / container.height) * 100
+      });
+    }
+    
+    if (action === 'drag') {
+      setIsDragging(true);
+    } else {
+      setIsResizing(true);
+      setResizeDirection(direction || '');
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isEditing || !selectedZone || (!isDragging && !isResizing)) return;
+    
+    const container = e.currentTarget.getBoundingClientRect();
+    const currentX = ((e.clientX - container.left) / container.width) * 100;
+    const currentY = ((e.clientY - container.top) / container.height) * 100;
+    
+    const selectedZoneData = zones.find(z => z.id === selectedZone);
+    if (!selectedZoneData) return;
+    
+    if (isDragging) {
+      const deltaX = currentX - dragStart.x;
+      const deltaY = currentY - dragStart.y;
+      
+      const newX = Math.max(0, Math.min(90, selectedZoneData.x + deltaX));
+      const newY = Math.max(0, Math.min(90, selectedZoneData.y + deltaY));
+      
+      handleZoneResize(selectedZone, { x: newX, y: newY });
+      setDragStart({ x: currentX, y: currentY });
+    } else if (isResizing) {
+      const deltaX = currentX - dragStart.x;
+      const deltaY = currentY - dragStart.y;
+      
+      let newWidth = selectedZoneData.width;
+      let newHeight = selectedZoneData.height;
+      let newX = selectedZoneData.x;
+      let newY = selectedZoneData.y;
+      
+      if (resizeDirection.includes('e')) {
+        newWidth = Math.max(10, Math.min(100 - selectedZoneData.x, selectedZoneData.width + deltaX));
+      }
+      if (resizeDirection.includes('w')) {
+        const widthChange = -deltaX;
+        newWidth = Math.max(10, selectedZoneData.width + widthChange);
+        newX = Math.max(0, selectedZoneData.x - widthChange);
+      }
+      if (resizeDirection.includes('s')) {
+        newHeight = Math.max(10, Math.min(100 - selectedZoneData.y, selectedZoneData.height + deltaY));
+      }
+      if (resizeDirection.includes('n')) {
+        const heightChange = -deltaY;
+        newHeight = Math.max(10, selectedZoneData.height + heightChange);
+        newY = Math.max(0, selectedZoneData.y - heightChange);
+      }
+      
+      handleZoneResize(selectedZone, { 
+        x: newX, 
+        y: newY, 
+        width: newWidth, 
+        height: newHeight 
+      });
+      setDragStart({ x: currentX, y: currentY });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setIsResizing(false);
+    setResizeDirection('');
+  };
+
   return (
     <div className="w-full h-full">
       <div className="flex justify-between items-center mb-2">
-        <div className="text-xs font-medium text-gray-700">Editor de Layout Personalizado (Beta)</div>
+        <div className="text-xs font-medium text-gray-700">Editor de Layout Personalizado</div>
         <div className="flex gap-1">
           <Button
             variant={isEditing ? "default" : "outline"}
@@ -88,77 +221,135 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
             {isEditing ? "Vista" : "Editar"}
           </Button>
           {isEditing && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={addNewZone}
-              className="text-xs h-6 px-2"
-            >
-              <Plus className="w-3 h-3" />
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addNewZone}
+                className="text-xs h-6 px-2"
+              >
+                <Plus className="w-3 h-3" />
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={saveCustomLayout}
+                className="text-xs h-6 px-2"
+              >
+                Guardar
+              </Button>
+            </>
           )}
         </div>
       </div>
       
-      <div className="w-full h-64 bg-slate-100 rounded-lg relative border-2 border-dashed border-gray-300 overflow-hidden">
+      <div 
+        className="w-full h-64 bg-slate-100 rounded-lg relative border-2 border-dashed border-gray-300 overflow-hidden select-none"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
         {zones.map((zone) => (
           <div
             key={zone.id}
-            className={`absolute border-2 rounded cursor-pointer transition-all ${
+            className={`absolute border-2 rounded transition-all ${
               selectedZone === zone.id 
                 ? 'border-blue-500 bg-blue-100' 
                 : 'border-gray-400 bg-white hover:bg-gray-50'
-            }`}
+            } ${isEditing ? 'cursor-move' : 'cursor-pointer'}`}
             style={{
               left: `${zone.x}%`,
               top: `${zone.y}%`,
               width: `${zone.width}%`,
               height: `${zone.height}%`,
               minWidth: '40px',
-              minHeight: '30px'
+              minHeight: '30px',
+              zIndex: selectedZone === zone.id ? 10 : 1
             }}
-            onClick={() => {
+            onMouseDown={(e) => {
               if (isEditing) {
-                setSelectedZone(zone.id);
+                handleMouseDown(e, zone.id, 'drag');
               } else {
                 onZoneClick(zone.id);
               }
             }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isEditing) {
+                onZoneClick(zone.id);
+              } else {
+                setSelectedZone(zone.id);
+              }
+            }}
           >
-            <div className="w-full h-full flex flex-col items-center justify-center text-center p-1">
+            <div className="w-full h-full flex flex-col items-center justify-center text-center p-1 pointer-events-none">
               <div className="text-xs font-medium text-gray-700 truncate w-full">
                 {zone.title}
               </div>
               <div className="text-xs text-gray-500">
-                {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
+                {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0} elementos
               </div>
               {!isEditing && (
-                <Button variant="ghost" size="sm" className="text-xs h-4 px-1 mt-1">
-                  <Plus className="w-2 h-2" />
-                </Button>
-              )}
-              {isEditing && selectedZone === zone.id && zones.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteZone(zone.id);
-                  }}
-                  className="text-red-500 hover:text-red-700 text-xs h-4 px-1 mt-1"
-                >
-                  <Trash2 className="w-2 h-2" />
-                </Button>
+                <div className="text-xs text-blue-600 mt-1 pointer-events-auto">
+                  <Plus className="w-3 h-3 mx-auto" />
+                  Clic para agregar
+                </div>
               )}
             </div>
             
             {/* Resize handles when editing */}
             {isEditing && selectedZone === zone.id && (
               <>
-                <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-blue-500 cursor-se-resize"></div>
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 cursor-ne-resize"></div>
-                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-blue-500 cursor-sw-resize"></div>
-                <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 cursor-nw-resize"></div>
+                {/* Corner handles */}
+                <div 
+                  className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-500 cursor-se-resize border border-white"
+                  onMouseDown={(e) => handleMouseDown(e, zone.id, 'resize', 'se')}
+                />
+                <div 
+                  className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 cursor-ne-resize border border-white"
+                  onMouseDown={(e) => handleMouseDown(e, zone.id, 'resize', 'ne')}
+                />
+                <div 
+                  className="absolute -bottom-1 -left-1 w-3 h-3 bg-blue-500 cursor-sw-resize border border-white"
+                  onMouseDown={(e) => handleMouseDown(e, zone.id, 'resize', 'sw')}
+                />
+                <div 
+                  className="absolute -top-1 -left-1 w-3 h-3 bg-blue-500 cursor-nw-resize border border-white"
+                  onMouseDown={(e) => handleMouseDown(e, zone.id, 'resize', 'nw')}
+                />
+                
+                {/* Edge handles */}
+                <div 
+                  className="absolute top-1/2 -right-1 w-2 h-4 bg-blue-500 cursor-e-resize transform -translate-y-1/2 border border-white"
+                  onMouseDown={(e) => handleMouseDown(e, zone.id, 'resize', 'e')}
+                />
+                <div 
+                  className="absolute top-1/2 -left-1 w-2 h-4 bg-blue-500 cursor-w-resize transform -translate-y-1/2 border border-white"
+                  onMouseDown={(e) => handleMouseDown(e, zone.id, 'resize', 'w')}
+                />
+                <div 
+                  className="absolute left-1/2 -top-1 w-4 h-2 bg-blue-500 cursor-n-resize transform -translate-x-1/2 border border-white"
+                  onMouseDown={(e) => handleMouseDown(e, zone.id, 'resize', 'n')}
+                />
+                <div 
+                  className="absolute left-1/2 -bottom-1 w-4 h-2 bg-blue-500 cursor-s-resize transform -translate-x-1/2 border border-white"
+                  onMouseDown={(e) => handleMouseDown(e, zone.id, 'resize', 's')}
+                />
+                
+                {/* Delete button */}
+                {zones.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteZone(zone.id);
+                    }}
+                    className="absolute -top-2 -right-2 w-5 h-5 p-0 bg-red-500 hover:bg-red-600 text-white rounded-full pointer-events-auto"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -166,69 +357,82 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
       </div>
 
       {isEditing && selectedZone && (
-        <div className="mt-2 p-2 bg-gray-50 rounded text-xs space-y-2">
-          <div className="font-medium">Zona Seleccionada: {zones.find(z => z.id === selectedZone)?.title}</div>
-          <div className="grid grid-cols-4 gap-2">
-            <div>
-              <label className="block text-xs text-gray-600">X (%)</label>
-              <Input
-                type="number"
-                min="0"
-                max="90"
-                value={zones.find(z => z.id === selectedZone)?.x || 0}
-                onChange={(e) => handleZoneResize(selectedZone, { x: parseInt(e.target.value) || 0 })}
-                className="text-xs h-6"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600">Y (%)</label>
-              <Input
-                type="number"
-                min="0"
-                max="90"
-                value={zones.find(z => z.id === selectedZone)?.y || 0}
-                onChange={(e) => handleZoneResize(selectedZone, { y: parseInt(e.target.value) || 0 })}
-                className="text-xs h-6"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600">Ancho (%)</label>
-              <Input
-                type="number"
-                min="10"
-                max="100"
-                value={zones.find(z => z.id === selectedZone)?.width || 0}
-                onChange={(e) => handleZoneResize(selectedZone, { width: parseInt(e.target.value) || 10 })}
-                className="text-xs h-6"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600">Alto (%)</label>
-              <Input
-                type="number"
-                min="10"
-                max="100"
-                value={zones.find(z => z.id === selectedZone)?.height || 0}
-                onChange={(e) => handleZoneResize(selectedZone, { height: parseInt(e.target.value) || 10 })}
-                className="text-xs h-6"
-              />
-            </div>
+        <div className="mt-2 p-3 bg-gray-50 rounded-lg text-sm space-y-3">
+          <div className="font-medium text-gray-800">
+            Zona Seleccionada: {zones.find(z => z.id === selectedZone)?.title}
           </div>
-          <div>
-            <label className="block text-xs text-gray-600">Título</label>
-            <Input
-              type="text"
-              value={zones.find(z => z.id === selectedZone)?.title || ''}
-              onChange={(e) => handleZoneResize(selectedZone, { title: e.target.value })}
-              className="text-xs h-6"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Título</label>
+                <Input
+                  type="text"
+                  value={zones.find(z => z.id === selectedZone)?.title || ''}
+                  onChange={(e) => handleZoneResize(selectedZone, { title: e.target.value })}
+                  className="text-xs h-7"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">X (%)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="90"
+                    value={Math.round(zones.find(z => z.id === selectedZone)?.x || 0)}
+                    onChange={(e) => handleZoneResize(selectedZone, { x: parseInt(e.target.value) || 0 })}
+                    className="text-xs h-7"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Y (%)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="90"
+                    value={Math.round(zones.find(z => z.id === selectedZone)?.y || 0)}
+                    onChange={(e) => handleZoneResize(selectedZone, { y: parseInt(e.target.value) || 0 })}
+                    className="text-xs h-7"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Ancho (%)</label>
+                  <Input
+                    type="number"
+                    min="10"
+                    max="100"
+                    value={Math.round(zones.find(z => z.id === selectedZone)?.width || 0)}
+                    onChange={(e) => handleZoneResize(selectedZone, { width: parseInt(e.target.value) || 10 })}
+                    className="text-xs h-7"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Alto (%)</label>
+                  <Input
+                    type="number"
+                    min="10"
+                    max="100"
+                    value={Math.round(zones.find(z => z.id === selectedZone)?.height || 0)}
+                    onChange={(e) => handleZoneResize(selectedZone, { height: parseInt(e.target.value) || 10 })}
+                    className="text-xs h-7"
+                  />
+                </div>
+              </div>
+              <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+                <strong>Tip:</strong> Arrastra para mover, usa las esquinas/bordes para redimensionar
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded">
-        <strong>Versión Beta:</strong> Esta es una implementación básica del editor personalizado. 
-        Las configuraciones no se guardan automáticamente aún.
+      <div className="mt-2 text-xs text-green-600 bg-green-50 p-2 rounded">
+        <strong>✨ Editor Mejorado:</strong> Ahora puedes redimensionar arrastrando las esquinas y bordes de las zonas, 
+        agregar contenido haciendo clic en las zonas, y guardar tu configuración personalizada.
       </div>
     </div>
   );
