@@ -106,6 +106,18 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
       });
 
       if (response.ok) {
+        // Enviar notificación via WebSocket para actualizar el player
+        try {
+          await apiRequest(`/api/playlists/${playlist.id}/notify-update`, {
+            method: "POST",
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+        } catch (wsError) {
+          console.warn('Failed to send WebSocket notification:', wsError);
+        }
+
         toast({
           title: "Layout guardado",
           description: "La configuración personalizada se ha guardado correctamente.",
@@ -244,10 +256,11 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
       </div>
 
       <div 
-        className="w-full h-64 bg-slate-100 rounded-lg relative border-2 border-dashed border-gray-300 overflow-hidden select-none"
+        className="w-full h-80 bg-slate-100 rounded-lg relative border-2 border-dashed border-gray-300 overflow-auto select-none"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        style={{ minHeight: '320px', maxHeight: '500px' }}
       >
         {zones.map((zone) => (
           <div
@@ -772,9 +785,23 @@ export default function Playlists() {
       }
       return response;
     },
-    onSuccess: () => {
-      refetchPlaylist();
+    onSuccess: async () => {
+      // Forzar actualización inmediata
+      await refetchPlaylist();
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      
+      // Enviar notificación via WebSocket para actualizar el player
+      try {
+        await apiRequest(`/api/playlists/${selectedPlaylistForLayout?.id}/notify-update`, {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (wsError) {
+        console.warn('Failed to send WebSocket notification:', wsError);
+      }
+      
       toast({
         title: "Elemento eliminado",
         description: "El elemento se ha eliminado de la playlist.",
@@ -1528,7 +1555,7 @@ export default function Playlists() {
                         <div className="w-1/3 border-2 border-dashed border-indigo-400 rounded-lg bg-indigo-50 flex flex-col items-center justify-center hover:bg-indigo-100 transition-colors cursor-pointer"
                              onClick={() => handleOpenContentLibrary('sidebar')}>
                           <SidebarClose className="w-5 h-5 text-indigo-600 mb-2" />
-                          <span className="text-xs font-medium text-indigo-700Sidebar</span>
+                          <span className="text-xs font-medium text-indigo-700">Sidebar</span>
                           <span className="text-xs text-indigo-600 mt-1">
                             {playlistData?.items?.filter((item: any) => item.zone === 'sidebar')?.length || 0}
                           </span>

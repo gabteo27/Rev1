@@ -942,7 +942,75 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   // Renderizado del Layout
   const layout = playlist?.layout || 'single_zone';
 
+  const renderZoneContent = (zoneId: string) => {
+    const tracker = zoneTrackers[zoneId];
+    if (!tracker || tracker.items.length === 0) {
+      return null;
+    }
+    const currentItem = tracker.items[tracker.currentIndex];
+    return renderContentItem(currentItem);
+  }
+
   switch (layout) {
+    case 'custom_layout': {
+      let customZones: any[] = [];
+      try {
+        if (playlist.customLayoutConfig) {
+          const customConfig = JSON.parse(playlist.customLayoutConfig);
+          customZones = customConfig.zones || [];
+        }
+      } catch (e) {
+        console.error('Error parsing custom layout config:', e);
+      }
+
+      return (
+        <div style={{ 
+          ...styles.container, 
+          position: 'relative',
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden'
+        }}>
+          {customZones.map((zone: any) => (
+            <div
+              key={zone.id}
+              style={{
+                position: 'absolute',
+                left: `${zone.x}%`,
+                top: `${zone.y}%`,
+                width: `${zone.width}%`,
+                height: `${zone.height}%`,
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                zIndex: 1
+              }}
+            >
+              {renderZoneContent(zone.id) || (
+                <div style={{
+                  ...styles.zone,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: Math.min(zone.width, zone.height) * 0.8 + 'px',
+                  textAlign: 'center',
+                  padding: '8px'
+                }}>
+                  <div>
+                    <div style={{ marginBottom: '4px' }}>{zone.title}</div>
+                    <div style={{ fontSize: '0.8em', opacity: 0.7 }}>Sin contenido</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          {widgets.filter(w => w.isEnabled).map(widget => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+        </div>
+      );
+    }
     case 'split_vertical':
       return (
         <div style={{ ...styles.container, display: 'flex' }}>
@@ -964,7 +1032,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
-          
+
           {activeAlerts.map((alert) => (
             <AlertOverlay
               key={alert.id}
@@ -1010,7 +1078,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
-          
+
           {activeAlerts.map((alert) => (
             <AlertOverlay
               key={alert.id}
@@ -1042,7 +1110,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
-          
+
           {activeAlerts.map((alert) => (
             <AlertOverlay
               key={alert.id}
@@ -1072,7 +1140,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
-          
+
           {activeAlerts.map((alert) => (
             <AlertOverlay
               key={alert.id}
@@ -1104,7 +1172,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
-          
+
           {activeAlerts.map((alert) => (
             <AlertOverlay
               key={alert.id}
@@ -1143,7 +1211,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
-          
+
           {activeAlerts.map((alert) => (
             <AlertOverlay
               key={alert.id}
@@ -1182,7 +1250,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
-          
+
           {activeAlerts.map((alert) => (
             <AlertOverlay
               key={alert.id}
@@ -1221,7 +1289,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
           ))}
-          
+
           {activeAlerts.map((alert) => (
             <AlertOverlay
               key={alert.id}
@@ -1278,122 +1346,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         </div>
       );
 
-    case 'custom_layout':
-      // Renderizar layout personalizado
-      if (playlist?.customLayoutConfig) {
-        try {
-          const customConfig = JSON.parse(playlist.customLayoutConfig);
-          
-          console.log('🎨 Rendering custom layout with config:', customConfig);
-          console.log('🗂️ Available zone trackers:', Object.keys(zoneTrackers));
-          
-          return (
-            <div style={{ ...styles.container, position: 'relative', overflow: 'hidden' }}>
-              {customConfig.zones?.map((zone: any) => {
-                const zoneContent = renderZone(zone.id);
-                console.log(`🎯 Zone ${zone.id} content:`, zoneContent ? 'Has content' : 'Empty');
-                
-                return (
-                  <div
-                    key={zone.id}
-                    style={{
-                      position: 'absolute',
-                      left: `${zone.x}%`,
-                      top: `${zone.y}%`,
-                      width: `${zone.width}%`,
-                      height: `${zone.height}%`,
-                      border: isPreview ? '1px solid rgba(255,255,255,0.2)' : 'none',
-                      overflow: 'hidden',
-                      backgroundColor: 'rgba(0,0,0,0.1)',
-                      zIndex: 1
-                    }}
-                  >
-                    {zoneContent || (
-                      <div style={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        color: 'rgba(255,255,255,0.3)',
-                        fontSize: '14px',
-                        textAlign: 'center',
-                        padding: '10px'
-                      }}>
-                        {isPreview ? `${zone.title || zone.id}` : ''}
-                        {!isPreview && (
-                          <div style={{ fontSize: '12px', opacity: 0.5 }}>
-                            Sin contenido
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {widgets.filter(w => w.isEnabled).map((widget) => (
-                <WidgetRenderer key={widget.id} widget={widget} />
-              ))}
-              
-              {activeAlerts.map((alert) => (
-                <AlertOverlay
-                  key={alert.id}
-                  alert={alert}
-                  onAlertExpired={handleAlertExpired}
-                />
-              ))}
-            </div>
-          );
-        } catch (e) {
-          console.error('Error rendering custom layout:', e);
-        }
-      }
-      // Fallback to single zone if custom layout fails
-      return (
-        <div style={styles.container}>
-          {renderZone('main') || (
-            <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-              Layout personalizado no válido
-            </div>
-          )}
-
-          {widgets.filter(w => w.isEnabled).map((widget) => (
-            <WidgetRenderer key={widget.id} widget={widget} />
-          ))}
-
-          {activeAlerts.map((alert) => (
-            <AlertOverlay
-              key={alert.id}
-              alert={alert}
-              onAlertExpired={handleAlertExpired}
-            />
-          ))}
-        </div>
-      );
-    case 'split_horizontal':
-      return (
-        <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ ...styles.zone, height: '50%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
-            {renderZone('top') || (
-              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                Sin contenido en zona superior
-              </div>
-            )}
-          </div>
-          <div style={{ ...styles.zone, height: '50%' }}>
-            {renderZone('bottom') || (
-              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                Sin contenido en zona inferior
-              </div>
-            )}
-          </div>
-
-          {widgets.filter(w => w.isEnabled).map((widget) => (
-            <WidgetRenderer key={widget.id} widget={widget} />
-          ))}
-        </div>
-      );
+    
     case 'pip_bottom_right':
       return (
         <div style={{...styles.container, position: 'relative' }}>

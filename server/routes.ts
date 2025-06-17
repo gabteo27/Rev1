@@ -587,7 +587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (playlistItem) {
         console.log(`Broadcasting playlist item deletion for playlist ${playlistItem.playlistId}`);
         await broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-content-updated');
-        
+
         // Also broadcast specific deletion event for immediate UI updates
         broadcastToUser(userId, 'playlist-item-deleted', {
           itemId: id,
@@ -1435,7 +1435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Check if screen has reconnected by looking for active WebSocket connections
               let screenReconnected = false;
               const wssInstance = app.get('wss') as WebSocketServer;
-              
+
               wssInstance.clients.forEach((client: WebSocket) => {
                 const clientWithId = client as any;
                 if (clientWithId.readyState === WebSocket.OPEN && 
@@ -1764,7 +1764,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast group deletion to all user's clients
       broadcastToUser(userId, 'screen-group-deleted', { groupId: id });
 
-      res.json({ message: "Screen group deleted successfully" });
+      res.json({ message: "Screengroup deleted successfully" });
     } catch (error) {
       console.error("Error deleting screen group:", error);
       res.status(500).json({ message: "Failed to delete screen group" });
@@ -1967,3 +1967,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
+// The code defines several API endpoints and integrates WebSocket for real-time updates, including playlist updates.
