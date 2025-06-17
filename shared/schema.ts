@@ -54,6 +54,7 @@ export const playlists = pgTable("playlists", {
   carouselDuration: integer("carousel_duration").default(5), // Duration per image in carousel mode
   scrollSpeed: integer("scroll_speed").default(50), // Pixels per second for web scroll mode
   customLayoutConfig: jsonb("custom_layout_config"), // Custom layout configuration for free-form layouts
+  zoneSettings: jsonb("zone_settings"), // Settings for each zone (objectFit, etc.)
   isActive: boolean("is_active").default(false),
   totalDuration: integer("total_duration").default(0), // Calculated total duration
   createdAt: timestamp("created_at").defaultNow(),

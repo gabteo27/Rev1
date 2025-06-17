@@ -979,7 +979,9 @@ export default function Playlists() {
       let currentSettings: any = {};
       try {
         if (playlistData?.zoneSettings) {
-          currentSettings = JSON.parse(playlistData.zoneSettings);
+          currentSettings = typeof playlistData.zoneSettings === 'string' 
+            ? JSON.parse(playlistData.zoneSettings)
+            : playlistData.zoneSettings;
         }
       } catch (e) {
         console.warn("Error parsing zone settings:", e);
@@ -995,7 +997,22 @@ export default function Playlists() {
         }
       };
 
-      console.log("Updating zone settings:", { zoneId, setting, value, newZoneSettings });
+      console.log("Updating zone settings:", { 
+        zoneId, 
+        setting, 
+        value, 
+        currentSettings,
+        newZoneSettings 
+      });
+
+      // Update local state immediately for better UX
+      queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout.id], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          zoneSettings: JSON.stringify(newZoneSettings)
+        };
+      });
 
       const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}`, {
         method: "PUT",
@@ -1012,17 +1029,9 @@ export default function Playlists() {
           throw new Error(`Error ${response.status}: ${errorData}`);
       }
 
-      // Update local state immediately for better UX
-      queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout.id], (oldData: any) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          zoneSettings: JSON.stringify(newZoneSettings)
-        };
-      });
-
-      // Refetch to update the UI
+      // Force refetch after successful update
       await refetchPlaylist();
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
 
       toast({
         title: "Configuración actualizada",
@@ -1030,6 +1039,10 @@ export default function Playlists() {
       });
     } catch (error: any) {
       console.error("Error updating zone settings:", error);
+      
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
+      
       toast({
         title: "Error",
         description: error.message || "No se pudo actualizar la configuración de la zona.",

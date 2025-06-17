@@ -408,6 +408,9 @@ export class DatabaseStorage implements IStorage {
             sanitizedUpdates[key] = parseInt(value.toString()) || (key === 'carouselDuration' ? 5 : 50);
           } else if (key === 'isActive') {
             sanitizedUpdates[key] = Boolean(value);
+          } else if (key === 'zoneSettings') {
+            // Handle zoneSettings specially - ensure it's properly stringified JSON
+            sanitizedUpdates[key] = typeof value === 'string' ? value : JSON.stringify(value);
           } else {
             sanitizedUpdates[key] = value;
           }
@@ -416,6 +419,8 @@ export class DatabaseStorage implements IStorage {
 
       // Add proper updatedAt timestamp
       sanitizedUpdates.updatedAt = new Date();
+
+      console.log('Updating playlist with sanitized data:', sanitizedUpdates);
 
       const [item] = await db
         .update(playlists)
@@ -905,8 +910,7 @@ export class DatabaseStorage implements IStorage {
         order: playlistItems.order,
         zone: playlistItems.zone,
         customDuration: playlistItems.customDuration,
-        createdAt: playlistItems.createdAt,
-        updatedAt: playlistItems.updatedAt
+        createdAt: playlistItems.createdAt
       })
       .from(playlistItems)
       .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
