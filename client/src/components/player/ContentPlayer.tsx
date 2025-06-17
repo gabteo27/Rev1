@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { AlertOverlay } from './AlertOverlay';
@@ -779,59 +779,71 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   };
 
   // Escuchar actualizaciones de alertas via WebSocket con caducidad automática
+  const alertTimers = new Map<number, NodeJS.Timeout>();
+
+  const handleAlertMessage = useCallback((data: any) => {
+    console.log('🔔 Alert message received:', data);
+
+    if (data.deleted) {
+      setActiveAlerts(prev => prev.filter(alert => alert.id !== data.id));
+      // Clear timer if exists
+      if (alertTimers.has(data.id)) {
+        clearTimeout(alertTimers.get(data.id));
+        alertTimers.delete(data.id);
+      }
+      return;
+    }
+
+    const alert = data as Alert;
+    if (!alert.isActive) return;
+
+    setActiveAlerts(prev => {
+      const existing = prev.find(a => a.id === alert.id);
+      if (existing) {
+        // Update existing alert
+        return prev.map(a => a.id === alert.id ? alert : a);
+      }
+      return [...prev, alert];
+    });
+
+    // Auto-remove alert after duration (only for non-fixed alerts)
+    if (alert.duration > 0 && !alert.isFixed) {
+      if (alertTimers.has(alert.id)) {
+        clearTimeout(alertTimers.get(alert.id));
+      }
+
+      const timer = setTimeout(() => {
+        setActiveAlerts(prev => prev.filter(a => a.id !== alert.id));
+        alertTimers.delete(alert.id);
+        console.log(`🔔 Alert ${alert.id} auto-expired after ${alert.duration} seconds`);
+      }, alert.duration * 1000);
+
+      alertTimers.set(alert.id, timer);
+      console.log(`🔔 Alert ${alert.id} will expire in ${alert.duration} seconds`);
+    }
+  }, []);
+
   useEffect(() => {
     if (isPreview) return;
 
-    const alertTimers = new Map<number, NodeJS.Timeout>();
+    // Subscribe to alerts
+    const unsubscribeAlert = wsManager.subscribe('alert', handleAlertMessage);
+    const unsubscribeAlertDeleted = wsManager.subscribe('alert-deleted', handleAlertMessage);
 
-    const handleAlertMessage = (data: any) => {
-      console.log('🔔 Alert message received:', data);
-
-      if (data.type === 'alert') {
-        const alert = data.data;
-        if (alert.isActive) {
-          setActiveAlerts(prev => {
-            // Evitar duplicados
-            if (prev.some(a => a.id === alert.id)) {
-              return prev;
-            }
-
-            // Configurar auto-caducidad si la alerta tiene duración
-            if (alert.duration && alert.duration > 0 && !alert.isFixed) {
-              const timer = setTimeout(() => {
-                console.log(`⏰ Alert ${alert.id} expired after ${alert.duration} seconds`);
-                setActiveAlerts(current => current.filter(a => a.id !== alert.id));
-                alertTimers.delete(alert.id);
-              }, alert.duration * 1000);
-
-              alertTimers.set(alert.id, timer);
-            }
-
-            return [...prev, alert];
-          });
-        } else {
-          setActiveAlerts(prev => prev.filter(a => a.id !== alert.id));
-          // Limpiar timer si existe
-          const timer = alertTimers.get(alert.id);
-          if (timer) {
-            clearTimeout(timer);
-            alertTimers.delete(alert.id);
-          }
+    // Fetch active alerts on mount
+    const fetchActiveAlerts = async () => {
+      try {
+        const response = await apiRequest('/api/player/alerts');
+        if (response.ok) {
+          const alerts = await response.json();
+          setActiveAlerts(alerts.filter((alert: Alert) => alert.isActive));
         }
-      } else if (data.type === 'alert-deleted') {
-        const alertId = data.data.id || data.data.alertId;
-        setActiveAlerts(prev => prev.filter(a => a.id !== alertId));
-        // Limpiar timer si existe
-        const timer = alertTimers.get(alertId);
-        if (timer) {
-          clearTimeout(timer);
-          alertTimers.delete(alertId);
-        }
+      } catch (error) {
+        console.error('Error fetching active alerts:', error);
       }
     };
 
-    const unsubscribeAlert = wsManager.subscribe('alert', handleAlertMessage);
-    const unsubscribeAlertDeleted = wsManager.subscribe('alert-deleted', handleAlertMessage);
+    fetchActiveAlerts();
 
     // Cleanup timers on unmount
     return () => {
@@ -860,7 +872,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     }
 
     const { type, url, title } = item.contentItem;
-    
+
     // Obtener configuración de objectFit para la zona
     let zoneSettings: any = {};
     try {
@@ -873,10 +885,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       console.warn('Error parsing zone settings:', e);
       zoneSettings = {};
     }
-    
+
     const currentZoneId = zoneId || 'main';
     const objectFit = zoneSettings[currentZoneId]?.objectFit || 'contain';
-    
+
     console.log(`Zone ${currentZoneId} objectFit:`, objectFit, 'from settings:', zoneSettings);
 
     const isYouTubeURL = (url: string) => {
@@ -1455,7 +1467,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         </div>
       );
 
-    
+
     case 'pip_bottom_right':
       return (
         <div style={{...styles.container, position: 'relative' }}>

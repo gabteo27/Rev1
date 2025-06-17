@@ -109,7 +109,7 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
         } else if (typeof playlist.customLayoutConfig === 'object') {
           customConfig = playlist.customLayoutConfig;
         }
-        
+
         if (customConfig?.zones && customConfig.zones.length > 0) {
           setZones(customConfig.zones);
         }
@@ -832,28 +832,28 @@ export default function Playlists() {
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: number) => {
       console.log(`🗑️ Starting deletion of playlist item ${itemId}`);
-      
+
       const response = await apiRequest(`/api/playlist-items/${itemId}`, {
         method: "DELETE"
       });
-      
+
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(`Server error: ${response.status} - ${errorData}`);
       }
-      
+
       console.log(`✅ Server confirmed deletion of item ${itemId}`);
       return itemId;
     },
     onSuccess: async (itemId: number) => {
       console.log(`✅ Successfully deleted item ${itemId}`);
-      
+
       // Invalidate queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
       if (selectedPlaylistForLayout?.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
       }
-      
+
       // Refetch playlist data
       try {
         await refetchPlaylist();
@@ -868,7 +868,7 @@ export default function Playlists() {
     },
     onError: (error: any) => {
       console.error("❌ Error removing item:", error);
-      
+
       toast({
         title: "Error al eliminar",
         description: error.message || "No se pudo eliminar el elemento. Intenta recargar la página.",
@@ -978,12 +978,12 @@ export default function Playlists() {
       console.log(`❌ Item ${itemId} deletion already in progress`);
       return;
     }
-    
+
     // Add to deleting set
     setDeletingItems(prev => new Set(prev).add(itemId));
-    
+
     console.log(`🗑️ Starting removal of item ${itemId}`);
-    
+
     try {
       await removeItemMutation.mutateAsync(itemId);
     } catch (error) {
@@ -1853,7 +1853,7 @@ export default function Playlists() {
                     <div className="space-y-3">
                       {zones.map(zone => {
                         const zoneItems = playlistData?.items?.filter((item: any) => item.zone === zone.id) || [];
-                        
+
                         // Safely parse zoneSettings - handle both string and object cases
                         let zoneSettings = {};
                         try {
@@ -1868,7 +1868,7 @@ export default function Playlists() {
                           console.warn('Error parsing zone settings:', error);
                           zoneSettings = {};
                         }
-                        
+
                         const currentObjectFit = zoneSettings[zone.id]?.objectFit || 'cover';
 
                         return (
@@ -1927,29 +1927,33 @@ export default function Playlists() {
                             {zoneItems.length > 0 ? (
                               <div className="space-y-2">
                                 {zoneItems.sort((a: any, b: any) => a.order - b.order).map((item: any) => (
-                                  <div key={item.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs">
-                                    <div className="w-4 h-4 bg-slate-300 rounded flex items-center justify-center flex-shrink-0">
-                                      {getContentIcon(item.contentItem?.type)}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-medium truncate">{item.contentItem?.title || 'Sin título'}</div>
-                                      <div className="text-gray-500">{item.customDuration || item.contentItem?.duration || 10}s</div>
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="text-red-500 hover:text-red-700 p-1 h-auto"
-                                      onClick={() => handleRemoveFromPlaylist(item.id)}
-                                      disabled={deletingItems.has(item.id) || removeItemMutation.isPending}
-                                    >
-                                      {deletingItems.has(item.id) ? (
-                                        <div className="w-3 h-3 animate-spin rounded-full border border-red-500 border-t-transparent" />
-                                      ) : (
-                                        <Trash2 className="w-3 h-3" />
-                                      )}
-                                    </Button>
-                                  </div>
-                                ))}
+                              <div key={item.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs">
+                                <div className="w-4 h-4 bg-slate-300 rounded flex items-center justify-center flex-shrink-0">
+                                  {getContentIcon(item.contentItem?.type)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium truncate">{item.contentItem?.title || 'Sin título'}</div>
+                                  <DurationInput
+                                    itemId={item.id}
+                                    initialDuration={item.customDuration || item.contentItem?.duration || 10}
+                                    onDurationChange={(duration) => updateItemDurationMutation.mutate({ itemId: item.id, duration })}
+                                  />
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-500 hover:text-red-700 p-1 h-auto"
+                                  onClick={() => handleRemoveFromPlaylist(item.id)}
+                                  disabled={deletingItems.has(item.id) || removeItemMutation.isPending}
+                                >
+                                  {deletingItems.has(item.id) ? (
+                                    <div className="w-3 h-3 animate-spin rounded-full border border-red-500 border-t-transparent" />
+                                  ) : (
+                                    <Trash2 className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            ))}
                               </div>
                             ) : (
                               <div className="text-center py-4 text-xs text-gray-500 border-2 border-dashed border-gray-200 rounded">

@@ -1,6 +1,7 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Calendar, Clock, Monitor, PlayCircle } from "lucide-react";
+import { Plus, Calendar, Clock, Monitor, PlayCircle, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,17 +34,211 @@ const scheduleFormSchema = z.object({
 type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
 
 const daysOfWeek = [
-  { value: 0, label: "Domingo" },
-  { value: 1, label: "Lunes" },
-  { value: 2, label: "Martes" },
-  { value: 3, label: "Miércoles" },
-  { value: 4, label: "Jueves" },
-  { value: 5, label: "Viernes" },
-  { value: 6, label: "Sábado" },
+  { value: 0, label: "Domingo", short: "Dom" },
+  { value: 1, label: "Lunes", short: "Lun" },
+  { value: 2, label: "Martes", short: "Mar" },
+  { value: 3, label: "Miércoles", short: "Mié" },
+  { value: 4, label: "Jueves", short: "Jue" },
+  { value: 5, label: "Viernes", short: "Vie" },
+  { value: 6, label: "Sábado", short: "Sáb" },
 ];
+
+const timeSlots = Array.from({ length: 24 }, (_, i) => {
+  const hour = i.toString().padStart(2, '0');
+  return `${hour}:00`;
+});
+
+// Componente del calendario de programación
+const ScheduleCalendar = ({ schedules, playlists, screens }: {
+  schedules: Schedule[];
+  playlists: Playlist[];
+  screens: Screen[];
+}) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  // Calcular días de la semana actual
+  const startOfWeek = new Date(currentDate);
+  startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const day = new Date(startOfWeek);
+    day.setDate(startOfWeek.getDate() + i);
+    return day;
+  });
+
+  // Obtener programaciones para un día y hora específicos
+  const getSchedulesForSlot = (dayOfWeek: number, timeSlot: string) => {
+    return schedules.filter(schedule => {
+      if (!schedule.isActive) return false;
+      if (!schedule.daysOfWeek?.includes(dayOfWeek)) return false;
+
+      const scheduleStart = schedule.startTime;
+      const scheduleEnd = schedule.endTime;
+
+      return timeSlot >= scheduleStart && timeSlot < scheduleEnd;
+    });
+  };
+
+  const getPlaylistName = (playlistId: number) => {
+    return playlists.find(p => p.id === playlistId)?.name || "Sin playlist";
+  };
+
+  const getScreenNames = (screenIds: number[]) => {
+    return screenIds.map(id => 
+      screens.find(s => s.id === id)?.name || "Pantalla eliminada"
+    ).join(", ");
+  };
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + (direction === 'next' ? 7 : -7));
+    setCurrentDate(newDate);
+  };
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Calendario de Programación
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigateWeek('prev')}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-medium min-w-[200px] text-center">
+              {startOfWeek.toLocaleDateString('es-ES', { 
+                day: 'numeric', 
+                month: 'long' 
+              })} - {weekDays[6].toLocaleDateString('es-ES', { 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+              })}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => navigateWeek('next')}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <div className="min-w-[800px]">
+            {/* Header con días de la semana */}
+            <div className="grid grid-cols-8 gap-1 mb-2">
+              <div className="p-2 text-xs font-medium text-gray-500">Hora</div>
+              {weekDays.map((day, index) => (
+                <div key={index} className="p-2 text-center">
+                  <div className="text-xs font-medium text-gray-700">
+                    {daysOfWeek[day.getDay()].short}
+                  </div>
+                  <div className="text-sm font-bold">
+                    {day.getDate()}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Grid de horas y programaciones */}
+            <div className="space-y-1">
+              {timeSlots.map((timeSlot) => (
+                <div key={timeSlot} className="grid grid-cols-8 gap-1">
+                  <div className="p-2 text-xs font-medium text-gray-500 border-r">
+                    {timeSlot}
+                  </div>
+                  {weekDays.map((day, dayIndex) => {
+                    const dayOfWeek = day.getDay();
+                    const schedulesInSlot = getSchedulesForSlot(dayOfWeek, timeSlot);
+                    
+                    return (
+                      <div 
+                        key={dayIndex} 
+                        className={`p-1 min-h-[40px] border border-gray-200 rounded cursor-pointer hover:bg-gray-50 ${
+                          selectedTimeSlot === timeSlot && selectedDay === dayOfWeek 
+                            ? 'bg-blue-100 border-blue-300' 
+                            : ''
+                        }`}
+                        onClick={() => {
+                          setSelectedTimeSlot(timeSlot);
+                          setSelectedDay(dayOfWeek);
+                        }}
+                      >
+                        {schedulesInSlot.map((schedule) => (
+                          <div 
+                            key={schedule.id} 
+                            className="mb-1 p-1 bg-blue-500 text-white text-xs rounded truncate"
+                            title={`${schedule.name} - ${getPlaylistName(schedule.playlistId!)} - ${getScreenNames(schedule.screenIds!)}`}
+                          >
+                            <div className="font-medium truncate">{schedule.name}</div>
+                            <div className="text-xs opacity-75 truncate">
+                              {getPlaylistName(schedule.playlistId!)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Panel de detalles */}
+        {selectedTimeSlot && selectedDay !== null && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium mb-2">
+              {daysOfWeek[selectedDay].label} - {selectedTimeSlot}
+            </h4>
+            {(() => {
+              const schedulesInSlot = getSchedulesForSlot(selectedDay, selectedTimeSlot);
+              if (schedulesInSlot.length === 0) {
+                return (
+                  <p className="text-sm text-gray-500">
+                    No hay programaciones para este horario
+                  </p>
+                );
+              }
+              return (
+                <div className="space-y-2">
+                  {schedulesInSlot.map((schedule) => (
+                    <div key={schedule.id} className="p-3 bg-white rounded border">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{schedule.name}</div>
+                          <div className="text-sm text-gray-600">
+                            Playlist: {getPlaylistName(schedule.playlistId!)}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Pantallas: {getScreenNames(schedule.screenIds!)}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Horario: {schedule.startTime} - {schedule.endTime}
+                          </div>
+                        </div>
+                        <Badge variant={schedule.isActive ? "default" : "secondary"}>
+                          {schedule.isActive ? "Activa" : "Inactiva"}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 export default function Scheduling() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   const { toast } = useToast();
 
   const { data: schedules = [], isLoading } = useQuery<Schedule[]>({
@@ -175,10 +370,32 @@ export default function Scheduling() {
         title="Sistema de Programación"
         subtitle="Gestiona horarios y calendarios para contenido automático"
         actions={
-          <Button onClick={() => setIsCreateOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Programación
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-md border">
+              <Button
+                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('calendar')}
+                className="rounded-r-none"
+              >
+                <Calendar className="w-4 h-4 mr-1" />
+                Calendario
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="rounded-l-none"
+              >
+                <Monitor className="w-4 h-4 mr-1" />
+                Lista
+              </Button>
+            </div>
+            <Button onClick={() => setIsCreateOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nueva Programación
+            </Button>
+          </div>
         }
       />
 
@@ -199,6 +416,12 @@ export default function Scheduling() {
             </Card>
           ))}
         </div>
+      ) : viewMode === 'calendar' ? (
+        <ScheduleCalendar 
+          schedules={schedules} 
+          playlists={playlists} 
+          screens={screens} 
+        />
       ) : schedules.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
