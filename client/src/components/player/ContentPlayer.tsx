@@ -498,7 +498,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     const authToken = localStorage.getItem('authToken');
     if (!authToken) return;
 
-    let heartbeatInterval: NodeJS.Timeout;
     let lastPlaylistId = playlistId;
 
     // Connect to WebSocket with player authentication
@@ -585,11 +584,11 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     // Enviar heartbeat inmediato y luego cada 2 minutos
     sendHeartbeat();
-    const heartbeatInterval = setInterval(sendHeartbeat, 120000); // 2 minutos
+    const heartbeatTimer = setInterval(sendHeartbeat, 120000); // 2 minutos
 
     return () => {
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
       }
       unsubscribePlaylistChange();
       unsubscribePlaylistContent();
@@ -619,6 +618,64 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         case 'pip_bottom_right':
           zones['main'] = [];
           zones['pip'] = [];
+          break;
+        case 'grid_2x2':
+          zones['top_left'] = [];
+          zones['top_right'] = [];
+          zones['bottom_left'] = [];
+          zones['bottom_right'] = [];
+          break;
+        case 'grid_3x3':
+          zones['grid_1'] = [];
+          zones['grid_2'] = [];
+          zones['grid_3'] = [];
+          zones['grid_4'] = [];
+          zones['grid_5'] = [];
+          zones['grid_6'] = [];
+          zones['grid_7'] = [];
+          zones['grid_8'] = [];
+          zones['grid_9'] = [];
+          break;
+        case 'sidebar_left':
+          zones['sidebar'] = [];
+          zones['main'] = [];
+          break;
+        case 'sidebar_right':
+          zones['main'] = [];
+          zones['sidebar'] = [];
+          break;
+        case 'header_footer':
+          zones['header'] = [];
+          zones['main'] = [];
+          zones['footer'] = [];
+          break;
+        case 'triple_vertical':
+          zones['left'] = [];
+          zones['center'] = [];
+          zones['right'] = [];
+          break;
+        case 'triple_horizontal':
+          zones['top'] = [];
+          zones['middle'] = [];
+          zones['bottom'] = [];
+          break;
+        case 'custom_layout':
+          // Para layout personalizado, usar configuración
+          if (playlist.customLayoutConfig) {
+            try {
+              const customConfig = JSON.parse(playlist.customLayoutConfig);
+              if (customConfig.zones) {
+                customConfig.zones.forEach((zone: any) => {
+                  zones[zone.id] = [];
+                });
+              }
+            } catch (e) {
+              console.error('Error parsing custom layout config:', e);
+              zones['main'] = [];
+            }
+          } else {
+            zones['main'] = [];
+          }
           break;
         case 'single_zone':
         default:
@@ -897,6 +954,168 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
           {widgets.filter(w => w.isEnabled).map((widget) => (
             <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+          
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
+        </div>
+      );
+
+    case 'grid_2x2':
+      return (
+        <div style={{ ...styles.container, display: 'grid', gridTemplate: '1fr 1fr / 1fr 1fr', gap: '2px' }}>
+          <div style={{ ...styles.zone, backgroundColor: '#111' }}>
+            {renderZone('top_left') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Superior Izquierda
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, backgroundColor: '#111' }}>
+            {renderZone('top_right') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Superior Derecha
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, backgroundColor: '#111' }}>
+            {renderZone('bottom_left') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Inferior Izquierda
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, backgroundColor: '#111' }}>
+            {renderZone('bottom_right') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Inferior Derecha
+              </div>
+            )}
+          </div>
+
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+          
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
+        </div>
+      );
+
+    case 'sidebar_left':
+      return (
+        <div style={{ ...styles.container, display: 'flex' }}>
+          <div style={{ ...styles.zone, width: '25%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('sidebar') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Barra Lateral
+              </div>
+            )}
+          </div>
+          <div style={{ ...styles.zone, width: '75%' }}>
+            {renderZone('main') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Contenido Principal
+              </div>
+            )}
+          </div>
+
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+          
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
+          ))}
+        </div>
+      );
+
+    case 'custom_layout':
+      // Renderizar layout personalizado
+      if (playlist?.customLayoutConfig) {
+        try {
+          const customConfig = JSON.parse(playlist.customLayoutConfig);
+          return (
+            <div style={{ ...styles.container, position: 'relative' }}>
+              {customConfig.zones?.map((zone: any) => (
+                <div
+                  key={zone.id}
+                  style={{
+                    position: 'absolute',
+                    left: `${zone.x}%`,
+                    top: `${zone.y}%`,
+                    width: `${zone.width}%`,
+                    height: `${zone.height}%`,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {renderZone(zone.id) || (
+                    <div style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      color: 'rgba(255,255,255,0.5)',
+                      fontSize: '12px'
+                    }}>
+                      Zona {zone.id}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {widgets.filter(w => w.isEnabled).map((widget) => (
+                <WidgetRenderer key={widget.id} widget={widget} />
+              ))}
+              
+              {activeAlerts.map((alert) => (
+                <AlertOverlay
+                  key={alert.id}
+                  alert={alert}
+                  onAlertExpired={handleAlertExpired}
+                />
+              ))}
+            </div>
+          );
+        } catch (e) {
+          console.error('Error rendering custom layout:', e);
+        }
+      }
+      // Fallback to single zone if custom layout fails
+      return (
+        <div style={styles.container}>
+          {renderZone('main') || (
+            <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+              Layout personalizado no válido
+            </div>
+          )}
+
+          {widgets.filter(w => w.isEnabled).map((widget) => (
+            <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
           ))}
         </div>
       );
