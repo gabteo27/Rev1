@@ -864,14 +864,20 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     // Obtener configuración de objectFit para la zona
     let zoneSettings: any = {};
     try {
-      if (playlist?.zoneSettings) {
+      if (playlist?.zoneSettings && typeof playlist.zoneSettings === 'string') {
         zoneSettings = JSON.parse(playlist.zoneSettings);
+      } else if (playlist?.zoneSettings && typeof playlist.zoneSettings === 'object') {
+        zoneSettings = playlist.zoneSettings;
       }
     } catch (e) {
+      console.warn('Error parsing zone settings:', e);
       zoneSettings = {};
     }
     
-    const objectFit = zoneSettings[zoneId || 'main']?.objectFit || 'contain';
+    const currentZoneId = zoneId || 'main';
+    const objectFit = zoneSettings[currentZoneId]?.objectFit || 'contain';
+    
+    console.log(`Zone ${currentZoneId} objectFit:`, objectFit, 'from settings:', zoneSettings);
 
     const isYouTubeURL = (url: string) => {
       return url && (

@@ -819,16 +819,21 @@ export default function Playlists() {
 
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: number) => {
+      console.log(`Attempting to delete item ${itemId}`);
       const response = await apiRequest(`/api/playlist-items/${itemId}`, {
         method: "DELETE"
       });
       if (!response.ok) {
         const errorData = await response.text();
+        console.error(`Delete failed: ${response.status} - ${errorData}`);
         throw new Error(`Error ${response.status}: ${errorData}`);
       }
+      console.log(`Item ${itemId} deleted successfully`);
       return response;
     },
     onSuccess: async (_, itemId) => {
+      console.log(`Processing successful deletion of item ${itemId}`);
+      
       // Optimistic update - remove item immediately from UI
       if (playlistData?.items) {
         const updatedPlaylist = {
@@ -838,9 +843,14 @@ export default function Playlists() {
         queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout?.id], updatedPlaylist);
       }
 
-      // Forzar actualización
-      await refetchPlaylist();
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      
+      // Force refetch
+      setTimeout(async () => {
+        await refetchPlaylist();
+      }, 100);
 
       toast({
         title: "Elemento eliminado",
@@ -965,14 +975,27 @@ export default function Playlists() {
     if (!selectedPlaylistForLayout) return;
 
     try {
-      const currentSettings = playlistData?.zoneSettings || {};
+      // Parse current settings
+      let currentSettings: any = {};
+      try {
+        if (playlistData?.zoneSettings) {
+          currentSettings = JSON.parse(playlistData.zoneSettings);
+        }
+      } catch (e) {
+        console.warn("Error parsing zone settings:", e);
+        currentSettings = {};
+      }
+
+      // Update the specific setting
       const newZoneSettings = {
         ...currentSettings,
         [zoneId]: {
-          ...currentSettings[zoneId],
+          ...(currentSettings[zoneId] || {}),
           [setting]: value
         }
       };
+
+      console.log("Updating zone settings:", { zoneId, setting, value, newZoneSettings });
 
       const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}`, {
         method: "PUT",
@@ -989,9 +1012,23 @@ export default function Playlists() {
           throw new Error(`Error ${response.status}: ${errorData}`);
       }
 
+      // Update local state immediately for better UX
+      queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout.id], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          zoneSettings: JSON.stringify(newZoneSettings)
+        };
+      });
+
       // Refetch to update the UI
-      refetchPlaylist();
-    } catch (error) {
+      await refetchPlaylist();
+
+      toast({
+        title: "Configuración actualizada",
+        description: `El ajuste de contenido se ha actualizado para ${zoneId}.`,
+      });
+    } catch (error: any) {
       console.error("Error updating zone settings:", error);
       toast({
         title: "Error",

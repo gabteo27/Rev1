@@ -20,10 +20,13 @@ import {
   insertScheduleSchema,
   insertDeploymentSchema,
   insertScreenGroupSchema,
-  type Alert
+  type Alert,
+  playlistItems,
+  playlists
 } from "@shared/schema";
 import { buildApk } from "./apk-builder";
 import { eq, and, desc, asc, exists, inArray, lt } from "drizzle-orm";
+import { db } from "./db";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -587,13 +590,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ Found playlist item ${id} in playlist ${playlistItem.playlistId}`);
 
-      const success = await storage.deletePlaylistItem(id, userId);
-      if (!success) {
+      // Delete the item directly from database
+      const result = await db.delete(playlistItems)
+        .where(and(
+          eq(playlistItems.id, id),
+          exists(
+            db.select().from(playlists)
+              .where(and(
+                eq(playlists.id, playlistItems.playlistId),
+                eq(playlists.userId, userId)
+              ))
+          )
+        ));
+
+      if (!result.rowCount || result.rowCount === 0) {
         console.log(`❌ Failed to delete playlist item ${id}`);
         return res.status(404).json({ message: "Playlist item not found" });
       }
 
       console.log(`✅ Playlist item ${id} deleted from playlist ${playlistItem.playlistId}`);
+
+      // Update playlist duration
+      await storage.updatePlaylistDuration(playlistItem.playlistId);
 
       // Broadcast to both admin and player clients
       await broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-item-deleted');

@@ -896,17 +896,24 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async getPlaylistItemWithUser(id: number, userId: string): Promise<PlaylistItem | undefined> {
+  async getPlaylistItemWithUser(id: number, userId: string): Promise<(PlaylistItem & { playlistId: number }) | undefined> {
     const result = await db
       .select({
-        playlistItem: playlistItems
+        id: playlistItems.id,
+        playlistId: playlistItems.playlistId,
+        contentItemId: playlistItems.contentItemId,
+        order: playlistItems.order,
+        zone: playlistItems.zone,
+        customDuration: playlistItems.customDuration,
+        createdAt: playlistItems.createdAt,
+        updatedAt: playlistItems.updatedAt
       })
       .from(playlistItems)
       .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
       .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)))
       .limit(1);
     
-    return result[0]?.playlistItem;
+    return result[0];
   }
 }
 
