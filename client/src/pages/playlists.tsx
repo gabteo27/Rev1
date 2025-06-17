@@ -97,8 +97,20 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
   React.useEffect(() => {
     if (playlist?.customLayoutConfig) {
       try {
-        const customConfig = JSON.parse(playlist.customLayoutConfig);
-        if (customConfig.zones && customConfig.zones.length > 0) {
+        let customConfig;
+        if (typeof playlist.customLayoutConfig === 'string') {
+          // Only parse if it's a valid JSON string
+          if (playlist.customLayoutConfig.startsWith('{') || playlist.customLayoutConfig.startsWith('[')) {
+            customConfig = JSON.parse(playlist.customLayoutConfig);
+          } else {
+            console.warn('Invalid custom layout config format:', playlist.customLayoutConfig);
+            return;
+          }
+        } else if (typeof playlist.customLayoutConfig === 'object') {
+          customConfig = playlist.customLayoutConfig;
+        }
+        
+        if (customConfig?.zones && customConfig.zones.length > 0) {
           setZones(customConfig.zones);
         }
       } catch (e) {
@@ -982,9 +994,17 @@ export default function Playlists() {
       let currentSettings: any = {};
       try {
         if (playlistData?.zoneSettings) {
-          currentSettings = typeof playlistData.zoneSettings === 'string' 
-            ? JSON.parse(playlistData.zoneSettings)
-            : playlistData.zoneSettings;
+          if (typeof playlistData.zoneSettings === 'string') {
+            // Only parse if it's actually a JSON string, not "[object Object]"
+            if (playlistData.zoneSettings.startsWith('{') || playlistData.zoneSettings.startsWith('[')) {
+              currentSettings = JSON.parse(playlistData.zoneSettings);
+            } else {
+              console.warn("Invalid JSON string detected:", playlistData.zoneSettings);
+              currentSettings = {};
+            }
+          } else if (typeof playlistData.zoneSettings === 'object' && playlistData.zoneSettings !== null) {
+            currentSettings = playlistData.zoneSettings;
+          }
         }
       } catch (e) {
         console.warn("Error parsing zone settings:", e);
@@ -1818,7 +1838,22 @@ export default function Playlists() {
                     <div className="space-y-3">
                       {zones.map(zone => {
                         const zoneItems = playlistData?.items?.filter((item: any) => item.zone === zone.id) || [];
-                        const zoneSettings = playlistData?.zoneSettings ? JSON.parse(playlistData.zoneSettings) : {};
+                        
+                        // Safely parse zoneSettings - handle both string and object cases
+                        let zoneSettings = {};
+                        try {
+                          if (playlistData?.zoneSettings) {
+                            if (typeof playlistData.zoneSettings === 'string') {
+                              zoneSettings = JSON.parse(playlistData.zoneSettings);
+                            } else if (typeof playlistData.zoneSettings === 'object') {
+                              zoneSettings = playlistData.zoneSettings;
+                            }
+                          }
+                        } catch (error) {
+                          console.warn('Error parsing zone settings:', error);
+                          zoneSettings = {};
+                        }
+                        
                         const currentObjectFit = zoneSettings[zone.id]?.objectFit || 'cover';
 
                         return (
