@@ -833,79 +833,34 @@ export default function Playlists() {
     mutationFn: async (itemId: number) => {
       console.log(`Attempting to delete item ${itemId}`);
       
-      // Check if item exists in local state first
-      const itemExists = playlistData?.items?.find((item: any) => item.id === itemId);
-      if (!itemExists) {
-        throw new Error("El elemento ya fue eliminado o no existe");
-      }
-
       const response = await apiRequest(`/api/playlist-items/${itemId}`, {
         method: "DELETE"
       });
+      
       if (!response.ok) {
         const errorData = await response.text();
         console.error(`Delete failed: ${response.status} - ${errorData}`);
         throw new Error(`Error ${response.status}: ${errorData}`);
       }
+      
       console.log(`Item ${itemId} deleted successfully`);
-      return { itemId, response };
+      return itemId;
     },
-    onMutate: async (itemId: number) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout?.id] });
-
-      // Snapshot the previous value
-      const previousPlaylist = queryClient.getQueryData(["/api/playlists", selectedPlaylistForLayout?.id]);
-
-      // Optimistically update to the new value
-      if (playlistData?.items) {
-        const updatedPlaylist = {
-          ...playlistData,
-          items: playlistData.items.filter((item: any) => item.id !== itemId)
-        };
-        queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout?.id], updatedPlaylist);
-      }
-
-      // Return a context object with the snapshotted value
-      return { previousPlaylist };
-    },
-    onSuccess: async ({ itemId }) => {
+    onSuccess: async (itemId: number) => {
       console.log(`Processing successful deletion of item ${itemId}`);
       
-      // Invalidate queries to refetch from server
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout?.id] });
+      // Refetch data from server to get latest state
+      await refetchPlaylist();
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-
-      // Broadcast deletion immediately
-      try {
-        await apiRequest(`/api/playlists/${selectedPlaylistForLayout?.id}/broadcast`, {
-          method: "POST",
-          body: JSON.stringify({ 
-            action: 'item-deleted', 
-            itemId,
-            timestamp: new Date().toISOString()
-          }),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-      } catch (broadcastError) {
-        console.warn("Failed to broadcast deletion:", broadcastError);
-      }
 
       toast({
         title: "Elemento eliminado",
         description: "El elemento se ha eliminado de la playlist.",
       });
     },
-    onError: (error: any, itemId: number, context: any) => {
+    onError: (error: any) => {
       console.error("Error removing item:", error);
       
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousPlaylist) {
-        queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout?.id], context.previousPlaylist);
-      }
-
       toast({
         title: "Error",
         description: error.message || "No se pudo eliminar el elemento.",
@@ -1005,7 +960,16 @@ export default function Playlists() {
     },
   });
 
-  // Use removeItemMutation instead of direct API call
+  // Handle item removal with debouncing to prevent multiple calls
+  const handleRemoveFromPlaylist = async (itemId: number) => {
+    if (removeItemMutation.isPending) {
+      console.log("Delete already in progress, ignoring...");
+      return;
+    }
+    
+    console.log(`Starting removal of item ${itemId}`);
+    removeItemMutation.mutate(itemId);
+  };
 
   const handleZoneSettingChange = async (zoneId: string, setting: string, value: string) => {
     if (!selectedPlaylistForLayout) {
@@ -1948,12 +1912,14 @@ export default function Playlists() {
                                       variant="ghost"
                                       size="sm"
                                       className="text-red-500 hover:text-red-700 p-1 h-auto"
-                                      onClick={() => {
-                                        removeItemMutation.mutate(item.id);
-                                      }}
+                                      onClick={() => handleRemoveFromPlaylist(item.id)}
                                       disabled={removeItemMutation.isPending}
                                     >
-                                      <Trash2 className="w-3 h-3" />
+                                      {removeItemMutation.isPending ? (
+                                        <div className="w-3 h-3 animate-spin rounded-full border border-red-500 border-t-transparent" />
+                                      ) : (
+                                        <Trash2 className="w-3 h-3" />
+                                      )}
                                     </Button>
                                   </div>
                                 ))}

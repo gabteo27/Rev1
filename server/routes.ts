@@ -632,14 +632,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Broadcast to both admin and player clients
       try {
-        await broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-item-deleted');
-
-        // Also broadcast specific deletion event for immediate UI updates
+        // Broadcast specific deletion event for immediate UI updates
         broadcastToUser(userId, 'playlist-item-deleted', {
           itemId: id,
           playlistId: playlistItem.playlistId,
           timestamp: new Date().toISOString()
         });
+
+        // Broadcast playlist update to refresh all views
+        await broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-item-deleted');
+        
+        console.log(`✅ Successfully broadcasted deletion of item ${id} from playlist ${playlistItem.playlistId}`);
       } catch (broadcastError) {
         console.warn(`⚠️ Warning: Failed to broadcast playlist update:`, broadcastError);
         // Don't fail the request for this
