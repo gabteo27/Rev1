@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +38,7 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
 
   const addZone = () => {
     if (!newZoneTitle.trim()) return;
-    
+
     const newZone: Zone = {
       id: `zone_${Date.now()}`,
       title: newZoneTitle.trim(),
@@ -49,7 +48,7 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
       height: 20,
       color: colors[zones.length % colors.length]
     };
-    
+
     setZones([...zones, newZone]);
     setNewZoneTitle("");
   };
@@ -70,7 +69,7 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
   const handleMouseDown = (e: React.MouseEvent, zoneId: string, action: 'drag' | 'resize') => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (action === 'drag') {
       setDragging(zoneId);
     } else {
@@ -81,11 +80,11 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!containerRef.current) return;
-    
+
     const rect = containerRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
-    
+
     if (dragging) {
       const zone = zones.find(z => z.id === dragging);
       if (zone) {
@@ -115,7 +114,7 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
     if (dragging || resizing) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
-      
+
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
@@ -139,7 +138,7 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
             </Button>
           </div>
         </div>
-        
+
         <div className="mt-4 flex items-center gap-2">
           <Input
             placeholder="Nombre de la zona..."
@@ -196,11 +195,11 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
                       <Trash2 className="w-3 h-3 text-red-500" />
                     </Button>
                   </div>
-                  
+
                   <div className="flex-1 flex items-center justify-center text-xs text-gray-500">
                     {Math.round(zone.width)}% × {Math.round(zone.height)}%
                   </div>
-                  
+
                   {/* Resize handle */}
                   <div
                     className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500 cursor-se-resize"
@@ -215,7 +214,7 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
         {/* Properties Panel */}
         <div className="w-80 p-4 border-l bg-gray-50">
           <h3 className="font-medium mb-4">Propiedades de Zona</h3>
-          
+
           {selectedZoneData ? (
             <div className="space-y-4">
               <div>
@@ -226,7 +225,7 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
                   onChange={(e) => updateZone(selectedZone!, { title: e.target.value })}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label htmlFor="zone-x">X (%)</Label>
@@ -251,7 +250,7 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label htmlFor="zone-width">Ancho (%)</Label>
@@ -276,7 +275,7 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label>Color</Label>
                 <div className="flex gap-1 mt-2">
@@ -298,7 +297,7 @@ export function LayoutEditor({ initialZones = [], onSave, onCancel }: LayoutEdit
               Selecciona una zona para editar sus propiedades
             </p>
           )}
-          
+
           <div className="mt-6">
             <h4 className="font-medium mb-2">Zonas ({zones.length})</h4>
             <div className="space-y-1 max-h-32 overflow-y-auto">

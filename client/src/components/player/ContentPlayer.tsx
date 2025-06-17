@@ -522,7 +522,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         const newPlaylistId = data.data?.newPlaylistId;
         const messageScreenId = data.data?.screenId;
         const screenId = localStorage.getItem('screenId');
-        
+
         if (messageScreenId === screenId || !messageScreenId) {
           if (newPlaylistId !== lastPlaylistId) {
             console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} (WebSocket)`);
@@ -549,13 +549,13 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         }
       }
     };
-    
+
     const unsubscribePlaylistChange = wsManager.subscribe('playlist-change', handleWebSocketMessage);
     const unsubscribePlaylistContent = wsManager.subscribe('playlist-content-updated', handleWebSocketMessage);
     const unsubscribePlaybackControl = wsManager.subscribe('playback-control', handleWebSocketMessage);
     const unsubscribeScreenPlaylist = wsManager.subscribe('screen-playlist-updated', handleWebSocketMessage);
-    
-    // Heartbeat cada 1 minuto
+
+    // Heartbeat cada 2 minutos para reducir la carga
     const sendHeartbeat = () => {
       if (wsManager.isConnected()) {
         wsManager.send({ 
@@ -563,7 +563,9 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           timestamp: new Date().toISOString(),
           screenId: localStorage.getItem('screenId')
         });
+        console.log('💓 WebSocket heartbeat sent');
       } else {
+        console.log('💓 Sending HTTP heartbeat (WebSocket not connected)');
         // Fallback HTTP heartbeat si WebSocket no está conectado
         fetch('/api/screens/heartbeat', {
           method: 'POST',
@@ -571,19 +573,20 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             'Authorization': `Bearer ${authToken}`,
             'Content-Type': 'application/json'
           }
+        }).then(response => {
+          if (response.ok) {
+            console.log('💓 HTTP heartbeat successful');
+          }
         }).catch(error => {
-          console.error('HTTP Heartbeat failed:', error);
+          console.error('💓 HTTP Heartbeat failed:', error);
         });
       }
     };
 
-    // Enviar heartbeat cada 60 segundos (1 minuto)
-    console.log('💓 Starting heartbeat (1 minute interval)...');
-    heartbeatInterval = setInterval(sendHeartbeat, 60000);
-    
-    // Enviar heartbeat inicial
+    // Enviar heartbeat inmediato y luego cada 2 minutos
     sendHeartbeat();
-    
+    const heartbeatInterval = setInterval(sendHeartbeat, 120000); // 2 minutos
+
     return () => {
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
@@ -704,7 +707,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     const handleAlertMessage = (data: any) => {
       console.log('🔔 Alert message received:', data);
-      
+
       if (data.type === 'alert') {
         const alert = data.data;
         if (alert.isActive) {
@@ -713,7 +716,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             if (prev.some(a => a.id === alert.id)) {
               return prev;
             }
-            
+
             // Configurar auto-caducidad si la alerta tiene duración
             if (alert.duration && alert.duration > 0 && !alert.isFixed) {
               const timer = setTimeout(() => {
@@ -721,10 +724,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
                 setActiveAlerts(current => current.filter(a => a.id !== alert.id));
                 alertTimers.delete(alert.id);
               }, alert.duration * 1000);
-              
+
               alertTimers.set(alert.id, timer);
             }
-            
+
             return [...prev, alert];
           });
         } else {

@@ -47,7 +47,8 @@ export default function Screens() {
   const { data: screens = [], isLoading } = useQuery<Screen[]>({ 
     queryKey: ["/api/screens"], 
     retry: false,
-    refetchInterval: 30000 // Backup polling every 30 seconds
+    refetchInterval: 60000, // Reduce polling to every minute
+    staleTime: 30000 // Consider data fresh for 30 seconds
   });
   
   const { data: playlists = [] } = useQuery<Playlist[]>({ 

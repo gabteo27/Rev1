@@ -1420,29 +1420,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`Client disconnected (User: ${clientUserId || 'unauthenticated'}, Screen: ${clientScreenId || 'none'})`);
 
-        // If this was a player client, mark screen as offline after a delay
+        // If this was a player client, mark screen as offline after a longer delay
         if (clientScreenId && clientUserId) {
           setTimeout(async () => {
             try {
-              const screen = await storage.getScreenById(clientScreenId);
-              if (screen && screen.isOnline) {
-                await storage.updateScreen(clientScreenId, {
-                  isOnline: false,
-                  lastSeen: new Date(),
-                }, clientUserId);
+              // Check if screen has reconnected by looking for active WebSocket connections
+              let screenReconnected = false;
+              const wssInstance = app.get('wss') as WebSocketServer;
+              
+              wssInstance.clients.forEach((client: WebSocket) => {
+                const clientWithId = client as any;
+                if (clientWithId.readyState === WebSocket.OPEN && 
+                    clientWithId.screenId === clientScreenId && 
+                    clientWithId.userId === clientUserId) {
+                  screenReconnected = true;
+                }
+              });
 
-                console.log(`📡 Screen ${clientScreenId} went offline`);
-                broadcastToUser(clientUserId, 'screen-status-changed', {
-                  screenId: clientScreenId,
-                  screenName: screen.name,
-                  isOnline: false,
-                  lastSeen: new Date().toISOString()
-                });
+              if (!screenReconnected) {
+                const screen = await storage.getScreenById(clientScreenId);
+                if (screen && screen.isOnline) {
+                  await storage.updateScreen(clientScreenId, {
+                    isOnline: false,
+                    lastSeen: new Date(),
+                  }, clientUserId);
+
+                  console.log(`📡 Screen ${clientScreenId} went offline`);
+                  broadcastToUser(clientUserId, 'screen-status-changed', {
+                    screenId: clientScreenId,
+                    screenName: screen.name,
+                    isOnline: false,
+                    lastSeen: new Date().toISOString()
+                  });
+                }
               }
             } catch (error) {
               console.error('Error handling screen disconnect:', error);
             }
-          }, 5000); // 5 second grace period
+          }, 15000); // 15 second grace period for reconnection
         }
       });
     });

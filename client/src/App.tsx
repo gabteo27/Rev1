@@ -8,7 +8,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
-import Content from "@/pages/content";
+import Content from "./pages/content";
+import MediaLibrary from "./pages/media-library";
 import Playlists from "@/pages/playlists";
 import Screens from "@/pages/screens";
 import Alerts from "@/pages/alerts";
@@ -25,7 +26,7 @@ import { useEffect } from "react";
 import { wsManager } from "@/lib/websocket";
 
 const PlaylistDetail = lazy(() => import("./pages/playlist-detail"));
-const MediaLibrary = lazy(() => import("./pages/media-library")); // Added MediaLibrary import
+// Added MediaLibrary import
 
 const Loading = () => (
   <div className="w-full h-full flex items-center justify-center">
