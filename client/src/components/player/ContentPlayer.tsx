@@ -12,10 +12,20 @@ const styles = {
   zone: { position: 'relative', width: '100%', height: '100%', overflow: 'hidden' } as React.CSSProperties,
 };
 
+// Función para obtener el estilo de media con objectFit personalizado
+const getMediaStyle = (objectFit: string = 'contain') => ({
+  width: '100%',
+  height: '100%',
+  objectFit: objectFit as any
+} as React.CSSProperties);
+
 // --- Componentes para renderizar cada tipo de contenido ---
-const ImagePlayer = ({ src }: { src: string }) => <img src={src} style={{ ...styles.media, objectFit: 'contain' }} alt="" />;
-const VideoPlayer = ({ src }: { src: string }) => <video src={src} style={{ ...styles.media, objectFit: 'contain' }} autoPlay muted loop playsInline />;
-const WebpagePlayer = ({ src }: { src: string }) => <iframe src={src} style={{ ...styles.media, border: 'none' }} title="web-content" />;
+const ImagePlayer = ({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => 
+  <img src={src} style={getMediaStyle(objectFit)} alt="" />;
+const VideoPlayer = ({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => 
+  <video src={src} style={getMediaStyle(objectFit)} autoPlay muted loop playsInline />;
+const WebpagePlayer = ({ src }: { src: string }) => 
+  <iframe src={src} style={{ ...styles.media, border: 'none' }} title="web-content" />;
 
 // PDF Player Component
 const PDFPlayer = ({ src }: { src: string }) => {
@@ -833,7 +843,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   }, [isPreview]);
 
   // Función para renderizar el contenido de un item
-  const renderContentItem = (item: PlaylistItem) => {
+  const renderContentItem = (item: PlaylistItem, zoneId?: string) => {
     if (!item?.contentItem) {
       return (
         <div style={{ 
@@ -850,6 +860,18 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     }
 
     const { type, url, title } = item.contentItem;
+    
+    // Obtener configuración de objectFit para la zona
+    let zoneSettings: any = {};
+    try {
+      if (playlist?.zoneSettings) {
+        zoneSettings = JSON.parse(playlist.zoneSettings);
+      }
+    } catch (e) {
+      zoneSettings = {};
+    }
+    
+    const objectFit = zoneSettings[zoneId || 'main']?.objectFit || 'contain';
 
     const isYouTubeURL = (url: string) => {
       return url && (
@@ -866,9 +888,9 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     switch (type) {
       case 'image': 
-        return <ImagePlayer src={url} />;
+        return <ImagePlayer src={url} objectFit={objectFit} />;
       case 'video': 
-        return <VideoPlayer src={url} />;
+        return <VideoPlayer src={url} objectFit={objectFit} />;
       case 'pdf':
         return <PDFPlayer src={url} />;
       case 'webpage': 
@@ -899,7 +921,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       return null;
     }
     const currentItem = tracker.items[tracker.currentIndex];
-    return renderContentItem(currentItem);
+    return renderContentItem(currentItem, zoneId);
   };
 
   // Si no hay playlistId, mostrar mensaje de espera
@@ -951,7 +973,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       return null;
     }
     const currentItem = tracker.items[tracker.currentIndex];
-    return renderContentItem(currentItem);
+    return renderContentItem(currentItem, zoneId);
   }
 
   switch (layout) {

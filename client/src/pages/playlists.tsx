@@ -17,15 +17,47 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Plus, List, FileText, GripVertical, Trash2, Edit, Settings, Layout,
-  SplitSquareHorizontal, SplitSquareVertical, PictureInPicture, Image, Video, Globe, Type,
-  Eye, Clock, Play, Check,
-  Shuffle,
-  ScrollText,
-  SidebarOpen,
-  SidebarClose,
+  Plus,
+  Trash2,
+  Edit3,
+  Play,
+  Pause,
+  RotateCcw,
+  Save,
+  Eye,
+  Monitor,
+  Settings,
+  Clock,
+  BarChart3,
+  Users,
+  Calendar,
+  Filter,
+  Search,
+  Download,
+  Upload,
+  Copy,
+  Grid2X2,
+  Grid3X3,
+  Layers,
+  SplitSquareHorizontal,
+  SplitSquareVertical,
+  Layout,
+  PictureInPicture,
   Rows,
-  Grid3X3
+  Columns,
+  Square,
+  DragHandleDots2Icon,
+  GripVertical,
+  Maximize,
+  Minimize,
+  CornerDownLeft,
+  CornerDownRight,
+  CornerUpLeft,
+  CornerUpRight,
+  Move3D,
+  Expand,
+  MousePointer2,
+  AspectRatio
 } from "lucide-react";
 
 // Tipos para mayor claridad
@@ -795,11 +827,11 @@ export default function Playlists() {
         };
         queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout?.id], updatedPlaylist);
       }
-      
+
       // Forzar actualización
       await refetchPlaylist();
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      
+
       toast({
         title: "Elemento eliminado",
         description: "El elemento se ha eliminado de la playlist.",
@@ -905,6 +937,59 @@ export default function Playlists() {
       });
     },
   });
+
+  const handleRemoveFromPlaylist = async (itemId: number) => {
+    try {
+      await apiRequest(`/api/playlist-items/${itemId}`, {
+        method: "DELETE",
+      });
+
+      // Refetch playlist data to update UI
+      refetchPlaylist();
+    } catch (error) {
+      console.error("Error removing item from playlist:", error);
+    }
+  };
+
+  const handleZoneSettingChange = async (zoneId: string, setting: string, value: string) => {
+    if (!selectedPlaylistForLayout) return;
+
+    try {
+      const currentSettings = playlistData?.zoneSettings || {};
+      const newZoneSettings = {
+        ...currentSettings,
+        [zoneId]: {
+          ...currentSettings[zoneId],
+          [setting]: value
+        }
+      };
+
+      const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          zoneSettings: JSON.stringify(newZoneSettings)
+        }),
+      });
+
+      if (!response.ok) {
+          const errorData = await response.text();
+          throw new Error(`Error ${response.status}: ${errorData}`);
+      }
+
+      // Refetch to update the UI
+      refetchPlaylist();
+    } catch (error) {
+      console.error("Error updating zone settings:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la configuración de la zona.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // --- HANDLERS ---
   const handleCreatePlaylist = () => {
@@ -1135,7 +1220,7 @@ export default function Playlists() {
                           onClick={() => handleEditPlaylist(playlist)}
                           className="h-8 w-8 p-0"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit3 className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -1659,6 +1744,9 @@ export default function Playlists() {
                     <div className="space-y-3">
                       {zones.map(zone => {
                         const zoneItems = playlistData?.items?.filter((item: any) => item.zone === zone.id) || [];
+                        const zoneSettings = playlistData?.zoneSettings ? JSON.parse(playlistData.zoneSettings) : {};
+                        const currentObjectFit = zoneSettings[zone.id]?.objectFit || 'cover';
+
                         return (
                           <Card key={zone.id} className="p-3">
                             <div className="flex items-center justify-between mb-2">
@@ -1669,6 +1757,47 @@ export default function Playlists() {
                                   {zoneItems.length}
                                 </Badge>
                               </div>
+                            </div>
+
+                            {/* Object Fit Control */}
+                            <div className="mb-2">
+                              <Label htmlFor={`object-fit-${zone.id}`} className="block text-xs font-medium text-gray-700">Ajuste de Contenido</Label>
+                              <Select
+                                id={`object-fit-${zone.id}`}
+                                value={currentObjectFit}
+                                onValueChange={(value) => handleZoneSettingChange(zone.id, 'objectFit', value)}
+                              >
+                                <SelectTrigger className="text-xs h-7 w-full">
+                                  <SelectValue placeholder="Seleccionar ajuste" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="cover">
+                                    <div className="flex items-center gap-2">
+                                      Cubrir
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="contain">
+                                    <div className="flex items-center gap-2">
+                                      Contener
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="fill">
+                                    <div className="flex items-center gap-2">
+                                      Rellenar
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="none">
+                                    <div className="flex items-center gap-2">
+                                      Ninguno
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="scale-down">
+                                    <div className="flex items-center gap-2">
+                                      Reducir
+                                    </div>
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
 
                             {zoneItems.length > 0 ? (
@@ -1686,7 +1815,9 @@ export default function Playlists() {
                                       variant="ghost"
                                       size="sm"
                                       className="text-red-500 hover:text-red-700 p-1 h-auto"
-                                      onClick={() => removeItemMutation.mutate(item.id)}
+                                      onClick={() => {
+                                        handleRemoveFromPlaylist(item.id);
+                                      }}
                                       disabled={removeItemMutation.isPending}
                                     >
                                       <Trash2 className="w-3 h-3" />

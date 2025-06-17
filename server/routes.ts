@@ -575,15 +575,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
 
+      console.log(`🗑️ Attempting to delete playlist item ${id} for user ${userId}`);
+
       // Get the playlistId associated with this item BEFORE deleting it.
-      const playlistItem = await storage.getPlaylistItem(id);
+      const playlistItem = await storage.getPlaylistItemWithUser(id, userId);
 
       if (!playlistItem) {
+        console.log(`❌ Playlist item ${id} not found or access denied for user ${userId}`);
         return res.status(404).json({ message: "Playlist item not found" });
       }
 
+      console.log(`✅ Found playlist item ${id} in playlist ${playlistItem.playlistId}`);
+
       const success = await storage.deletePlaylistItem(id, userId);
       if (!success) {
+        console.log(`❌ Failed to delete playlist item ${id}`);
         return res.status(404).json({ message: "Playlist item not found" });
       }
 
