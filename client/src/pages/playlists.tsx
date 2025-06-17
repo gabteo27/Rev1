@@ -33,6 +33,207 @@ type Playlist = any;
 type PlaylistItem = any;
 type ContentItem = any;
 
+// Componente para el editor de layout personalizado (Beta)
+const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
+  playlist: any;
+  onZoneClick: (zoneId: string) => void;
+  playlistData: any;
+}) => {
+  const [zones, setZones] = useState([
+    { id: 'zone1', x: 10, y: 10, width: 40, height: 40, title: 'Zona 1' },
+    { id: 'zone2', x: 60, y: 10, width: 30, height: 30, title: 'Zona 2' },
+    { id: 'zone3', x: 10, y: 60, width: 80, height: 30, title: 'Zona 3' }
+  ]);
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleZoneResize = (zoneId: string, newDimensions: any) => {
+    setZones(prev => prev.map(zone => 
+      zone.id === zoneId 
+        ? { ...zone, ...newDimensions }
+        : zone
+    ));
+  };
+
+  const addNewZone = () => {
+    const newZone = {
+      id: `zone${zones.length + 1}`,
+      x: 20,
+      y: 20,
+      width: 30,
+      height: 30,
+      title: `Zona ${zones.length + 1}`
+    };
+    setZones(prev => [...prev, newZone]);
+  };
+
+  const deleteZone = (zoneId: string) => {
+    if (zones.length > 1) {
+      setZones(prev => prev.filter(zone => zone.id !== zoneId));
+      setSelectedZone(null);
+    }
+  };
+
+  return (
+    <div className="w-full h-full">
+      <div className="flex justify-between items-center mb-2">
+        <div className="text-xs font-medium text-gray-700">Editor de Layout Personalizado (Beta)</div>
+        <div className="flex gap-1">
+          <Button
+            variant={isEditing ? "default" : "outline"}
+            size="sm"
+            onClick={() => setIsEditing(!isEditing)}
+            className="text-xs h-6 px-2"
+          >
+            {isEditing ? "Vista" : "Editar"}
+          </Button>
+          {isEditing && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addNewZone}
+              className="text-xs h-6 px-2"
+            >
+              <Plus className="w-3 h-3" />
+            </Button>
+          )}
+        </div>
+      </div>
+      
+      <div className="w-full h-64 bg-slate-100 rounded-lg relative border-2 border-dashed border-gray-300 overflow-hidden">
+        {zones.map((zone) => (
+          <div
+            key={zone.id}
+            className={`absolute border-2 rounded cursor-pointer transition-all ${
+              selectedZone === zone.id 
+                ? 'border-blue-500 bg-blue-100' 
+                : 'border-gray-400 bg-white hover:bg-gray-50'
+            }`}
+            style={{
+              left: `${zone.x}%`,
+              top: `${zone.y}%`,
+              width: `${zone.width}%`,
+              height: `${zone.height}%`,
+              minWidth: '40px',
+              minHeight: '30px'
+            }}
+            onClick={() => {
+              if (isEditing) {
+                setSelectedZone(zone.id);
+              } else {
+                onZoneClick(zone.id);
+              }
+            }}
+          >
+            <div className="w-full h-full flex flex-col items-center justify-center text-center p-1">
+              <div className="text-xs font-medium text-gray-700 truncate w-full">
+                {zone.title}
+              </div>
+              <div className="text-xs text-gray-500">
+                {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
+              </div>
+              {!isEditing && (
+                <Button variant="ghost" size="sm" className="text-xs h-4 px-1 mt-1">
+                  <Plus className="w-2 h-2" />
+                </Button>
+              )}
+              {isEditing && selectedZone === zone.id && zones.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteZone(zone.id);
+                  }}
+                  className="text-red-500 hover:text-red-700 text-xs h-4 px-1 mt-1"
+                >
+                  <Trash2 className="w-2 h-2" />
+                </Button>
+              )}
+            </div>
+            
+            {/* Resize handles when editing */}
+            {isEditing && selectedZone === zone.id && (
+              <>
+                <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-blue-500 cursor-se-resize"></div>
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 cursor-ne-resize"></div>
+                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-blue-500 cursor-sw-resize"></div>
+                <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 cursor-nw-resize"></div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {isEditing && selectedZone && (
+        <div className="mt-2 p-2 bg-gray-50 rounded text-xs space-y-2">
+          <div className="font-medium">Zona Seleccionada: {zones.find(z => z.id === selectedZone)?.title}</div>
+          <div className="grid grid-cols-4 gap-2">
+            <div>
+              <label className="block text-xs text-gray-600">X (%)</label>
+              <Input
+                type="number"
+                min="0"
+                max="90"
+                value={zones.find(z => z.id === selectedZone)?.x || 0}
+                onChange={(e) => handleZoneResize(selectedZone, { x: parseInt(e.target.value) || 0 })}
+                className="text-xs h-6"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600">Y (%)</label>
+              <Input
+                type="number"
+                min="0"
+                max="90"
+                value={zones.find(z => z.id === selectedZone)?.y || 0}
+                onChange={(e) => handleZoneResize(selectedZone, { y: parseInt(e.target.value) || 0 })}
+                className="text-xs h-6"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600">Ancho (%)</label>
+              <Input
+                type="number"
+                min="10"
+                max="100"
+                value={zones.find(z => z.id === selectedZone)?.width || 0}
+                onChange={(e) => handleZoneResize(selectedZone, { width: parseInt(e.target.value) || 10 })}
+                className="text-xs h-6"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600">Alto (%)</label>
+              <Input
+                type="number"
+                min="10"
+                max="100"
+                value={zones.find(z => z.id === selectedZone)?.height || 0}
+                onChange={(e) => handleZoneResize(selectedZone, { height: parseInt(e.target.value) || 10 })}
+                className="text-xs h-6"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600">Título</label>
+            <Input
+              type="text"
+              value={zones.find(z => z.id === selectedZone)?.title || ''}
+              onChange={(e) => handleZoneResize(selectedZone, { title: e.target.value })}
+              className="text-xs h-6"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded">
+        <strong>Versión Beta:</strong> Esta es una implementación básica del editor personalizado. 
+        Las configuraciones no se guardan automáticamente aún.
+      </div>
+    </div>
+  );
+};
+
 // Componente para input de duración con estado local
 const DurationInput = ({ itemId, initialDuration, onDurationChange }: { 
   itemId: number; 
@@ -909,15 +1110,14 @@ export default function Playlists() {
                   {currentLayout === 'custom_layout' && (
                     <Button 
                       onClick={() => {
-                        // TODO: Implementar editor de layout personalizado
                         toast({
-                          title: "Funcionalidad en desarrollo",
-                          description: "El editor de layout personalizado estará disponible pronto.",
+                          title: "Editor Beta Activado",
+                          description: "Usa los controles de la vista previa para editar las zonas.",
                         });
                       }}
                     >
                       <Settings className="w-4 h-4 mr-2" />
-                      Personalizar
+                      Ayuda
                     </Button>
                   )}
                 </div>
@@ -1023,13 +1223,200 @@ export default function Playlists() {
                       </div>
                     )}
 
-                    {/* Add more layout visualizations as needed */}
-                    {!['single_zone', 'split_vertical', 'split_horizontal', 'grid_2x2', 'grid_3x3'].includes(currentLayout) && (
-                      <div className="w-full h-full border-2 border-dashed border-gray-400 rounded-lg bg-gray-50 flex flex-col items-center justify-center">
-                        <Settings className="w-8 h-8 text-gray-600 mb-2" />
-                        <span className="text-sm font-medium text-gray-700">Layout: {currentLayout}</span>
-                        <span className="text-xs text-gray-600 mt-1">Vista previa no disponible</span>
+                    {currentLayout === 'pip_bottom_right' && (
+                      <div className="w-full h-full relative">
+                        <div className="w-full h-full border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 flex flex-col items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
+                             onClick={() => handleOpenContentLibrary('main')}>
+                          <PictureInPicture className="w-6 h-6 text-blue-600 mb-2" />
+                          <span className="text-xs font-medium text-blue-700">Zona Principal</span>
+                          <span className="text-xs text-blue-600 mt-1">
+                            {playlistData?.items?.filter((item: any) => item.zone === 'main')?.length || 0} elementos
+                          </span>
+                          <Button variant="ghost" size="sm" className="mt-2 text-blue-600 hover:bg-blue-200">
+                            <Plus className="w-3 h-3 mr-1" />
+                            Agregar
+                          </Button>
+                        </div>
+                        <div className="absolute bottom-2 right-2 w-1/3 h-1/3 border-2 border-dashed border-green-400 rounded bg-green-50 flex flex-col items-center justify-center hover:bg-green-100 transition-colors cursor-pointer"
+                             onClick={() => handleOpenContentLibrary('pip')}>
+                          <PictureInPicture className="w-4 h-4 text-green-600 mb-1" />
+                          <span className="text-xs font-medium text-green-700">PiP</span>
+                          <span className="text-xs text-green-600">
+                            {playlistData?.items?.filter((item: any) => item.zone === 'pip')?.length || 0}
+                          </span>
+                        </div>
                       </div>
+                    )}
+
+                    {currentLayout === 'carousel' && (
+                      <div className="w-full h-full border-2 border-dashed border-purple-400 rounded-lg bg-purple-50 flex flex-col items-center justify-center hover:bg-purple-100 transition-colors cursor-pointer"
+                           onClick={() => handleOpenContentLibrary('main')}>
+                        <Shuffle className="w-8 h-8 text-purple-600 mb-2" />
+                        <span className="text-sm font-medium text-purple-700">Carrusel de Contenido</span>
+                        <span className="text-xs text-purple-600 mt-1">
+                          {playlistData?.items?.filter((item: any) => item.zone === 'main')?.length || 0} elementos
+                        </span>
+                        <Button variant="ghost" size="sm" className="mt-2 text-purple-600 hover:bg-purple-200">
+                          <Plus className="w-3 h-3 mr-1" />
+                          Agregar contenido
+                        </Button>
+                      </div>
+                    )}
+
+                    {currentLayout === 'web_scroll' && (
+                      <div className="w-full h-full border-2 border-dashed border-orange-400 rounded-lg bg-orange-50 flex flex-col items-center justify-center hover:bg-orange-100 transition-colors cursor-pointer"
+                           onClick={() => handleOpenContentLibrary('main')}>
+                        <ScrollText className="w-8 h-8 text-orange-600 mb-2" />
+                        <span className="text-sm font-medium text-orange-700">Scroll Web</span>
+                        <span className="text-xs text-orange-600 mt-1">
+                          {playlistData?.items?.filter((item: any) => item.zone === 'main')?.length || 0} elementos
+                        </span>
+                        <Button variant="ghost" size="sm" className="mt-2 text-orange-600 hover:bg-orange-200">
+                          <Plus className="w-3 h-3 mr-1" />
+                          Agregar contenido
+                        </Button>
+                      </div>
+                    )}
+
+                    {currentLayout === 'sidebar_left' && (
+                      <div className="w-full h-full flex gap-2">
+                        <div className="w-1/3 border-2 border-dashed border-indigo-400 rounded-lg bg-indigo-50 flex flex-col items-center justify-center hover:bg-indigo-100 transition-colors cursor-pointer"
+                             onClick={() => handleOpenContentLibrary('sidebar')}>
+                          <SidebarOpen className="w-5 h-5 text-indigo-600 mb-2" />
+                          <span className="text-xs font-medium text-indigo-700">Sidebar</span>
+                          <span className="text-xs text-indigo-600 mt-1">
+                            {playlistData?.items?.filter((item: any) => item.zone === 'sidebar')?.length || 0}
+                          </span>
+                          <Button variant="ghost" size="sm" className="mt-1 text-indigo-600 hover:bg-indigo-200 text-xs px-2 py-1">
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        <div className="flex-1 border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 flex flex-col items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
+                             onClick={() => handleOpenContentLibrary('main')}>
+                          <Layout className="w-6 h-6 text-blue-600 mb-2" />
+                          <span className="text-xs font-medium text-blue-700">Principal</span>
+                          <span className="text-xs text-blue-600 mt-1">
+                            {playlistData?.items?.filter((item: any) => item.zone === 'main')?.length || 0}
+                          </span>
+                          <Button variant="ghost" size="sm" className="mt-2 text-blue-600 hover:bg-blue-200">
+                            <Plus className="w-3 h-3 mr-1" />
+                            Agregar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {currentLayout === 'sidebar_right' && (
+                      <div className="w-full h-full flex gap-2">
+                        <div className="flex-1 border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 flex flex-col items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
+                             onClick={() => handleOpenContentLibrary('main')}>
+                          <Layout className="w-6 h-6 text-blue-600 mb-2" />
+                          <span className="text-xs font-medium text-blue-700">Principal</span>
+                          <span className="text-xs text-blue-600 mt-1">
+                            {playlistData?.items?.filter((item: any) => item.zone === 'main')?.length || 0}
+                          </span>
+                          <Button variant="ghost" size="sm" className="mt-2 text-blue-600 hover:bg-blue-200">
+                            <Plus className="w-3 h-3 mr-1" />
+                            Agregar
+                          </Button>
+                        </div>
+                        <div className="w-1/3 border-2 border-dashed border-indigo-400 rounded-lg bg-indigo-50 flex flex-col items-center justify-center hover:bg-indigo-100 transition-colors cursor-pointer"
+                             onClick={() => handleOpenContentLibrary('sidebar')}>
+                          <SidebarClose className="w-5 h-5 text-indigo-600 mb-2" />
+                          <span className="text-xs font-medium text-indigo-700">Sidebar</span>
+                          <span className="text-xs text-indigo-600 mt-1">
+                            {playlistData?.items?.filter((item: any) => item.zone === 'sidebar')?.length || 0}
+                          </span>
+                          <Button variant="ghost" size="sm" className="mt-1 text-indigo-600 hover:bg-indigo-200 text-xs px-2 py-1">
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {currentLayout === 'header_footer' && (
+                      <div className="w-full h-full flex flex-col gap-2">
+                        <div className="h-1/5 border-2 border-dashed border-cyan-400 rounded-lg bg-cyan-50 flex flex-col items-center justify-center hover:bg-cyan-100 transition-colors cursor-pointer"
+                             onClick={() => handleOpenContentLibrary('header')}>
+                          <Rows className="w-4 h-4 text-cyan-600 mb-1" />
+                          <span className="text-xs font-medium text-cyan-700">Header</span>
+                          <span className="text-xs text-cyan-600">
+                            {playlistData?.items?.filter((item: any) => item.zone === 'header')?.length || 0}
+                          </span>
+                        </div>
+                        <div className="flex-1 border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 flex flex-col items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
+                             onClick={() => handleOpenContentLibrary('main')}>
+                          <Layout className="w-6 h-6 text-blue-600 mb-2" />
+                          <span className="text-xs font-medium text-blue-700">Principal</span>
+                          <span className="text-xs text-blue-600 mt-1">
+                            {playlistData?.items?.filter((item: any) => item.zone === 'main')?.length || 0}
+                          </span>
+                          <Button variant="ghost" size="sm" className="mt-2 text-blue-600 hover:bg-blue-200">
+                            <Plus className="w-3 h-3 mr-1" />
+                            Agregar
+                          </Button>
+                        </div>
+                        <div className="h-1/5 border-2 border-dashed border-cyan-400 rounded-lg bg-cyan-50 flex flex-col items-center justify-center hover:bg-cyan-100 transition-colors cursor-pointer"
+                             onClick={() => handleOpenContentLibrary('footer')}>
+                          <Rows className="w-4 h-4 text-cyan-600 mb-1" />
+                          <span className="text-xs font-medium text-cyan-700">Footer</span>
+                          <span className="text-xs text-cyan-600">
+                            {playlistData?.items?.filter((item: any) => item.zone === 'footer')?.length || 0}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {currentLayout === 'triple_vertical' && (
+                      <div className="w-full h-full grid grid-cols-3 gap-2">
+                        {[
+                          {id: 'left', title: 'Izquierda'},
+                          {id: 'center', title: 'Centro'},
+                          {id: 'right', title: 'Derecha'}
+                        ].map((zone) => (
+                          <div key={zone.id} className="border-2 border-dashed border-teal-400 rounded-lg bg-teal-50 flex flex-col items-center justify-center hover:bg-teal-100 transition-colors cursor-pointer"
+                               onClick={() => handleOpenContentLibrary(zone.id)}>
+                            <SplitSquareVertical className="w-5 h-5 text-teal-600 mb-1" />
+                            <span className="text-xs font-medium text-teal-700">{zone.title}</span>
+                            <span className="text-xs text-teal-600 mt-1">
+                              {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
+                            </span>
+                            <Button variant="ghost" size="sm" className="mt-1 text-teal-600 hover:bg-teal-200 text-xs px-2 py-1">
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {currentLayout === 'triple_horizontal' && (
+                      <div className="w-full h-full flex flex-col gap-2">
+                        {[
+                          {id: 'top', title: 'Superior'},
+                          {id: 'middle', title: 'Medio'},
+                          {id: 'bottom', title: 'Inferior'}
+                        ].map((zone) => (
+                          <div key={zone.id} className="flex-1 border-2 border-dashed border-pink-400 rounded-lg bg-pink-50 flex flex-col items-center justify-center hover:bg-pink-100 transition-colors cursor-pointer"
+                               onClick={() => handleOpenContentLibrary(zone.id)}>
+                            <SplitSquareHorizontal className="w-5 h-5 text-pink-600 mb-1" />
+                            <span className="text-xs font-medium text-pink-700">{zone.title}</span>
+                            <span className="text-xs text-pink-600 mt-1">
+                              {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
+                            </span>
+                            <Button variant="ghost" size="sm" className="mt-1 text-pink-600 hover:bg-pink-200 text-xs px-2 py-1">
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {currentLayout === 'custom_layout' && (
+                      <CustomLayoutEditor 
+                        playlist={selectedPlaylistForLayout}
+                        onZoneClick={handleOpenContentLibrary}
+                        playlistData={playlistData}
+                      />
                     )}
                   </div>
                 </div>
