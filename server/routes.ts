@@ -678,12 +678,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Cannot update heartbeat for an unassigned screen." });
       }
 
+      const wasOffline = !req.screen.isOnline;
+
       await storage.updateScreen(screenId, {
         isOnline: true,
         lastSeen: new Date(),
       }, userId);
 
-      // Opcional: podrías devolver aquí una nueva playlist si ha cambiado
+      // Broadcast status change if screen was offline and now online
+      if (wasOffline) {
+        console.log(`📡 Screen ${screenId} came online`);
+        broadcastToUser(userId, 'screen-status-changed', {
+          screenId,
+          screenName: req.screen.name,
+          isOnline: true,
+          lastSeen: new Date().toISOString()
+        });
+      }
+
       res.status(200).json({ status: 'ok' });
     } catch (error) {
       console.error("Heartbeat error:", error);
@@ -1317,12 +1329,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const userId = (ws as any).userId;
 
             if (userId) {
+              // Get current screen status
+              const currentScreen = await storage.getScreenById(screenId);
+              const wasOffline = !currentScreen?.isOnline;
+
               await storage.updateScreen(screenId, {
                 isOnline: true,
                 lastSeen: new Date(),
               }, userId);
 
               console.log(`💓 Heartbeat received from screen ${screenId}`);
+
+              // Broadcast status change if screen was offline and now online
+              if (wasOffline && currentScreen) {
+                console.log(`📡 Screen ${screenId} came online via WebSocket heartbeat`);
+                broadcastToUser(userId, 'screen-status-changed', {
+                  screenId,
+                  screenName: currentScreen.name,
+                  isOnline: true,
+                  lastSeen: new Date().toISOString()
+                });
+              }
 
               // Send heartbeat acknowledgment
               ws.send(JSON.stringify({ 
@@ -1382,8 +1409,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
 
-    ws.on("close", () => {
-        console.log(`Client disconnected (User: ${(ws as any).userId || 'unauthenticated'}, Screen: ${(ws as any).screenId || 'none'})`);
+    ws.on("close", async () => {
+        const clientUserId = (ws as any).userId;
+        const clientScreenId = (ws as any).screenId;
+        
+        console.log(`Client disconnected (User: ${clientUserId || 'unauthenticated'}, Screen: ${clientScreenId || 'none'})`);
+        
+        // If this was a player client, mark screen as offline after a delay
+        if (clientScreenId && clientUserId) {
+          setTimeout(async () => {
+            try {
+              const screen = await storage.getScreenById(clientScreenId);
+              if (screen && screen.isOnline) {
+                await storage.updateScreen(clientScreenId, {
+                  isOnline: false,
+                  lastSeen: new Date(),
+                }, clientUserId);
+
+                console.log(`📡 Screen ${clientScreenId} went offline`);
+                broadcastToUser(clientUserId, 'screen-status-changed', {
+                  screenId: clientScreenId,
+                  screenName: screen.name,
+                  isOnline: false,
+                  lastSeen: new Date().toISOString()
+                });
+              }
+            } catch (error) {
+              console.error('Error handling screen disconnect:', error);
+            }
+          }, 5000); // 5 second grace period
+        }
       });
     });
 

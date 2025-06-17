@@ -25,6 +25,7 @@ import { useEffect } from "react";
 import { wsManager } from "@/lib/websocket";
 
 const PlaylistDetail = lazy(() => import("./pages/playlist-detail"));
+const MediaLibrary = lazy(() => import("./pages/media-library")); // Added MediaLibrary import
 
 const Loading = () => (
   <div className="w-full h-full flex items-center justify-center">
@@ -107,6 +108,7 @@ const AppContent = () => {
             <Route path="/" component={Dashboard} />
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/content" component={Content} />
+            <Route path="/media-library" component={MediaLibrary} />
             <Route path="/playlists" component={Playlists} />
             <Route path="/playlist/:id" component={PlaylistDetail} />
             <Route path="/screens" component={Screens} />

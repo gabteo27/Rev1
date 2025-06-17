@@ -1,6 +1,8 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { wsManager } from "@/lib/websocket";
 
 import { useToast } from "@/hooks/use-toast";
 import type { Screen, Playlist } from "@shared/schema";
@@ -22,11 +24,13 @@ import {
   Edit,
   Eye,
   EyeOff,
-  Users
+  Users,
+  Wifi,
+  WifiOff,
+  Activity
 } from "lucide-react";
 import { ScreenPreview } from "@/components/screen/ScreenPreview";
 import ScreenGroups from "./screen-groups";
-
 
 const initialPairFormState = { pairingCode: "", name: "", location: "", playlistId: "" };
 
@@ -36,15 +40,36 @@ export default function Screens() {
   const [livePreviewScreenId, setLivePreviewScreenId] = useState<number | null>(null);
   const [pairFormData, setPairFormData] = useState(initialPairFormState);
   const [visiblePreviews, setVisiblePreviews] = useState<Record<number, boolean>>({});
+  const [screenStatuses, setScreenStatuses] = useState<Record<number, { isOnline: boolean; lastSeen?: string }>>({});
 
   const { toast } = useToast();
 
-  const { data: screens = [], isLoading } = useQuery<Screen[]>({ queryKey: ["/api/screens"], retry: false });
-  const { data: playlists = [] } = useQuery<Playlist[]>({ queryKey: ["/api/playlists"], retry: false });
+  const { data: screens = [], isLoading } = useQuery<Screen[]>({ 
+    queryKey: ["/api/screens"], 
+    retry: false,
+    refetchInterval: 30000 // Backup polling every 30 seconds
+  });
+  
+  const { data: playlists = [] } = useQuery<Playlist[]>({ 
+    queryKey: ["/api/playlists"], 
+    retry: false 
+  });
 
   // WebSocket subscriptions for real-time updates
   useEffect(() => {
     const unsubscribeFunctions: (() => void)[] = [];
+
+    // Initialize screen statuses
+    if (screens.length > 0) {
+      const initialStatuses: Record<number, { isOnline: boolean; lastSeen?: string }> = {};
+      screens.forEach(screen => {
+        initialStatuses[screen.id] = {
+          isOnline: screen.isOnline || false,
+          lastSeen: screen.lastSeen ? new Date(screen.lastSeen).toISOString() : undefined
+        };
+      });
+      setScreenStatuses(initialStatuses);
+    }
 
     // Wait for WebSocket connection
     const setupSubscriptions = () => {
@@ -59,23 +84,30 @@ export default function Screens() {
           console.log('Screen deleted via WebSocket:', data);
           toast({
             title: "Pantalla Eliminada",
-            description: `${data.screenName || 'La pantalla'} ha sido eliminada`,
+            description: `La pantalla ha sido eliminada`,
             variant: "destructive"
           });
           queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
         })
       );
 
-      // Subscribe to screen status changes
+      // Subscribe to screen status changes (heartbeat updates)
       unsubscribeFunctions.push(
         wsManager.subscribe('screen-status-changed', (data) => {
           console.log('Screen status changed:', data);
-          queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
           
-          const statusText = data.isOnline ? 'conectó' : 'desconectó';
+          setScreenStatuses(prev => ({
+            ...prev,
+            [data.screenId]: {
+              isOnline: data.isOnline,
+              lastSeen: data.lastSeen || new Date().toISOString()
+            }
+          }));
+          
+          const statusText = data.isOnline ? 'se conectó' : 'se desconectó';
           toast({
             title: `Pantalla ${statusText}`,
-            description: `${data.screenName || 'Una pantalla'} se ${statusText}`,
+            description: `${data.screenName || 'Una pantalla'} ${statusText}`,
             variant: data.isOnline ? "default" : "destructive"
           });
         })
@@ -101,7 +133,7 @@ export default function Screens() {
         }
       });
     };
-  }, [toast]);
+  }, [toast, screens]);
 
   // --- MUTACIONES ---
 
@@ -137,8 +169,16 @@ export default function Screens() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, deletedScreenId) => {
       toast({ title: "Pantalla eliminada", description: "La pantalla ha sido eliminada correctamente" });
+      
+      // Update local state immediately for better UX
+      setScreenStatuses(prev => {
+        const newStatuses = { ...prev };
+        delete newStatuses[deletedScreenId];
+        return newStatuses;
+      });
+      
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     },
     onError: (error: any) => toast({ title: "Error", description: error.message || "No se pudo eliminar la pantalla.", variant: "destructive" })
@@ -163,10 +203,10 @@ export default function Screens() {
     completePairingMutation.mutate(pairFormData);
   };
 
-    // --- MANEJADORES DE PANTALLA ---
-    const handleEditScreen = (screen: Screen) => {
-      setEditingScreen(screen);
-    };
+  // --- MANEJADORES DE PANTALLA ---
+  const handleEditScreen = (screen: Screen) => {
+    setEditingScreen(screen);
+  };
 
   const togglePreview = (id: number) => {
     setVisiblePreviews(prev => ({
@@ -174,21 +214,60 @@ export default function Screens() {
       [id]: !prev[id]
     }));
   };
+
   // --- FUNCIONES AUXILIARES ---
 
   const formatDate = (date: Date | null | string) => {
     if (!date) return "N/A";
-    return new Date(date).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return new Date(date).toLocaleDateString("es-ES", { 
+      year: "numeric", 
+      month: "short", 
+      day: "numeric", 
+      hour: "2-digit", 
+      minute: "2-digit" 
+    });
   };
 
-  const getStatusBadge = (isOnline: boolean | null, lastSeen?: string | Date) => {
-      if (isOnline) return <Badge className="bg-green-100 text-green-800 border-green-300">En línea</Badge>;
-      if (lastSeen) {
-        const diffInHours = (new Date().getTime() - new Date(lastSeen).getTime()) / 36e5;
-        if (diffInHours < 1) return <Badge variant="destructive">Desconectada</Badge>;
-        if (diffInHours < 24) return <Badge variant="secondary">Inactiva</Badge>;
+  const getStatusBadge = (screenId: number, fallbackOnline?: boolean, fallbackLastSeen?: string | Date) => {
+    const status = screenStatuses[screenId];
+    const isOnline = status?.isOnline ?? fallbackOnline ?? false;
+    const lastSeen = status?.lastSeen ?? fallbackLastSeen;
+
+    if (isOnline) {
+      return (
+        <Badge className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1">
+          <Wifi className="w-3 h-3" />
+          En línea
+        </Badge>
+      );
+    }
+    
+    if (lastSeen) {
+      const diffInHours = (new Date().getTime() - new Date(lastSeen).getTime()) / 36e5;
+      if (diffInHours < 1) {
+        return (
+          <Badge variant="destructive" className="flex items-center gap-1">
+            <WifiOff className="w-3 h-3" />
+            Desconectada
+          </Badge>
+        );
       }
-      return <Badge variant="secondary">Desconocido</Badge>;
+      if (diffInHours < 24) {
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Activity className="w-3 h-3" />
+            Inactiva
+          </Badge>
+        );
+      }
+    }
+    
+    return (
+      <Badge variant="secondary" className="flex items-center gap-1">
+        <WifiOff className="w-3 h-3" />
+        Desconocido
+      </Badge>
+    );
   };
 
   if (isLoading) {
@@ -283,6 +362,7 @@ export default function Screens() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       {/* MODAL PARA VER EN VIVO */}
       <Dialog open={!!livePreviewScreenId} onOpenChange={() => setLivePreviewScreenId(null)}>
         <DialogContent className="max-w-4xl">
@@ -302,6 +382,7 @@ export default function Screens() {
           )}
         </DialogContent>
       </Dialog>
+
       {/* PESTAÑAS PRINCIPALES */}
       <div className="flex-1 flex flex-col">
         <Tabs defaultValue="screens" className="flex-1 flex flex-col">
@@ -361,7 +442,7 @@ export default function Screens() {
                             </div>
                           </div>
                           <div className="flex-shrink-0">
-                            {getStatusBadge(screen.isOnline, screen.lastSeen)}
+                            {getStatusBadge(screen.id, screen.isOnline, screen.lastSeen)}
                           </div>
                         </div>
                         
@@ -375,7 +456,7 @@ export default function Screens() {
                             }
                           </div>
                           <div className="text-slate-600">
-                            <span className="font-medium text-slate-700">Última vez online:</span> {formatDate(screen.lastSeen)}
+                            <span className="font-medium text-slate-700">Última vez online:</span> {formatDate(screenStatuses[screen.id]?.lastSeen || screen.lastSeen)}
                           </div>
                         </div>
 
