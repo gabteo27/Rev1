@@ -814,156 +814,277 @@ export default function Playlists() {
               {/* Layout Selection */}
               <div className="flex-shrink-0">
                 <Label className="text-sm font-medium">Tipo de Layout</Label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                  <ToggleGroup 
-                    type="single" 
-                    value={currentLayout} 
-                    onValueChange={(val) => val && updateLayoutMutation.mutate(val)}
-                    className="col-span-full flex flex-wrap gap-2"
-                  >
-                    <ToggleGroupItem value="single_zone" aria-label="Pantalla completa" className="flex-col h-auto p-2">
-                      <Layout className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">Completa</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="split_vertical" aria-label="División vertical" className="flex-col h-auto p-2">
-                      <SplitSquareVertical className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">Vertical</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="split_horizontal" aria-label="División horizontal" className="flex-col h-auto p-2">
-                      <SplitSquareHorizontal className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">Horizontal</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="pip_bottom_right" aria-label="Picture in picture" className="flex-col h-auto p-2">
-                      <PictureInPicture className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">PiP</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="carousel" aria-label="Carrusel" className="flex-col h-auto p-2">
-                      <Shuffle className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">Carrusel</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="web_scroll" aria-label="Scroll web" className="flex-col h-auto p-2">
-                      <ScrollText className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">Scroll</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="grid_2x2" aria-label="Grilla 2x2" className="flex-col h-auto p-2">
-                      <Grid3X3 className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">2x2</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="grid_3x3" aria-label="Grilla 3x3" className="flex-col h-auto p-2">
-                      <Grid3X3 className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">3x3</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="sidebar_left" aria-label="Barra lateral izquierda" className="flex-col h-auto p-2">
-                      <SidebarOpen className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">Sidebar L</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="sidebar_right" aria-label="Barra lateral derecha" className="flex-col h-auto p-2">
-                      <SidebarClose className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">Sidebar R</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="header_footer" aria-label="Cabecera y pie" className="flex-col h-auto p-2">
-                      <Rows className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">H/F</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="triple_vertical" aria-label="Triple vertical" className="flex-col h-auto p-2">
-                      <SplitSquareVertical className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">Triple V</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="triple_horizontal" aria-label="Triple horizontal" className="flex-col h-auto p-2">
-                      <SplitSquareHorizontal className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">Triple H</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="custom_layout" aria-label="Layout personalizado" className="flex-col h-auto p-2">
-                      <Settings className="h-4 w-4 mb-1"/>
-                      <span className="text-xs">Custom</span>
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+                <div className="flex gap-4 items-center mt-2">
+                  <Select value={currentLayout} onValueChange={(val) => val && updateLayoutMutation.mutate(val)}>
+                    <SelectTrigger className="w-64">
+                      <SelectValue placeholder="Selecciona un layout" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single_zone">
+                        <div className="flex items-center gap-2">
+                          <Layout className="h-4 w-4" />
+                          Pantalla Completa
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="split_vertical">
+                        <div className="flex items-center gap-2">
+                          <SplitSquareVertical className="h-4 w-4" />
+                          División Vertical
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="split_horizontal">
+                        <div className="flex items-center gap-2">
+                          <SplitSquareHorizontal className="h-4 w-4" />
+                          División Horizontal
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="pip_bottom_right">
+                        <div className="flex items-center gap-2">
+                          <PictureInPicture className="h-4 w-4" />
+                          Picture-in-Picture
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="carousel">
+                        <div className="flex items-center gap-2">
+                          <Shuffle className="h-4 w-4" />
+                          Carrusel
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="web_scroll">
+                        <div className="flex items-center gap-2">
+                          <ScrollText className="h-4 w-4" />
+                          Scroll Web
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="grid_2x2">
+                        <div className="flex items-center gap-2">
+                          <Grid3X3 className="h-4 w-4" />
+                          Grilla 2x2
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="grid_3x3">
+                        <div className="flex items-center gap-2">
+                          <Grid3X3 className="h-4 w-4" />
+                          Grilla 3x3
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="sidebar_left">
+                        <div className="flex items-center gap-2">
+                          <SidebarOpen className="h-4 w-4" />
+                          Barra Lateral Izquierda
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="sidebar_right">
+                        <div className="flex items-center gap-2">
+                          <SidebarClose className="h-4 w-4" />
+                          Barra Lateral Derecha
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="header_footer">
+                        <div className="flex items-center gap-2">
+                          <Rows className="h-4 w-4" />
+                          Cabecera y Pie
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="triple_vertical">
+                        <div className="flex items-center gap-2">
+                          <SplitSquareVertical className="h-4 w-4" />
+                          Triple Vertical
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="triple_horizontal">
+                        <div className="flex items-center gap-2">
+                          <SplitSquareHorizontal className="h-4 w-4" />
+                          Triple Horizontal
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="custom_layout">
+                        <div className="flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          Layout Personalizado
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {currentLayout === 'custom_layout' && (
+                    <Button 
+                      onClick={() => {
+                        // TODO: Implementar editor de layout personalizado
+                        toast({
+                          title: "Funcionalidad en desarrollo",
+                          description: "El editor de layout personalizado estará disponible pronto.",
+                        });
+                      }}
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      Personalizar
+                    </Button>
+                  )}
                 </div>
               </div>
 
-              {/* Zone Management */}
-              <div className="flex-1 overflow-y-auto">
-                <div className={`grid gap-4 ${
-                  currentLayout === 'split_vertical' ? 'grid-cols-2' :
-                  currentLayout === 'split_horizontal' ? 'grid-cols-1' :
-                  currentLayout === 'pip_bottom_right' ? 'grid-cols-2' :
-                  'grid-cols-1'
-                }`}>
-                  {zones.map(zone => (
-                    <Card key={zone.id} className="flex flex-col">
-                      <CardHeader className="pb-3 flex-shrink-0">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-sm flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                            {zone.title}
-                            <Badge variant="secondary" className="text-xs">
-                              {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
-                            </Badge>
-                          </CardTitle>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedZoneForContent(zone.id);
-                                  setContentLibraryOpen(true);
-                                }}
-                              >
-                                <Plus className="w-3 h-3 mr-1" />
-                                Agregar contenido
-                              </Button>
-                            </DialogTrigger></Dialog>
+              {/* Visual Layout Preview */}
+              <div className="flex-1 flex gap-6">
+                {/* Layout Visual Preview */}
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium mb-3">Vista Previa del Layout</h3>
+                  <div className="bg-slate-100 rounded-lg p-4 relative" style={{ aspectRatio: '16/9', minHeight: '300px' }}>
+                    {currentLayout === 'single_zone' && (
+                      <div className="w-full h-full border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 flex flex-col items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
+                           onClick={() => handleOpenContentLibrary('main')}>
+                        <Layout className="w-8 h-8 text-blue-600 mb-2" />
+                        <span className="text-sm font-medium text-blue-700">Zona Principal</span>
+                        <span className="text-xs text-blue-600 mt-1">
+                          {playlistData?.items?.filter((item: any) => item.zone === 'main')?.length || 0} elementos
+                        </span>
+                        <Button variant="ghost" size="sm" className="mt-2 text-blue-600 hover:bg-blue-200">
+                          <Plus className="w-3 h-3 mr-1" />
+                          Agregar contenido
+                        </Button>
+                      </div>
+                    )}
+
+                    {currentLayout === 'split_vertical' && (
+                      <div className="w-full h-full flex gap-2">
+                        {[{id: 'left', title: 'Zona Izquierda'}, {id: 'right', title: 'Zona Derecha'}].map((zone, index) => (
+                          <div key={zone.id} className="flex-1 border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 flex flex-col items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
+                               onClick={() => handleOpenContentLibrary(zone.id)}>
+                            <SplitSquareVertical className="w-6 h-6 text-blue-600 mb-2" />
+                            <span className="text-xs font-medium text-blue-700">{zone.title}</span>
+                            <span className="text-xs text-blue-600 mt-1">
+                              {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0} elementos
+                            </span>
+                            <Button variant="ghost" size="sm" className="mt-2 text-blue-600 hover:bg-blue-200">
+                              <Plus className="w-3 h-3 mr-1" />
+                              Agregar
+                            </Button>
                           </div>
-                      </CardHeader>
-                      <CardContent className="pt-0 flex-1 overflow-hidden">
-                        <ScrollArea className="h-full">
-                        <div className="space-y-2 pr-4">
-                          {playlistData?.items
-                            ?.filter((item: any) => item.zone === zone.id)
-                            ?.sort((a: any, b: any) => a.order - b.order)
-                            ?.map((item: any) => (
-                              <div key={item.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
-                                <GripVertical className="w-3 h-3 text-gray-400 cursor-grab flex-shrink-0" />
-                                <div className="w-6 h-6 bg-slate-300 rounded flex items-center justify-center flex-shrink-0">
-                                  {getContentIcon(item.contentItem?.type)}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-medium truncate text-sm">{item.contentItem?.title || 'Sin título'}</h4>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <DurationInput
-                                                itemId={item.id}
-                                                initialDuration={item.customDuration || item.contentItem?.duration || 10}
-                                                onDurationChange={(duration) => {
-                                                  updateItemDurationMutation.mutate({
-                                                    itemId: item.id,
-                                                    duration: duration
-                                                  });
-                                                }}
-                                              />
-                                    <span className="text-xs text-muted-foreground">seg</span>
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
-                                  onClick={() => removeItemMutation.mutate(item.id)}
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
+                        ))}
+                      </div>
+                    )}
+
+                    {currentLayout === 'split_horizontal' && (
+                      <div className="w-full h-full flex flex-col gap-2">
+                        {[{id: 'top', title: 'Zona Superior'}, {id: 'bottom', title: 'Zona Inferior'}].map((zone) => (
+                          <div key={zone.id} className="flex-1 border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 flex flex-col items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
+                               onClick={() => handleOpenContentLibrary(zone.id)}>
+                            <SplitSquareHorizontal className="w-6 h-6 text-blue-600 mb-2" />
+                            <span className="text-xs font-medium text-blue-700">{zone.title}</span>
+                            <span className="text-xs text-blue-600 mt-1">
+                              {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0} elementos
+                            </span>
+                            <Button variant="ghost" size="sm" className="mt-2 text-blue-600 hover:bg-blue-200">
+                              <Plus className="w-3 h-3 mr-1" />
+                              Agregar
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {currentLayout === 'grid_2x2' && (
+                      <div className="w-full h-full grid grid-cols-2 gap-2">
+                        {[
+                          {id: 'top_left', title: 'Superior Izq.'},
+                          {id: 'top_right', title: 'Superior Der.'},
+                          {id: 'bottom_left', title: 'Inferior Izq.'},
+                          {id: 'bottom_right', title: 'Inferior Der.'}
+                        ].map((zone) => (
+                          <div key={zone.id} className="border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 flex flex-col items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
+                               onClick={() => handleOpenContentLibrary(zone.id)}>
+                            <Grid3X3 className="w-5 h-5 text-blue-600 mb-1" />
+                            <span className="text-xs font-medium text-blue-700">{zone.title}</span>
+                            <span className="text-xs text-blue-600 mt-1">
+                              {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
+                            </span>
+                            <Button variant="ghost" size="sm" className="mt-1 text-blue-600 hover:bg-blue-200 text-xs px-2 py-1">
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {currentLayout === 'grid_3x3' && (
+                      <div className="w-full h-full grid grid-cols-3 gap-1">
+                        {Array.from({length: 9}, (_, i) => ({
+                          id: `grid_${i + 1}`,
+                          title: `Celda ${i + 1}`
+                        })).map((zone) => (
+                          <div key={zone.id} className="border-2 border-dashed border-blue-400 rounded bg-blue-50 flex flex-col items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer text-center p-1"
+                               onClick={() => handleOpenContentLibrary(zone.id)}>
+                            <Grid3X3 className="w-4 h-4 text-blue-600 mb-1" />
+                            <span className="text-xs font-medium text-blue-700">{zone.title}</span>
+                            <span className="text-xs text-blue-600">
+                              {playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length || 0}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add more layout visualizations as needed */}
+                    {!['single_zone', 'split_vertical', 'split_horizontal', 'grid_2x2', 'grid_3x3'].includes(currentLayout) && (
+                      <div className="w-full h-full border-2 border-dashed border-gray-400 rounded-lg bg-gray-50 flex flex-col items-center justify-center">
+                        <Settings className="w-8 h-8 text-gray-600 mb-2" />
+                        <span className="text-sm font-medium text-gray-700">Layout: {currentLayout}</span>
+                        <span className="text-xs text-gray-600 mt-1">Vista previa no disponible</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Zone Details Panel */}
+                <div className="w-80">
+                  <h3 className="text-sm font-medium mb-3">Contenido por Zona</h3>
+                  <ScrollArea className="h-96">
+                    <div className="space-y-3">
+                      {zones.map(zone => {
+                        const zoneItems = playlistData?.items?.filter((item: any) => item.zone === zone.id) || [];
+                        return (
+                          <Card key={zone.id} className="p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                <span className="text-sm font-medium">{zone.title}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {zoneItems.length}
+                                </Badge>
                               </div>
-                            ))}
-                          {(!playlistData?.items?.filter((item: any) => item.zone === zone.id)?.length) && (
-                            <div className="text-center py-6 text-sm text-gray-500">
-                              Sin contenido en esta zona
                             </div>
-                          )}
-                        </div>
-                        </ScrollArea>
-                      </CardContent>
-                    </Card>
-                  ))}
+                            
+                            {zoneItems.length > 0 ? (
+                              <div className="space-y-2">
+                                {zoneItems.sort((a: any, b: any) => a.order - b.order).map((item: any) => (
+                                  <div key={item.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs">
+                                    <div className="w-4 h-4 bg-slate-300 rounded flex items-center justify-center flex-shrink-0">
+                                      {getContentIcon(item.contentItem?.type)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium truncate">{item.contentItem?.title || 'Sin título'}</div>
+                                      <div className="text-gray-500">{item.customDuration || item.contentItem?.duration || 10}s</div>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-red-500 hover:text-red-700 p-1 h-auto"
+                                      onClick={() => removeItemMutation.mutate(item.id)}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-4 text-xs text-gray-500 border-2 border-dashed border-gray-200 rounded">
+                                Sin contenido
+                              </div>
+                            )}
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
                 </div>
               </div>
             </div>
