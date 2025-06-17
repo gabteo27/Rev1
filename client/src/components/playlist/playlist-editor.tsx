@@ -443,57 +443,75 @@ export function PlaylistEditor({ playlistId }: { playlistId: number | null }) {
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className="flex items-center gap-2 p-3 bg-white rounded-md mb-2 shadow-sm border"
+                          className="bg-white rounded-lg mb-3 shadow-sm border border-gray-200 hover:border-blue-300 transition-colors"
                         >
-                          <div {...provided.dragHandleProps}>
-                            <GripVertical className="w-4 h-4 text-gray-400" />
-                          </div>
-                          <Checkbox
-                            checked={selectedItems.has(item.id)}
-                            onCheckedChange={() => toggleItemSelected(item.id)}
-                          />
-                          {getContentIcon(item.contentItem.type)}
-                          <div className="flex-grow min-w-0">
-                            <p className="font-medium truncate">{item.contentItem.title}</p>
-                            <p className="text-xs text-gray-500">{item.contentItem.category || "Sin categoría"}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-3 h-3 text-gray-400" />
-                            <Input
-                              type="number"
-                              min="1"
-                              max="86400"
-                              value={item.customDuration || item.contentItem.duration || 30}
-                              onChange={(e) => {
-                                const duration = parseInt(e.target.value);
-                                if (!isNaN(duration) && duration > 0) {
-                                  moveItemMutation.mutate({
-                                    itemId: item.id.toString(),
-                                    newZone: item.zone,
-                                    newOrder: item.order,
-                                    customDuration: duration
-                                  });
-                                }
+                          {/* Header row with drag handle, checkbox, and delete */}
+                          <div className="flex items-center justify-between p-3 border-b border-gray-100">
+                            <div className="flex items-center gap-3">
+                              <div {...provided.dragHandleProps} className="cursor-grab hover:cursor-grabbing">
+                                <GripVertical className="w-4 h-4 text-gray-400" />
+                              </div>
+                              <Checkbox
+                                checked={selectedItems.has(item.id)}
+                                onCheckedChange={() => toggleItemSelected(item.id)}
+                              />
+                              {getContentIcon(item.contentItem.type)}
+                              <div className="flex-grow min-w-0">
+                                <p className="font-medium truncate text-gray-900">{item.contentItem.title}</p>
+                                <p className="text-xs text-gray-500">{item.contentItem.category || "Sin categoría"}</p>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => {
+                                moveItemMutation.mutate({
+                                  itemId: item.id.toString(),
+                                  newZone: item.zone,
+                                  newOrder: item.order,
+                                  remove: true
+                                });
                               }}
-                              className="w-16 h-8 text-xs"
-                              placeholder="30"
-                            />
-                            <span className="text-xs text-gray-500">s</span>
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              moveItemMutation.mutate({
-                                itemId: item.id.toString(),
-                                newZone: item.zone,
-                                newOrder: item.order,
-                                remove: true
-                              });
-                            }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+
+                          {/* Duration configuration row */}
+                          <div className="p-3 bg-gradient-to-r from-blue-50 to-slate-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-blue-600" />
+                                <span className="text-sm font-medium text-gray-700">Duración de reproducción:</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="86400"
+                                  value={item.customDuration || item.contentItem.duration || 30}
+                                  onChange={(e) => {
+                                    const duration = parseInt(e.target.value);
+                                    if (!isNaN(duration) && duration > 0) {
+                                      moveItemMutation.mutate({
+                                        itemId: item.id.toString(),
+                                        newZone: item.zone,
+                                        newOrder: item.order,
+                                        customDuration: duration
+                                      });
+                                    }
+                                  }}
+                                  className="w-20 h-8 text-sm text-center border-blue-200 focus:border-blue-400"
+                                  placeholder="30"
+                                />
+                                <span className="text-sm text-gray-600 font-medium min-w-[30px]">segundos</span>
+                              </div>
+                            </div>
+                            <div className="mt-2 text-xs text-gray-500">
+                              Duración original: {item.contentItem.duration || 30} segundos
+                            </div>
+                          </div>
                         </div>
                       )}
                     </Draggable>

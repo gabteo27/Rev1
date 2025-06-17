@@ -468,7 +468,8 @@ export default function Content() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            );
+            })}
           </div>
         ) : (
           /* List View */
@@ -507,7 +508,7 @@ export default function Content() {
                               {item.type}
                             </Badge>
                           </div>
-                          
+
                           {item.description && (
                             <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
                               {item.description}
@@ -577,7 +578,8 @@ export default function Content() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

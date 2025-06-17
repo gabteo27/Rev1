@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -28,14 +27,12 @@ import {
   Settings,
   LogOut,
   Package,
-  Library
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Playlists", href: "/playlists", icon: List },
   { name: "Contenido", href: "/content", icon: Folder },
-  { name: "Biblioteca", href: "/media-library", icon: Library },
   { name: "Pantallas", href: "/screens", icon: Monitor },
   { name: "Alertas", href: "/alerts", icon: AlertTriangle },
   { name: "Programación", href: "/scheduling", icon: Calendar },
