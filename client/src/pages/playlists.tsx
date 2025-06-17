@@ -24,7 +24,8 @@ import {
   ScrollText,
   SidebarOpen,
   SidebarClose,
-  Rows
+  Rows,
+  Grid3X3
 } from "lucide-react";
 
 // Tipos para mayor claridad
