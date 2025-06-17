@@ -1,0 +1,311 @@
+Uncaught SyntaxError: "[object Object]" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at playlists.tsx:1821:80
+    at Array.map (<anonymous>)
+    at Playlists (playlists.tsx:1819:30)
+    at renderWithHooks (chunk-PNGJSGSD.js?v=738d9b57:11596:26)
+    at updateFunctionComponent (chunk-PNGJSGSD.js?v=738d9b57:14630:28)
+    at beginWork (chunk-PNGJSGSD.js?v=738d9b57:15972:22)
+    at HTMLUnknownElement.callCallback2 (chunk-PNGJSGSD.js?v=738d9b57:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-PNGJSGSD.js?v=738d9b57:3705:24)
+    at invokeGuardedCallback (chunk-PNGJSGSD.js?v=738d9b57:3739:39)
+(anonymous) @ playlists.tsx:1821
+Playlists @ playlists.tsx:1819
+renderWithHooks @ chunk-PNGJSGSD.js?v=738d9b57:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=738d9b57:14630
+beginWork @ chunk-PNGJSGSD.js?v=738d9b57:15972
+callCallback2 @ chunk-PNGJSGSD.js?v=738d9b57:3680
+invokeGuardedCallbackDev @ chunk-PNGJSGSD.js?v=738d9b57:3705
+invokeGuardedCallback @ chunk-PNGJSGSD.js?v=738d9b57:3739
+beginWork$1 @ chunk-PNGJSGSD.js?v=738d9b57:19818
+performUnitOfWork @ chunk-PNGJSGSD.js?v=738d9b57:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=738d9b57:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=738d9b57:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=738d9b57:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=738d9b57:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=738d9b57:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=738d9b57:565
+flush @ @tanstack_react-query.js?v=738d9b57:589
+batch @ @tanstack_react-query.js?v=738d9b57:607
+dispatch_fn @ @tanstack_react-query.js?v=738d9b57:1039
+setData @ @tanstack_react-query.js?v=738d9b57:718
+onSuccess @ @tanstack_react-query.js?v=738d9b57:940
+resolve @ @tanstack_react-query.js?v=738d9b57:475
+Promise.then
+run @ @tanstack_react-query.js?v=738d9b57:517
+start @ @tanstack_react-query.js?v=738d9b57:555
+fetch @ @tanstack_react-query.js?v=738d9b57:969
+executeFetch_fn @ @tanstack_react-query.js?v=738d9b57:2278
+setOptions @ @tanstack_react-query.js?v=738d9b57:2039
+(anonymous) @ @tanstack_react-query.js?v=738d9b57:3155
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=738d9b57:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=738d9b57:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=738d9b57:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=738d9b57:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=738d9b57:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=738d9b57:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=738d9b57:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=738d9b57:19469
+commitRoot @ chunk-PNGJSGSD.js?v=738d9b57:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=738d9b57:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=738d9b57:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=738d9b57:18677
+Show 38 more frames
+Show lessUnderstand this error
+VM3182:1 Uncaught SyntaxError: "[object Object]" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at playlists.tsx:1821:80
+    at Array.map (<anonymous>)
+    at Playlists (playlists.tsx:1819:30)
+    at renderWithHooks (chunk-PNGJSGSD.js?v=738d9b57:11596:26)
+    at updateFunctionComponent (chunk-PNGJSGSD.js?v=738d9b57:14630:28)
+    at beginWork (chunk-PNGJSGSD.js?v=738d9b57:15972:22)
+    at HTMLUnknownElement.callCallback2 (chunk-PNGJSGSD.js?v=738d9b57:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-PNGJSGSD.js?v=738d9b57:3705:24)
+    at invokeGuardedCallback (chunk-PNGJSGSD.js?v=738d9b57:3739:39)
+(anonymous) @ playlists.tsx:1821
+Playlists @ playlists.tsx:1819
+renderWithHooks @ chunk-PNGJSGSD.js?v=738d9b57:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=738d9b57:14630
+beginWork @ chunk-PNGJSGSD.js?v=738d9b57:15972
+callCallback2 @ chunk-PNGJSGSD.js?v=738d9b57:3680
+invokeGuardedCallbackDev @ chunk-PNGJSGSD.js?v=738d9b57:3705
+invokeGuardedCallback @ chunk-PNGJSGSD.js?v=738d9b57:3739
+beginWork$1 @ chunk-PNGJSGSD.js?v=738d9b57:19818
+performUnitOfWork @ chunk-PNGJSGSD.js?v=738d9b57:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=738d9b57:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=738d9b57:19169
+recoverFromConcurrentError @ chunk-PNGJSGSD.js?v=738d9b57:18786
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=738d9b57:18932
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=738d9b57:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=738d9b57:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=738d9b57:565
+flush @ @tanstack_react-query.js?v=738d9b57:589
+batch @ @tanstack_react-query.js?v=738d9b57:607
+dispatch_fn @ @tanstack_react-query.js?v=738d9b57:1039
+setData @ @tanstack_react-query.js?v=738d9b57:718
+onSuccess @ @tanstack_react-query.js?v=738d9b57:940
+resolve @ @tanstack_react-query.js?v=738d9b57:475
+Promise.then
+run @ @tanstack_react-query.js?v=738d9b57:517
+start @ @tanstack_react-query.js?v=738d9b57:555
+fetch @ @tanstack_react-query.js?v=738d9b57:969
+executeFetch_fn @ @tanstack_react-query.js?v=738d9b57:2278
+setOptions @ @tanstack_react-query.js?v=738d9b57:2039
+(anonymous) @ @tanstack_react-query.js?v=738d9b57:3155
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=738d9b57:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=738d9b57:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=738d9b57:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=738d9b57:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=738d9b57:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=738d9b57:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=738d9b57:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=738d9b57:19469
+commitRoot @ chunk-PNGJSGSD.js?v=738d9b57:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=738d9b57:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=738d9b57:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=738d9b57:18677
+Show 39 more frames
+Show lessUnderstand this error
+chunk-PNGJSGSD.js?v=738d9b57:14080 The above error occurred in the <Playlists> component:
+
+    at Playlists (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/playlists.tsx:920:49)
+    at Route (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=738d9b57:280:16)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=738d9b57:336:17)
+    at Suspense
+    at div
+    at div
+    at div
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=738d9b57:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=738d9b57:64:5)
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/sidebar.tsx:60:7
+    at AdminLayout (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:66:24)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=738d9b57:336:17)
+    at AppContent (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:97:42)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=738d9b57:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=738d9b57:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=738d9b57:2932:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-PNGJSGSD.js?v=738d9b57:14080
+update.callback @ chunk-PNGJSGSD.js?v=738d9b57:14100
+callCallback @ chunk-PNGJSGSD.js?v=738d9b57:11296
+commitUpdateQueue @ chunk-PNGJSGSD.js?v=738d9b57:11313
+commitLayoutEffectOnFiber @ chunk-PNGJSGSD.js?v=738d9b57:17141
+commitLayoutMountEffects_complete @ chunk-PNGJSGSD.js?v=738d9b57:18030
+commitLayoutEffects_begin @ chunk-PNGJSGSD.js?v=738d9b57:18019
+commitLayoutEffects @ chunk-PNGJSGSD.js?v=738d9b57:17970
+commitRootImpl @ chunk-PNGJSGSD.js?v=738d9b57:19406
+commitRoot @ chunk-PNGJSGSD.js?v=738d9b57:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=738d9b57:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=738d9b57:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=738d9b57:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=738d9b57:565
+flush @ @tanstack_react-query.js?v=738d9b57:589
+batch @ @tanstack_react-query.js?v=738d9b57:607
+dispatch_fn @ @tanstack_react-query.js?v=738d9b57:1039
+setData @ @tanstack_react-query.js?v=738d9b57:718
+onSuccess @ @tanstack_react-query.js?v=738d9b57:940
+resolve @ @tanstack_react-query.js?v=738d9b57:475
+Promise.then
+run @ @tanstack_react-query.js?v=738d9b57:517
+start @ @tanstack_react-query.js?v=738d9b57:555
+fetch @ @tanstack_react-query.js?v=738d9b57:969
+executeFetch_fn @ @tanstack_react-query.js?v=738d9b57:2278
+setOptions @ @tanstack_react-query.js?v=738d9b57:2039
+(anonymous) @ @tanstack_react-query.js?v=738d9b57:3155
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=738d9b57:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=738d9b57:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=738d9b57:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=738d9b57:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=738d9b57:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=738d9b57:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=738d9b57:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=738d9b57:19469
+commitRoot @ chunk-PNGJSGSD.js?v=738d9b57:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=738d9b57:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=738d9b57:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=738d9b57:18677
+Show 38 more frames
+Show lessUnderstand this error
+chunk-PNGJSGSD.js?v=738d9b57:9176 Uncaught SyntaxError: "[object Object]" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at playlists.tsx:1821:80
+    at Array.map (<anonymous>)
+    at Playlists (playlists.tsx:1819:30)
+    at renderWithHooks (chunk-PNGJSGSD.js?v=738d9b57:11596:26)
+    at updateFunctionComponent (chunk-PNGJSGSD.js?v=738d9b57:14630:28)
+    at beginWork (chunk-PNGJSGSD.js?v=738d9b57:15972:22)
+    at beginWork$1 (chunk-PNGJSGSD.js?v=738d9b57:19806:22)
+    at performUnitOfWork (chunk-PNGJSGSD.js?v=738d9b57:19251:20)
+    at workLoopSync (chunk-PNGJSGSD.js?v=738d9b57:19190:13)
+(anonymous) @ playlists.tsx:1821
+Playlists @ playlists.tsx:1819
+renderWithHooks @ chunk-PNGJSGSD.js?v=738d9b57:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=738d9b57:14630
+beginWork @ chunk-PNGJSGSD.js?v=738d9b57:15972
+beginWork$1 @ chunk-PNGJSGSD.js?v=738d9b57:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=738d9b57:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=738d9b57:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=738d9b57:19169
+recoverFromConcurrentError @ chunk-PNGJSGSD.js?v=738d9b57:18786
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=738d9b57:18932
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=738d9b57:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=738d9b57:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=738d9b57:565
+flush @ @tanstack_react-query.js?v=738d9b57:589
+batch @ @tanstack_react-query.js?v=738d9b57:607
+dispatch_fn @ @tanstack_react-query.js?v=738d9b57:1039
+setData @ @tanstack_react-query.js?v=738d9b57:718
+onSuccess @ @tanstack_react-query.js?v=738d9b57:940
+resolve @ @tanstack_react-query.js?v=738d9b57:475
+Promise.then
+run @ @tanstack_react-query.js?v=738d9b57:517
+start @ @tanstack_react-query.js?v=738d9b57:555
+fetch @ @tanstack_react-query.js?v=738d9b57:969
+executeFetch_fn @ @tanstack_react-query.js?v=738d9b57:2278
+setOptions @ @tanstack_react-query.js?v=738d9b57:2039
+(anonymous) @ @tanstack_react-query.js?v=738d9b57:3155
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=738d9b57:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=738d9b57:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=738d9b57:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=738d9b57:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=738d9b57:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=738d9b57:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=738d9b57:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=738d9b57:19469
+commitRoot @ chunk-PNGJSGSD.js?v=738d9b57:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=738d9b57:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=738d9b57:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=738d9b57:18677
+Show 36 more frames
+Show lessUnderstand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (playlists:16:7)
+    at playlists:20:3
+    at Object.invokeGuardedCallbackDev (chunk-PNGJSGSD.js?v=738d9b57:3705:24)
+    at invokeGuardedCallback (chunk-PNGJSGSD.js?v=738d9b57:3739:39)
+error @ client:882
+(anonymous) @ client:137
+Promise.catch
+send @ client:136
+send @ client:100
+sendError @ playlists:16
+(anonymous) @ playlists:20
+invokeGuardedCallbackDev @ chunk-PNGJSGSD.js?v=738d9b57:3705
+invokeGuardedCallback @ chunk-PNGJSGSD.js?v=738d9b57:3739
+beginWork$1 @ chunk-PNGJSGSD.js?v=738d9b57:19818
+performUnitOfWork @ chunk-PNGJSGSD.js?v=738d9b57:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=738d9b57:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=738d9b57:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=738d9b57:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=738d9b57:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=738d9b57:18677
+error
+(anonymous) @ playlists:19
+Show 9 more frames
+Show lessUnderstand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (playlists:16:7)
+    at playlists:20:3
+    at Object.invokeGuardedCallbackDev (chunk-PNGJSGSD.js?v=738d9b57:3705:24)
+    at invokeGuardedCallback (chunk-PNGJSGSD.js?v=738d9b57:3739:39)
+error @ client:882
+(anonymous) @ client:137
+Promise.catch
+send @ client:136
+send @ client:100
+sendError @ playlists:16
+(anonymous) @ playlists:20
+invokeGuardedCallbackDev @ chunk-PNGJSGSD.js?v=738d9b57:3705
+invokeGuardedCallback @ chunk-PNGJSGSD.js?v=738d9b57:3739
+beginWork$1 @ chunk-PNGJSGSD.js?v=738d9b57:19818
+performUnitOfWork @ chunk-PNGJSGSD.js?v=738d9b57:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=738d9b57:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=738d9b57:19169
+recoverFromConcurrentError @ chunk-PNGJSGSD.js?v=738d9b57:18786
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=738d9b57:18932
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=738d9b57:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=738d9b57:18677
+error
+(anonymous) @ playlists:19
+Show 10 more frames
+Show lessUnderstand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (playlists:16:7)
+    at playlists:20:3
+error @ client:882
+(anonymous) @ client:137
+Promise.catch
+send @ client:136
+send @ client:100
+sendError @ playlists:16
+(anonymous) @ playlists:20
+error
+(anonymous) @ playlists:19Understand this error
+websocket.ts:86 
