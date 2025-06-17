@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -12,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Plus, 
   Image, 
@@ -26,16 +28,26 @@ import {
   Folder,
   Search,
   Grid3X3,
-  List
+  List,
+  Filter,
+  SortAsc,
+  SortDesc,
+  Eye,
+  X
 } from "lucide-react";
 
 export default function Content() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [editingContent, setEditingContent] = useState<any>(null);
+  const [previewContent, setPreviewContent] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [sortBy, setSortBy] = useState("created-desc");
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const { toast } = useToast();
 
   const { data: content = [], isLoading, error, refetch } = useQuery({
@@ -76,6 +88,7 @@ export default function Content() {
         description: "El contenido ha sido eliminado exitosamente.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+      setSelectedItems([]);
     },
     onError: (error: any) => {
       toast({
@@ -84,6 +97,29 @@ export default function Content() {
         variant: "destructive",
       });
     },
+  });
+
+  const batchDeleteMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      await Promise.all(ids.map(id => 
+        apiRequest(`/api/content/${id}`, { method: "DELETE" })
+      ));
+    },
+    onSuccess: () => {
+      toast({
+        title: "Contenido eliminado", 
+        description: `${selectedItems.length} elementos eliminados correctamente.`
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+      setSelectedItems([]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error", 
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   const updateMutation = useMutation({
@@ -169,16 +205,52 @@ export default function Content() {
   };
 
   const categories = ["Promociones", "Institucional", "Noticias", "Entretenimiento", "Información"];
+  const contentTypes = [
+    { value: "all", label: "Todos los tipos" },
+    { value: "image", label: "Imágenes" },
+    { value: "video", label: "Videos" },
+    { value: "pdf", label: "PDFs" },
+    { value: "webpage", label: "Páginas web" },
+    { value: "text", label: "Texto" }
+  ];
 
+  const sortOptions = [
+    { value: 'created-desc', label: 'Más recientes primero' },
+    { value: 'created-asc', label: 'Más antiguos primero' },
+    { value: 'title-asc', label: 'Título A-Z' },
+    { value: 'title-desc', label: 'Título Z-A' },
+    { value: 'size-desc', label: 'Tamaño mayor a menor' },
+    { value: 'size-asc', label: 'Tamaño menor a mayor' },
+  ];
+
+  // Filter and sort content
   const filteredContent = content.filter((item: any) => {
     const matchesCategory = selectedCategory ? item.category === selectedCategory : true;
+    const matchesType = selectedType === "all" ? true : item.type === selectedType;
     const matchesSearch = searchTerm ? 
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       : true;
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesType && matchesSearch;
+  }).sort((a: any, b: any) => {
+    switch (sortBy) {
+      case 'created-desc':
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      case 'created-asc':
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      case 'title-asc':
+        return a.title.localeCompare(b.title);
+      case 'title-desc':
+        return b.title.localeCompare(a.title);
+      case 'size-desc':
+        return (b.fileSize || 0) - (a.fileSize || 0);
+      case 'size-asc':
+        return (a.fileSize || 0) - (b.fileSize || 0);
+      default:
+        return 0;
+    }
   });
 
   const handleEdit = (item: any) => {
@@ -190,6 +262,11 @@ export default function Content() {
       tags: Array.isArray(item.tags) ? item.tags.join(", ") : (item.tags || ""),
     });
     setEditModalOpen(true);
+  };
+
+  const handlePreview = (item: any) => {
+    setPreviewContent(item);
+    setPreviewModalOpen(true);
   };
 
   const handleEditSubmit = () => {
@@ -209,6 +286,23 @@ export default function Content() {
     };
 
     updateMutation.mutate(updateData);
+  };
+
+  const toggleItemSelected = (itemId: number) => {
+    setSelectedItems(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const selectAllVisible = () => {
+    const visibleIds = filteredContent.map((item: any) => item.id);
+    setSelectedItems(visibleIds);
+  };
+
+  const clearSelection = () => {
+    setSelectedItems([]);
   };
 
   if (isLoading) {
@@ -263,7 +357,7 @@ export default function Content() {
       />
 
       <div className="flex-1 px-6 py-6 overflow-y-auto min-h-0">
-        {/* Search and Controls */}
+        {/* Search and Filters */}
         <div className="mb-6 space-y-4">
           {/* Search Bar */}
           <div className="relative max-w-md">
@@ -276,31 +370,44 @@ export default function Content() {
             />
           </div>
 
-          {/* Controls Row */}
-          <div className="flex items-center justify-between">
-            {/* Category Filter */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={selectedCategory === null ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(null)}
-              >
-                Todos
-              </Button>
-              {categories.map((category) => (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCategory(category)}
-                >
-                  {category}
-                </Button>
-              ))}
+          {/* Filters Row */}
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Type Filter */}
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {contentTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort */}
+            <div className="flex items-center space-x-2">
+              <SortAsc className="w-4 h-4 text-muted-foreground" />
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto">
               <Button
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="sm"
@@ -317,7 +424,62 @@ export default function Content() {
               </Button>
             </div>
           </div>
+
+          {/* Category Filter */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={selectedCategory === null ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(null)}
+            >
+              Todos
+            </Button>
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
         </div>
+
+        {/* Bulk Actions */}
+        {selectedItems.length > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
+            <span className="text-sm text-blue-800">
+              {selectedItems.length} elemento(s) seleccionado(s)
+            </span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={clearSelection}>
+                Deseleccionar
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={selectAllVisible}
+              >
+                Seleccionar todos visibles
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => {
+                  if (confirm(`¿Eliminar ${selectedItems.length} elemento(s)?`)) {
+                    batchDeleteMutation.mutate(selectedItems);
+                  }
+                }}
+                disabled={batchDeleteMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Eliminar
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Content Display */}
         {!filteredContent || filteredContent.length === 0 ? (
@@ -386,6 +548,15 @@ export default function Content() {
                       </div>
                     )}
 
+                    {/* Selection Checkbox */}
+                    <div className="absolute top-3 right-3">
+                      <Checkbox
+                        checked={selectedItems.includes(item.id)}
+                        onCheckedChange={() => toggleItemSelected(item.id)}
+                        className="bg-white/90"
+                      />
+                    </div>
+
                     {/* Type Badge */}
                     <div className="absolute top-3 left-3">
                       <Badge className={getContentBadgeColor(item.type)}>
@@ -447,6 +618,14 @@ export default function Content() {
                           size="sm" 
                           variant="outline" 
                           className="h-8 px-2"
+                          onClick={() => handlePreview(item)}
+                        >
+                          <Eye className="w-3 h-3" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-2"
                           onClick={() => handleEdit(item)}
                         >
                           <Edit className="w-3 h-3" />
@@ -468,8 +647,7 @@ export default function Content() {
                   </div>
                 </CardContent>
               </Card>
-            );
-            })}
+            ))}
           </div>
         ) : (
           /* List View */
@@ -478,6 +656,12 @@ export default function Content() {
               <Card key={item.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-4">
+                    {/* Selection Checkbox */}
+                    <Checkbox
+                      checked={selectedItems.includes(item.id)}
+                      onCheckedChange={() => toggleItemSelected(item.id)}
+                    />
+
                     {/* Content Preview */}
                     <div className="w-20 h-16 bg-muted rounded-lg flex-shrink-0 overflow-hidden">
                       {item.type === "image" && item.url ? (
@@ -556,6 +740,14 @@ export default function Content() {
                             size="sm" 
                             variant="outline" 
                             className="h-8 px-2"
+                            onClick={() => handlePreview(item)}
+                          >
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-2"
                             onClick={() => handleEdit(item)}
                           >
                             <Edit className="w-3 h-3" />
@@ -578,8 +770,7 @@ export default function Content() {
                   </div>
                 </CardContent>
               </Card>
-              );
-            })}
+            ))}
           </div>
         )}
       </div>
@@ -660,6 +851,102 @@ export default function Content() {
               {updateMutation.isPending ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Modal */}
+      <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Vista Previa: {previewContent?.title}</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setPreviewModalOpen(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          {previewContent && (
+            <div className="space-y-4">
+              {/* Content Preview */}
+              <div className="bg-black rounded-lg overflow-hidden">
+                {previewContent.type === "image" && (
+                  <img 
+                    src={previewContent.url} 
+                    alt={previewContent.title}
+                    className="w-full max-h-96 object-contain"
+                  />
+                )}
+                {previewContent.type === "video" && (
+                  <video 
+                    src={previewContent.url} 
+                    controls
+                    className="w-full max-h-96"
+                  />
+                )}
+                {previewContent.type === "pdf" && (
+                  <div className="h-96 flex items-center justify-center text-white">
+                    <div className="text-center">
+                      <FileText className="w-16 h-16 mx-auto mb-4" />
+                      <p>Vista previa de PDF no disponible</p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => window.open(previewContent.url, '_blank')}
+                      >
+                        Abrir PDF
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {(previewContent.type === "webpage" || previewContent.type === "text") && (
+                  <div className="h-96 flex items-center justify-center text-white">
+                    <div className="text-center">
+                      {getContentIcon(previewContent.type)}
+                      <p className="mt-4">Vista previa no disponible para este tipo de contenido</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Content Details */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <strong>Tipo:</strong> {previewContent.type}
+                </div>
+                <div>
+                  <strong>Categoría:</strong> {previewContent.category || "Sin categoría"}
+                </div>
+                <div>
+                  <strong>Tamaño:</strong> {formatFileSize(previewContent.fileSize)}
+                </div>
+                <div>
+                  <strong>Fecha:</strong> {formatDate(previewContent.createdAt)}
+                </div>
+                {previewContent.description && (
+                  <div className="col-span-2">
+                    <strong>Descripción:</strong> {previewContent.description}
+                  </div>
+                )}
+                {previewContent.tags && previewContent.tags.length > 0 && (
+                  <div className="col-span-2">
+                    <strong>Etiquetas:</strong>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {previewContent.tags.map((tag: string, index: number) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
