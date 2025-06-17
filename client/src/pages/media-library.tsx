@@ -35,7 +35,8 @@ import {
   Grid3X3,
   List,
   SortAsc,
-  SortDesc
+  SortDesc,
+  Layout
 } from "lucide-react";
 
 const mediaTypes = [

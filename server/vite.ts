@@ -24,6 +24,8 @@ export async function setupVite(app: Express, server: Server) {
     middlewareMode: true,
     hmr: { server },
     allowedHosts: true,
+    // host: true, // Allow connections from any host
+    // origin: '*', // Specify the origin
   };
 
   const vite = await createViteServer({
@@ -69,7 +71,7 @@ export async function setupVite(app: Express, server: Server) {
 
       // Verificamos si el archivo existe
       if (!fs.existsSync(templatePath)) {
-          return res.status(404).send("Not Found");
+        return res.status(404).send("Not Found");
       }
 
       let template = await fs.promises.readFile(templatePath, "utf-8");

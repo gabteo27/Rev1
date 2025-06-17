@@ -10,7 +10,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "HOST=0.0.0.0 npm run dev"
 
 [[ports]]
 localPort = 5000
