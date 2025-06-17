@@ -578,24 +578,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the playlistId associated with this item BEFORE deleting it.
       const playlistItem = await storage.getPlaylistItem(id);
 
+      if (!playlistItem) {
+        return res.status(404).json({ message: "Playlist item not found" });
+      }
+
       const success = await storage.deletePlaylistItem(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Playlist item not found" });
       }
 
-      // --- ENHANCED: Notify connected players and admins of playlist content change ---
-      if (playlistItem) {
-        console.log(`Broadcasting playlist item deletion for playlist ${playlistItem.playlistId}`);
-        await broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-content-updated');
+      console.log(`✅ Playlist item ${id} deleted from playlist ${playlistItem.playlistId}`);
 
-        // Also broadcast specific deletion event for immediate UI updates
-        broadcastToUser(userId, 'playlist-item-deleted', {
-          itemId: id,
-          playlistId: playlistItem.playlistId,
-          timestamp: new Date().toISOString()
-        });
-      }
-      // --- END ENHANCED ---
+      // Broadcast to both admin and player clients
+      await broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-item-deleted');
+
+      // Also broadcast specific deletion event for immediate UI updates
+      broadcastToUser(userId, 'playlist-item-deleted', {
+        itemId: id,
+        playlistId: playlistItem.playlistId,
+        timestamp: new Date().toISOString()
+      });
 
       res.json({ message: "Playlist item deleted successfully" });
     } catch (error) {

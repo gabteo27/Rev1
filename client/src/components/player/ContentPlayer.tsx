@@ -8,13 +8,13 @@ import { wsManager } from '@/lib/websocket';
 // --- Estilos para el reproductor ---
 const styles = {
   container: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: '#000', color: 'white', overflow: 'hidden' } as React.CSSProperties,
-  media: { width: '100%', height: '100%', objectFit: 'cover' } as React.CSSProperties,
+  media: { width: '100%', height: '100%', objectFit: 'contain' } as React.CSSProperties,
   zone: { position: 'relative', width: '100%', height: '100%', overflow: 'hidden' } as React.CSSProperties,
 };
 
 // --- Componentes para renderizar cada tipo de contenido ---
-const ImagePlayer = ({ src }: { src: string }) => <img src={src} style={styles.media} alt="" />;
-const VideoPlayer = ({ src }: { src: string }) => <video src={src} style={styles.media} autoPlay muted loop playsInline />;
+const ImagePlayer = ({ src }: { src: string }) => <img src={src} style={{ ...styles.media, objectFit: 'contain' }} alt="" />;
+const VideoPlayer = ({ src }: { src: string }) => <video src={src} style={{ ...styles.media, objectFit: 'contain' }} autoPlay muted loop playsInline />;
 const WebpagePlayer = ({ src }: { src: string }) => <iframe src={src} style={{ ...styles.media, border: 'none' }} title="web-content" />;
 
 // PDF Player Component
@@ -103,7 +103,8 @@ const YouTubePlayer = ({ url }: { url: string }) => {
       style={{ 
         ...styles.media, 
         border: 'none',
-        background: '#000'
+        background: '#000',
+        objectFit: 'contain'
       }}
       title={`YouTube video player - ${videoId}`}
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -517,7 +518,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         });
       }
 
-      if (data.type === 'playlist-item-deleted') {
+      if (data.type === 'playlist-item-deleted' && data.data?.playlistId === playlistId) {
         console.log('🗑️ Playlist item deleted, updating zones...');
         queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
         queryClient.refetchQueries({ 
@@ -560,6 +561,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     const unsubscribePlaylistChange = wsManager.subscribe('playlist-change', handleWebSocketMessage);
     const unsubscribePlaylistContent = wsManager.subscribe('playlist-content-updated', handleWebSocketMessage);
+    const unsubscribePlaylistItemDeleted = wsManager.subscribe('playlist-item-deleted', handleWebSocketMessage);
     const unsubscribePlaybackControl = wsManager.subscribe('playback-control', handleWebSocketMessage);
     const unsubscribeScreenPlaylist = wsManager.subscribe('screen-playlist-updated', handleWebSocketMessage);
 
@@ -601,6 +603,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }
       unsubscribePlaylistChange();
       unsubscribePlaylistContent();
+      unsubscribePlaylistItemDeleted();
       unsubscribePlaybackControl();
       unsubscribeScreenPlaylist();
       console.log('💓 Stopped heartbeat and monitoring');
@@ -961,6 +964,48 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         }
       } catch (e) {
         console.error('Error parsing custom layout config:', e);
+        // Fallback to default layout if custom config fails
+        return (
+          <div style={styles.container}>
+            {renderZone('main') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Error en configuración personalizada
+              </div>
+            )}
+            {widgets.filter(w => w.isEnabled).map((widget) => (
+              <WidgetRenderer key={widget.id} widget={widget} />
+            ))}
+            {activeAlerts.map((alert) => (
+              <AlertOverlay
+                key={alert.id}
+                alert={alert}
+                onAlertExpired={handleAlertExpired}
+              />
+            ))}
+          </div>
+        );
+      }
+
+      if (customZones.length === 0) {
+        return (
+          <div style={styles.container}>
+            {renderZone('main') || (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                Layout personalizado sin zonas configuradas
+              </div>
+            )}
+            {widgets.filter(w => w.isEnabled).map((widget) => (
+              <WidgetRenderer key={widget.id} widget={widget} />
+            ))}
+            {activeAlerts.map((alert) => (
+              <AlertOverlay
+                key={alert.id}
+                alert={alert}
+                onAlertExpired={handleAlertExpired}
+              />
+            ))}
+          </div>
+        );
       }
 
       return (
@@ -980,33 +1025,69 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
                 top: `${zone.y}%`,
                 width: `${zone.width}%`,
                 height: `${zone.height}%`,
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: isPreview ? '1px solid rgba(255,255,255,0.1)' : 'none',
                 borderRadius: '4px',
                 overflow: 'hidden',
                 zIndex: 1
               }}
             >
-              {renderZoneContent(zone.id) || (
-                <div style={{
-                  ...styles.zone,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'rgba(255,255,255,0.5)',
-                  fontSize: Math.min(zone.width, zone.height) * 0.8 + 'px',
-                  textAlign: 'center',
-                  padding: '8px'
-                }}>
-                  <div>
-                    <div style={{ marginBottom: '4px' }}>{zone.title}</div>
-                    <div style={{ fontSize: '0.8em', opacity: 0.7 }}>Sin contenido</div>
+              <div style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative'
+              }}>
+                {renderZoneContent(zone.id) ? (
+                  <div style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {renderZoneContent(zone.id)}
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'rgba(255,255,255,0.5)',
+                    fontSize: Math.max(12, Math.min(zone.width, zone.height) * 0.8) + 'px',
+                    textAlign: 'center',
+                    padding: '8px',
+                    width: '100%',
+                    height: '100%'
+                  }}>
+                    <div>
+                      <div style={{ marginBottom: '4px' }}>{zone.title}</div>
+                      <div style={{ fontSize: '0.8em', opacity: 0.7 }}>Sin contenido</div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
           {widgets.filter(w => w.isEnabled).map(widget => (
             <WidgetRenderer key={widget.id} widget={widget} />
+          ))}
+          {activeAlerts.map((alert) => (
+            <AlertOverlay
+              key={alert.id}
+              alert={alert}
+              onAlertExpired={handleAlertExpired}
+            />
           ))}
         </div>
       );

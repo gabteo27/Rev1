@@ -781,26 +781,24 @@ export default function Playlists() {
         method: "DELETE"
       });
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        const errorData = await response.text();
+        throw new Error(`Error ${response.status}: ${errorData}`);
       }
       return response;
     },
-    onSuccess: async () => {
-      // Forzar actualización inmediata
+    onSuccess: async (_, itemId) => {
+      // Optimistic update - remove item immediately from UI
+      if (playlistData?.items) {
+        const updatedPlaylist = {
+          ...playlistData,
+          items: playlistData.items.filter((item: any) => item.id !== itemId)
+        };
+        queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout?.id], updatedPlaylist);
+      }
+      
+      // Forzar actualización
       await refetchPlaylist();
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      
-      // Enviar notificación via WebSocket para actualizar el player
-      try {
-        await apiRequest(`/api/playlists/${selectedPlaylistForLayout?.id}/notify-update`, {
-          method: "POST",
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-      } catch (wsError) {
-        console.warn('Failed to send WebSocket notification:', wsError);
-      }
       
       toast({
         title: "Elemento eliminado",
@@ -808,6 +806,7 @@ export default function Playlists() {
       });
     },
     onError: (error: any) => {
+      console.error("Error removing item:", error);
       toast({
         title: "Error",
         description: error.message || "No se pudo eliminar el elemento.",
@@ -1688,6 +1687,7 @@ export default function Playlists() {
                                       size="sm"
                                       className="text-red-500 hover:text-red-700 p-1 h-auto"
                                       onClick={() => removeItemMutation.mutate(item.id)}
+                                      disabled={removeItemMutation.isPending}
                                     >
                                       <Trash2 className="w-3 h-3" />
                                     </Button>
