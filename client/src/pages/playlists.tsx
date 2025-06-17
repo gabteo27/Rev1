@@ -1005,15 +1005,6 @@ export default function Playlists() {
         newZoneSettings 
       });
 
-      // Update local state immediately for better UX
-      queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout.id], (oldData: any) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          zoneSettings: JSON.stringify(newZoneSettings)
-        };
-      });
-
       const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}`, {
         method: "PUT",
         headers: {
@@ -1029,20 +1020,15 @@ export default function Playlists() {
           throw new Error(`Error ${response.status}: ${errorData}`);
       }
 
-      // Force refetch after successful update
+      // Refetch to update the UI
       await refetchPlaylist();
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
 
       toast({
         title: "Configuración actualizada",
-        description: `El ajuste de contenido se ha actualizado para ${zoneId}.`,
+        description: `El ajuste de contenido se ha actualizada para ${zoneId}.`,
       });
     } catch (error: any) {
       console.error("Error updating zone settings:", error);
-      
-      // Revert optimistic update on error
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
-      
       toast({
         title: "Error",
         description: error.message || "No se pudo actualizar la configuración de la zona.",

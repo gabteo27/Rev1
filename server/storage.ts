@@ -408,9 +408,6 @@ export class DatabaseStorage implements IStorage {
             sanitizedUpdates[key] = parseInt(value.toString()) || (key === 'carouselDuration' ? 5 : 50);
           } else if (key === 'isActive') {
             sanitizedUpdates[key] = Boolean(value);
-          } else if (key === 'zoneSettings') {
-            // Handle zoneSettings specially - ensure it's properly stringified JSON
-            sanitizedUpdates[key] = typeof value === 'string' ? value : JSON.stringify(value);
           } else {
             sanitizedUpdates[key] = value;
           }
