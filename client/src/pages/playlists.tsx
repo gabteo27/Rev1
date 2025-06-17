@@ -5,6 +5,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 import Header from "@/components/layout/header";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,7 +47,6 @@ import {
   Rows,
   Columns,
   Square,
-  DragHandleDots2Icon,
   GripVertical,
   Maximize,
   Minimize,
@@ -972,7 +972,10 @@ export default function Playlists() {
   };
 
   const handleZoneSettingChange = async (zoneId: string, setting: string, value: string) => {
-    if (!selectedPlaylistForLayout) return;
+    if (!selectedPlaylistForLayout) {
+      console.warn("No playlist selected for layout");
+      return;
+    }
 
     try {
       // Parse current settings safely
@@ -986,6 +989,11 @@ export default function Playlists() {
       } catch (e) {
         console.warn("Error parsing zone settings:", e);
         currentSettings = {};
+      }
+
+      // Validate inputs
+      if (!zoneId || !setting || value === undefined) {
+        throw new Error("Invalid parameters for zone setting update");
       }
 
       // Update the specific setting
@@ -1034,7 +1042,11 @@ export default function Playlists() {
 
       // Refetch to ensure consistency
       setTimeout(async () => {
-        await refetchPlaylist();
+        try {
+          await refetchPlaylist();
+        } catch (refetchError) {
+          console.warn("Error refetching playlist:", refetchError);
+        }
       }, 100);
 
       toast({
@@ -1504,6 +1516,7 @@ export default function Playlists() {
                 {/* Layout Visual Preview */}
                 <div className="flex-1">
                   <h3 className="text-sm font-medium mb-3">Vista Previa del Layout</h3>
+                  <ErrorBoundary>
                   <div className="bg-slate-100 rounded-lg p-4 relative" style={{ aspectRatio: '16/9', minHeight: '300px' }}>
                     {currentLayout === 'single_zone' && (
                       <div className="w-full h-full border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 flex flex-col items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer"
@@ -1795,6 +1808,7 @@ export default function Playlists() {
                       />
                     )}
                   </div>
+                  </ErrorBoundary>
                 </div>
 
                 {/* Zone Details Panel */}
