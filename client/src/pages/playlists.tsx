@@ -831,27 +831,20 @@ export default function Playlists() {
 
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: number) => {
-      console.log(`Attempting to delete item ${itemId}`);
-      
-      const response = await apiRequest(`/api/playlist-items/${itemId}`, {
+      console.log(`🗑️ Deleting playlist item ${itemId}`);
+      await apiRequest(`/api/playlist-items/${itemId}`, {
         method: "DELETE"
       });
-      
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error(`Delete failed: ${response.status} - ${errorData}`);
-        throw new Error(`Error ${response.status}: ${errorData}`);
-      }
-      
-      console.log(`Item ${itemId} deleted successfully`);
       return itemId;
     },
     onSuccess: async (itemId: number) => {
-      console.log(`Processing successful deletion of item ${itemId}`);
+      console.log(`✅ Successfully deleted item ${itemId}`);
       
-      // Refetch data from server to get latest state
-      await refetchPlaylist();
+      // Invalidate and refetch queries
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId] });
+      
+      await refetchPlaylist();
 
       toast({
         title: "Elemento eliminado",
@@ -859,7 +852,7 @@ export default function Playlists() {
       });
     },
     onError: (error: any) => {
-      console.error("Error removing item:", error);
+      console.error("❌ Error removing item:", error);
       
       toast({
         title: "Error",

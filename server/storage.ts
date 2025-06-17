@@ -511,29 +511,46 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePlaylistItem(id: number, userId: string): Promise<boolean> {
-    // First get the playlist item to verify ownership
-    const [existing] = await db
-      .select({ playlistItem: playlistItems, playlist: playlists })
-      .from(playlistItems)
-      .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
-      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)));
+    try {
+      // First get the playlist item to verify ownership and get playlist ID
+      const existing = await this.getPlaylistItemWithUser(id, userId);
+      
+      if (!existing) {
+        console.log(`❌ Playlist item ${id} not found or access denied for user ${userId}`);
+        return false;
+      }
 
-    if (!existing) return false;
+      const playlistId = existing.playlistId;
 
-    const playlistId = existing.playlistItem.playlistId;
+      // Delete the item with proper where clause
+      const result = await db
+        .delete(playlistItems)
+        .where(and(
+          eq(playlistItems.id, id),
+          exists(
+            db.select().from(playlists)
+              .where(and(
+                eq(playlists.id, playlistItems.playlistId),
+                eq(playlists.userId, userId)
+              ))
+          )
+        ));
 
-    const result = await db
-      .delete(playlistItems)
-      .where(eq(playlistItems.id, id));
+      const success = (result.rowCount ?? 0) > 0;
 
-    const success = (result.rowCount ?? 0) > 0;
+      if (success) {
+        console.log(`✅ Successfully deleted playlist item ${id} from playlist ${playlistId}`);
+        // Recalculate total duration
+        await this.updatePlaylistDuration(playlistId);
+      } else {
+        console.log(`❌ Failed to delete playlist item ${id} - no rows affected`);
+      }
 
-    if (success) {
-      // Recalculate total duration
-      await this.updatePlaylistDuration(playlistId);
+      return success;
+    } catch (error) {
+      console.error(`Error in deletePlaylistItem for item ${id}:`, error);
+      return false;
     }
-
-    return success;
   }
 
   async reorderPlaylistItems(
@@ -804,14 +821,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return item;
   }
-  async getPlaylistItemById(id: number, userId: string): Promise<any | undefined> {
-    const [item] = await db
-      .select()
-      .from(playlistItems)
-      .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
-      .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)));
-    return item?.playlist_items;
-  }
+  
 
   async updatePlaylistDuration(playlistId: number) {
     // Get all items in the playlist with their durations

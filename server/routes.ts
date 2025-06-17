@@ -586,7 +586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid playlist item ID" });
       }
 
-      // Get the playlistId associated with this item BEFORE deleting it.
+      // Get the playlistId associated with this item BEFORE deleting it
       const playlistItem = await storage.getPlaylistItemWithUser(id, userId);
 
       if (!playlistItem) {
@@ -596,38 +596,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ Found playlist item ${id} in playlist ${playlistItem.playlistId}`);
 
-      // Delete the item directly from database with better error handling
-      try {
-        const result = await db.delete(playlistItems)
-          .where(and(
-            eq(playlistItems.id, id),
-            exists(
-              db.select().from(playlists)
-                .where(and(
-                  eq(playlists.id, playlistItems.playlistId),
-                  eq(playlists.userId, userId)
-                ))
-            )
-          ));
+      // Use the storage method to delete the item
+      const success = await storage.deletePlaylistItem(id, userId);
 
-        if (!result.rowCount || result.rowCount === 0) {
-          console.log(`❌ Failed to delete playlist item ${id} - no rows affected`);
-          return res.status(404).json({ message: "Playlist item not found or already deleted" });
-        }
-
-        console.log(`✅ Playlist item ${id} deleted from playlist ${playlistItem.playlistId}`);
-
-      } catch (dbError) {
-        console.error(`❌ Database error deleting playlist item ${id}:`, dbError);
-        return res.status(500).json({ message: "Database error during deletion" });
-      }
-
-      // Update playlist duration
-      try {
-        await storage.updatePlaylistDuration(playlistItem.playlistId);
-      } catch (durationError) {
-        console.warn(`⚠️ Warning: Failed to update playlist duration for playlist ${playlistItem.playlistId}:`, durationError);
-        // Don't fail the request for this
+      if (!success) {
+        console.log(`❌ Failed to delete playlist item ${id}`);
+        return res.status(404).json({ message: "Playlist item not found or already deleted" });
       }
 
       // Broadcast to both admin and player clients
