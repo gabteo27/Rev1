@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
@@ -670,7 +669,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Heartbeat endpoint with WebSocket broadcast for status updates
   app.post("/api/screens/heartbeat", isPlayerAuthenticated, async (req: any, res) => {
     try {
       const screenId = req.screen.id;
@@ -680,36 +678,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Cannot update heartbeat for an unassigned screen." });
       }
 
-      // Check if screen was previously offline
-      const currentScreen = await storage.getScreenById(screenId);
-      const wasOffline = !currentScreen?.isOnline;
-
       await storage.updateScreen(screenId, {
         isOnline: true,
         lastSeen: new Date(),
       }, userId);
 
-      // Broadcast screen status change if it was offline
-      if (wasOffline) {
-        console.log(`📡 Broadcasting screen ${screenId} status change: now ONLINE`);
-        const wssInstance = app.get('wss') as WebSocketServer;
-        
-        wssInstance.clients.forEach((client: WebSocket) => {
-          const clientWithId = client as any;
-          if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
-            clientWithId.send(JSON.stringify({
-              type: 'screen-status-changed',
-              data: { 
-                screenId,
-                screenName: currentScreen?.name,
-                isOnline: true,
-                timestamp: new Date().toISOString()
-              }
-            }));
-          }
-        });
-      }
-
+      // Opcional: podrías devolver aquí una nueva playlist si ha cambiado
       res.status(200).json({ status: 'ok' });
     } catch (error) {
       console.error("Heartbeat error:", error);
@@ -797,15 +771,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete screen with proper WebSocket broadcast
+  // Delete screen
   app.delete("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const screenId = parseInt(req.params.id);
 
-      // Get screen info before deletion
-      const screenToDelete = await storage.getScreenById(screenId);
-      
       const success = await storage.deleteScreen(screenId, userId);
       if (!success) {
         return res.status(404).json({ message: "Screen not found" });
@@ -815,31 +786,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const wssInstance = app.get('wss') as WebSocketServer;
       wssInstance.clients.forEach((client: WebSocket) => {
         const clientWithId = client as any;
-        if (clientWithId.readyState === WebSocket.OPEN) {
-          // Send to admin clients
-          if (clientWithId.userId === userId) {
-            clientWithId.send(JSON.stringify({
-              type: 'screen-deleted',
-              data: { 
-                screenId, 
-                screenName: screenToDelete?.name,
-                timestamp: new Date().toISOString() 
-              }
-            }));
-          }
-          // Disconnect the specific screen client
-          else if (clientWithId.screenId === screenId) {
-            console.log(`🔌 Disconnecting screen client ${screenId} due to deletion`);
-            clientWithId.send(JSON.stringify({
-              type: 'screen-disconnected',
-              data: { 
-                screenId,
-                reason: 'Screen deleted',
-                timestamp: new Date().toISOString()
-              }
-            }));
-            clientWithId.close();
-          }
+        if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
+          clientWithId.send(JSON.stringify({
+            type: 'screen-deleted',
+            data: { screenId, timestamp: new Date().toISOString() }
+          }));
         }
       });
 
@@ -1343,9 +1294,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     screenId?: number; // Add screenId to the WebSocket interface
   }
 
-  // Track screens that should be marked offline after heartbeat timeout
-  const screenHeartbeatTracker = new Map<number, NodeJS.Timeout>();
-
   wss.on("connection", (ws: WebSocket) => {
     console.log("Client connected to WebSocket");
 
@@ -1362,81 +1310,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return;
         }
 
-        // Handle player heartbeat with screen status tracking
+        // Handle player heartbeat
         if (parsed.type === 'player-heartbeat' && (ws as any).screenId) {
           try {
             const screenId = (ws as any).screenId;
             const userId = (ws as any).userId;
 
             if (userId) {
-              // Check if screen was previously offline
-              const currentScreen = await storage.getScreenById(screenId);
-              const wasOffline = !currentScreen?.isOnline;
-
               await storage.updateScreen(screenId, {
                 isOnline: true,
                 lastSeen: new Date(),
               }, userId);
 
               console.log(`💓 Heartbeat received from screen ${screenId}`);
-
-              // Clear any existing timeout for this screen
-              if (screenHeartbeatTracker.has(screenId)) {
-                clearTimeout(screenHeartbeatTracker.get(screenId)!);
-              }
-
-              // Set timeout to mark screen offline if no heartbeat in 2 minutes
-              const timeoutId = setTimeout(async () => {
-                try {
-                  console.log(`⚠️ Screen ${screenId} heartbeat timeout, marking offline`);
-                  await storage.updateScreen(screenId, {
-                    isOnline: false,
-                    lastSeen: new Date(),
-                  }, userId);
-
-                  // Broadcast screen offline status
-                  wss.clients.forEach((client: WebSocket) => {
-                    const clientWithId = client as any;
-                    if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
-                      clientWithId.send(JSON.stringify({
-                        type: 'screen-status-changed',
-                        data: { 
-                          screenId,
-                          screenName: currentScreen?.name,
-                          isOnline: false,
-                          timestamp: new Date().toISOString()
-                        }
-                      }));
-                    }
-                  });
-
-                  screenHeartbeatTracker.delete(screenId);
-                } catch (error) {
-                  console.error('Error marking screen offline:', error);
-                }
-              }, 120000); // 2 minutes
-
-              screenHeartbeatTracker.set(screenId, timeoutId);
-
-              // Broadcast screen status change if it was offline
-              if (wasOffline) {
-                console.log(`📡 Broadcasting screen ${screenId} status change: now ONLINE`);
-                
-                wss.clients.forEach((client: WebSocket) => {
-                  const clientWithId = client as any;
-                  if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
-                    clientWithId.send(JSON.stringify({
-                      type: 'screen-status-changed',
-                      data: { 
-                        screenId,
-                        screenName: currentScreen?.name,
-                        isOnline: true,
-                        timestamp: new Date().toISOString()
-                      }
-                    }));
-                  }
-                });
-              }
 
               // Send heartbeat acknowledgment
               ws.send(JSON.stringify({ 
@@ -1497,49 +1383,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     ws.on("close", () => {
-      const screenId = (ws as any).screenId;
-      const userId = (ws as any).userId;
-      
-      console.log(`Client disconnected (User: ${userId || 'unauthenticated'}, Screen: ${screenId || 'none'})`);
-      
-      // Clean up heartbeat tracker if this was a screen connection
-      if (screenId && screenHeartbeatTracker.has(screenId)) {
-        clearTimeout(screenHeartbeatTracker.get(screenId)!);
-        screenHeartbeatTracker.delete(screenId);
-        
-        // Mark screen as offline after disconnection
-        if (userId) {
-          setTimeout(async () => {
-            try {
-              await storage.updateScreen(screenId, {
-                isOnline: false,
-                lastSeen: new Date(),
-              }, userId);
-              
-              console.log(`📡 Screen ${screenId} marked offline due to WebSocket disconnection`);
-              
-              // Broadcast screen offline status
-              wss.clients.forEach((client: WebSocket) => {
-                const clientWithId = client as any;
-                if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
-                  clientWithId.send(JSON.stringify({
-                    type: 'screen-status-changed',
-                    data: { 
-                      screenId,
-                      isOnline: false,
-                      timestamp: new Date().toISOString()
-                    }
-                  }));
-                }
-              });
-            } catch (error) {
-              console.error('Error marking screen offline on disconnect:', error);  
-            }
-          }, 5000); // 5 second delay to allow for reconnection
-        }
-      }
+        console.log(`Client disconnected (User: ${(ws as any).userId || 'unauthenticated'}, Screen: ${(ws as any).screenId || 'none'})`);
+      });
     });
-  });
 
   app.set('wss', wss);
 
