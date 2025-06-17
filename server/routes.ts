@@ -443,6 +443,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allScreens = await storage.getScreens(userId);
       const affectedScreenIds = allScreens.filter(screen => screen.playlistId === id).map(screen => screen.id);
 
+      // First, remove this playlist from all screens that are using it
+      for (const screenId of affectedScreenIds) {
+        await storage.updateScreen(screenId, { playlistId: null }, userId);
+      }
+
       const success = await storage.deletePlaylist(id, userId);
       if (!success) {
         return res.status(404).json({ message: "Playlist not found" });

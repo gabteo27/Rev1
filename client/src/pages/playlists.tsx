@@ -97,6 +97,41 @@ const LAYOUT_ZONES: Record<string, { id: string; title: string }[]> = {
   split_vertical: [{ id: 'left', title: 'Zona Izquierda' }, { id: 'right', title: 'Zona Derecha' }],
   split_horizontal: [{ id: 'top', title: 'Zona Superior' }, { id: 'bottom', title: 'Zona Inferior' }],
   pip_bottom_right: [{ id: 'main', title: 'Principal' }, { id: 'pip', title: 'Picture-in-Picture' }],
+  grid_2x2: [
+    { id: 'top_left', title: 'Superior Izquierda' },
+    { id: 'top_right', title: 'Superior Derecha' },
+    { id: 'bottom_left', title: 'Inferior Izquierda' },
+    { id: 'bottom_right', title: 'Inferior Derecha' }
+  ],
+  grid_3x3: [
+    { id: 'grid_1', title: 'Cuadrícula 1' }, { id: 'grid_2', title: 'Cuadrícula 2' }, { id: 'grid_3', title: 'Cuadrícula 3' },
+    { id: 'grid_4', title: 'Cuadrícula 4' }, { id: 'grid_5', title: 'Cuadrícula 5' }, { id: 'grid_6', title: 'Cuadrícula 6' },
+    { id: 'grid_7', title: 'Cuadrícula 7' }, { id: 'grid_8', title: 'Cuadrícula 8' }, { id: 'grid_9', title: 'Cuadrícula 9' }
+  ],
+  sidebar_left: [
+    { id: 'sidebar', title: 'Barra Lateral' },
+    { id: 'main', title: 'Contenido Principal' }
+  ],
+  sidebar_right: [
+    { id: 'main', title: 'Contenido Principal' },
+    { id: 'sidebar', title: 'Barra Lateral' }
+  ],
+  header_footer: [
+    { id: 'header', title: 'Cabecera' },
+    { id: 'main', title: 'Contenido Principal' },
+    { id: 'footer', title: 'Pie de Página' }
+  ],
+  triple_vertical: [
+    { id: 'left', title: 'Izquierda' },
+    { id: 'center', title: 'Centro' },
+    { id: 'right', title: 'Derecha' }
+  ],
+  triple_horizontal: [
+    { id: 'top', title: 'Superior' },
+    { id: 'middle', title: 'Medio' },
+    { id: 'bottom', title: 'Inferior' }
+  ],
+  custom_layout: [] // Will be populated from customLayoutConfig
 };
 
 export default function Playlists() {

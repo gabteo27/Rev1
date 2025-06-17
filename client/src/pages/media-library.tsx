@@ -44,6 +44,52 @@ const mediaTypes = [
   { value: 'video', label: 'Videos', icon: Video },
   { value: 'pdf', label: 'Documentos PDF', icon: FileText },
   { value: 'webpage', label: 'Páginas Web', icon: Globe },
+  { value: 'template', label: 'Plantillas', icon: Layout },
+];
+
+const layoutTemplates = [
+  { 
+    id: 'modern_news', 
+    name: 'Noticias Moderno', 
+    layout: 'header_footer',
+    zones: [
+      { id: 'header', title: 'Cabecera', x: 0, y: 0, width: 100, height: 15 },
+      { id: 'main', title: 'Contenido Principal', x: 0, y: 15, width: 70, height: 70 },
+      { id: 'sidebar', title: 'Barra Lateral', x: 70, y: 15, width: 30, height: 70 },
+      { id: 'footer', title: 'Pie de Página', x: 0, y: 85, width: 100, height: 15 }
+    ]
+  },
+  { 
+    id: 'retail_display', 
+    name: 'Display Comercial', 
+    layout: 'grid_2x2',
+    zones: [
+      { id: 'promo', title: 'Promociones', x: 0, y: 0, width: 50, height: 60 },
+      { id: 'featured', title: 'Destacados', x: 50, y: 0, width: 50, height: 60 },
+      { id: 'social', title: 'Redes Sociales', x: 0, y: 60, width: 50, height: 40 },
+      { id: 'info', title: 'Información', x: 50, y: 60, width: 50, height: 40 }
+    ]
+  },
+  { 
+    id: 'restaurant_menu', 
+    name: 'Menú Restaurante', 
+    layout: 'triple_vertical',
+    zones: [
+      { id: 'appetizers', title: 'Entradas', x: 0, y: 0, width: 33, height: 100 },
+      { id: 'mains', title: 'Platos Principales', x: 33, y: 0, width: 34, height: 100 },
+      { id: 'desserts', title: 'Postres', x: 67, y: 0, width: 33, height: 100 }
+    ]
+  },
+  { 
+    id: 'corporate_lobby', 
+    name: 'Lobby Corporativo', 
+    layout: 'sidebar_left',
+    zones: [
+      { id: 'sidebar', title: 'Información Empresa', x: 0, y: 0, width: 25, height: 100 },
+      { id: 'main', title: 'Contenido Principal', x: 25, y: 0, width: 75, height: 80 },
+      { id: 'ticker', title: 'Ticker Noticias', x: 25, y: 80, width: 75, height: 20 }
+    ]
+  }
 ];
 
 const sortOptions = [
