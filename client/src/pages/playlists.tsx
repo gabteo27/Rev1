@@ -647,6 +647,16 @@ export default function Playlists() {
                       <SelectItem value="split_vertical">División Vertical</SelectItem>
                       <SelectItem value="split_horizontal">División Horizontal</SelectItem>
                       <SelectItem value="pip_bottom_right">Picture-in-Picture</SelectItem>
+                      <SelectItem value="carousel">Carrusel</SelectItem>
+                      <SelectItem value="web_scroll">Scroll Web</SelectItem>
+                      <SelectItem value="grid_2x2">Grilla 2x2</SelectItem>
+                      <SelectItem value="grid_3x3">Grilla 3x3</SelectItem>
+                      <SelectItem value="sidebar_left">Barra Lateral Izquierda</SelectItem>
+                      <SelectItem value="sidebar_right">Barra Lateral Derecha</SelectItem>
+                      <SelectItem value="header_footer">Cabecera y Pie</SelectItem>
+                      <SelectItem value="triple_vertical">Triple Vertical</SelectItem>
+                      <SelectItem value="triple_horizontal">Triple Horizontal</SelectItem>
+                      <SelectItem value="custom_layout">Layout Personalizado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -803,29 +813,71 @@ export default function Playlists() {
               {/* Layout Selection */}
               <div className="flex-shrink-0">
                 <Label className="text-sm font-medium">Tipo de Layout</Label>
-                <ToggleGroup 
-                  type="single" 
-                  value={currentLayout} 
-                  onValueChange={(val) => val && updateLayoutMutation.mutate(val)}
-                  className="justify-start gap-2 mt-2"
-                >
-                  <ToggleGroupItem value="single_zone" aria-label="Pantalla completa">
-                    <Layout className="h-4 w-4 mr-2"/>
-                    Completa
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="split_vertical" aria-label="División vertical">
-                    <SplitSquareVertical className="h-4 w-4 mr-2"/>
-                    Vertical
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="split_horizontal" aria-label="División horizontal">
-                    <SplitSquareHorizontal className="h-4 w-4 mr-2"/>
-                    Horizontal
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="pip_bottom_right" aria-label="Picture in picture">
-                    <PictureInPicture className="h-4 w-4 mr-2"/>
-                    PiP
-                  </ToggleGroupItem>
-                </ToggleGroup>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                  <ToggleGroup 
+                    type="single" 
+                    value={currentLayout} 
+                    onValueChange={(val) => val && updateLayoutMutation.mutate(val)}
+                    className="col-span-full flex flex-wrap gap-2"
+                  >
+                    <ToggleGroupItem value="single_zone" aria-label="Pantalla completa" className="flex-col h-auto p-2">
+                      <Layout className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">Completa</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="split_vertical" aria-label="División vertical" className="flex-col h-auto p-2">
+                      <SplitSquareVertical className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">Vertical</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="split_horizontal" aria-label="División horizontal" className="flex-col h-auto p-2">
+                      <SplitSquareHorizontal className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">Horizontal</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="pip_bottom_right" aria-label="Picture in picture" className="flex-col h-auto p-2">
+                      <PictureInPicture className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">PiP</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="carousel" aria-label="Carrusel" className="flex-col h-auto p-2">
+                      <Shuffle className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">Carrusel</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="web_scroll" aria-label="Scroll web" className="flex-col h-auto p-2">
+                      <ScrollText className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">Scroll</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="grid_2x2" aria-label="Grilla 2x2" className="flex-col h-auto p-2">
+                      <Grid3X3 className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">2x2</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="grid_3x3" aria-label="Grilla 3x3" className="flex-col h-auto p-2">
+                      <Grid3X3 className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">3x3</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="sidebar_left" aria-label="Barra lateral izquierda" className="flex-col h-auto p-2">
+                      <SidebarOpen className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">Sidebar L</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="sidebar_right" aria-label="Barra lateral derecha" className="flex-col h-auto p-2">
+                      <SidebarClose className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">Sidebar R</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="header_footer" aria-label="Cabecera y pie" className="flex-col h-auto p-2">
+                      <Rows className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">H/F</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="triple_vertical" aria-label="Triple vertical" className="flex-col h-auto p-2">
+                      <SplitSquareVertical className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">Triple V</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="triple_horizontal" aria-label="Triple horizontal" className="flex-col h-auto p-2">
+                      <SplitSquareHorizontal className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">Triple H</span>
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="custom_layout" aria-label="Layout personalizado" className="flex-col h-auto p-2">
+                      <Settings className="h-4 w-4 mb-1"/>
+                      <span className="text-xs">Custom</span>
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
               </div>
 
               {/* Zone Management */}
