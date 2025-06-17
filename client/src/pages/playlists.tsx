@@ -19,7 +19,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Plus, List, FileText, GripVertical, Trash2, Edit, Settings, Layout,
   SplitSquareHorizontal, SplitSquareVertical, PictureInPicture, Image, Video, Globe, Type,
-  Eye, Clock, Play, Check
+  Eye, Clock, Play, Check,
+  Shuffle,
+  ScrollText,
+  SidebarOpen,
+  SidebarClose,
+  Rows
 } from "lucide-react";
 
 // Tipos para mayor claridad
@@ -92,11 +97,13 @@ const DurationInput = ({ itemId, initialDuration, onDurationChange }: {
 };
 
 // Definición de las zonas para cada layout
-const LAYOUT_ZONES: Record<string, { id: string; title: string }[]> = {
+const LAYOUT_ZONES = {
   single_zone: [{ id: 'main', title: 'Contenido Principal' }],
   split_vertical: [{ id: 'left', title: 'Zona Izquierda' }, { id: 'right', title: 'Zona Derecha' }],
   split_horizontal: [{ id: 'top', title: 'Zona Superior' }, { id: 'bottom', title: 'Zona Inferior' }],
   pip_bottom_right: [{ id: 'main', title: 'Principal' }, { id: 'pip', title: 'Picture-in-Picture' }],
+  carousel: [{ id: 'main', title: 'Carrusel' }],
+  web_scroll: [{ id: 'main', title: 'Scroll Web' }],
   grid_2x2: [
     { id: 'top_left', title: 'Superior Izquierda' },
     { id: 'top_right', title: 'Superior Derecha' },
@@ -104,9 +111,15 @@ const LAYOUT_ZONES: Record<string, { id: string; title: string }[]> = {
     { id: 'bottom_right', title: 'Inferior Derecha' }
   ],
   grid_3x3: [
-    { id: 'grid_1', title: 'Cuadrícula 1' }, { id: 'grid_2', title: 'Cuadrícula 2' }, { id: 'grid_3', title: 'Cuadrícula 3' },
-    { id: 'grid_4', title: 'Cuadrícula 4' }, { id: 'grid_5', title: 'Cuadrícula 5' }, { id: 'grid_6', title: 'Cuadrícula 6' },
-    { id: 'grid_7', title: 'Cuadrícula 7' }, { id: 'grid_8', title: 'Cuadrícula 8' }, { id: 'grid_9', title: 'Cuadrícula 9' }
+    { id: 'grid_1', title: 'Celda 1' },
+    { id: 'grid_2', title: 'Celda 2' },
+    { id: 'grid_3', title: 'Celda 3' },
+    { id: 'grid_4', title: 'Celda 4' },
+    { id: 'grid_5', title: 'Celda 5' },
+    { id: 'grid_6', title: 'Celda 6' },
+    { id: 'grid_7', title: 'Celda 7' },
+    { id: 'grid_8', title: 'Celda 8' },
+    { id: 'grid_9', title: 'Celda 9' }
   ],
   sidebar_left: [
     { id: 'sidebar', title: 'Barra Lateral' },
@@ -131,7 +144,7 @@ const LAYOUT_ZONES: Record<string, { id: string; title: string }[]> = {
     { id: 'middle', title: 'Medio' },
     { id: 'bottom', title: 'Inferior' }
   ],
-  custom_layout: [] // Will be populated from customLayoutConfig
+  custom_layout: [] // Will be populated from custom config
 };
 
 export default function Playlists() {
@@ -700,10 +713,21 @@ export default function Playlists() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs">
-                        {playlist.layout === 'single_zone' ? 'Completa' :
-                         playlist.layout === 'split_vertical' ? 'Vertical' :
-                         playlist.layout === 'split_horizontal' ? 'Horizontal' :
-                         'PiP'}
+                        {playlist.layout === "single_zone" ? "Completa" :
+                         playlist.layout === "split_vertical" ? "Vertical" :
+                         playlist.layout === "split_horizontal" ? "Horizontal" :
+                         playlist.layout === "pip_bottom_right" ? "PiP" :
+                         playlist.layout === "carousel" ? "Carrusel" :
+                         playlist.layout === "web_scroll" ? "Scroll" :
+                         playlist.layout === "grid_2x2" ? "Grilla 2x2" :
+                         playlist.layout === "grid_3x3" ? "Grilla 3x3" :
+                         playlist.layout === "sidebar_left" ? "Sidebar Izq" :
+                         playlist.layout === "sidebar_right" ? "Sidebar Der" :
+                         playlist.layout === "header_footer" ? "Header/Footer" :
+                         playlist.layout === "triple_vertical" ? "Triple V" :
+                         playlist.layout === "triple_horizontal" ? "Triple H" :
+                         playlist.layout === "custom_layout" ? "Personalizado" : 
+                         playlist.layout}
                       </Badge>
                       {playlist.isActive && (
                         <Badge variant="default" className="text-xs">
@@ -836,9 +860,8 @@ export default function Playlists() {
                                 <Plus className="w-3 h-3 mr-1" />
                                 Agregar contenido
                               </Button>
-                            </DialogTrigger>
-                          </Dialog>
-                        </div>
+                            </DialogTrigger></Dialog>
+                          </div>
                       </CardHeader>
                       <CardContent className="pt-0 flex-1 overflow-hidden">
                         <ScrollArea className="h-full">
