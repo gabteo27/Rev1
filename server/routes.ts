@@ -2012,6 +2012,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch playback analytics" });
     }
   });
+  
+    // Update playlist item (custom duration, zone, etc.)
+    app.put("/api/playlist-items/:id", isAuthenticated, async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const id = parseInt(req.params.id);
+        const updates = req.body;
+  
+        // Validate customDuration if provided
+        if (updates.customDuration !== undefined) {
+          const duration = parseInt(updates.customDuration);
+          if (isNaN(duration) || duration < 1 || duration > 86400) {
+            return res.status(400).json({ 
+              message: "La duración debe ser un número entre 1 y 86400 segundos" 
+            });
+          }
+          updates.customDuration = duration;
+        }
+  
+        const item = await storage.updatePlaylistItem(id, updates, userId);
+        if (!item) {
+          return res.status(404).json({ message: "Playlist item not found" });
+        }
+  
+        // Get the playlistId associated with this item.
+        const playlistItem = await storage.getPlaylistItem(id);
+        const playlistId = playlistItem?.playlistId;
+  
+         // --- ADDED: Notify connected players and admins of playlist change ---
+         if (playlistId) {
+           broadcastPlaylistUpdate(userId, playlistId, 'playlist-item-updated');
+         }
+         // --- END ADDED ---
+  
+        res.json(item);
+      } catch (error) {
+        console.error("Error updating playlist item:", error);
+        res.status(500).json({ message: "Failed to update playlist item" });
+      }
+    });
+  
+    // Broadcast playlist updates - Added
+    app.post("/api/playlists/:id/broadcast", isAuthenticated, async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const playlistId = parseInt(req.params.id);
+        const { action, itemId, timestamp } = req.body;
+  
+        // Verify the playlist belongs to the user
+        const playlist = await storage.getPlaylistWithItems(playlistId, userId);
+        if (!playlist) {
+          return res.status(404).json({ message: "Playlist not found" });
+        }
+  
+        // Get all screens using this playlist before deletion
+        const allScreens = await storage.getScreens(userId);
+        const affectedScreenIds = allScreens.filter(screen => screen.playlistId === playlistId).map(screen => screen.id);
+  
+        console.log(`📡 Manual broadcast: ${action} for playlist ${playlistId} to ${affectedScreenIds.length} screens`);
+  
+        // Broadcast to both admin and player clients
+        broadcastToUser(userId, 'playlist-updated', {
+          playlistId: playlistId,
+          action,
+          itemId,
+          timestamp,
+          affectedScreens: affectedScreenIds
+        });
+  
+        res.json({ 
+          success: true, 
+          message: `Broadcast sent to ${affectedScreenIds.length} screens`,
+          affectedScreens: affectedScreenIds
+        });
+      } catch (error) {
+        console.error("Error broadcasting playlist update:", error);
+        res.status(500).json({ message: "Failed to broadcast playlist update" });
+      }
+    });
 
   return httpServer;
 }
