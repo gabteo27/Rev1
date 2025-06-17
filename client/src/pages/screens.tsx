@@ -1,6 +1,8 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { wsManager } from "@/lib/websocket";
 
 import { useToast } from "@/hooks/use-toast";
 import type { Screen, Playlist } from "@shared/schema";
@@ -27,7 +29,6 @@ import {
 import { ScreenPreview } from "@/components/screen/ScreenPreview";
 import ScreenGroups from "./screen-groups";
 
-
 const initialPairFormState = { pairingCode: "", name: "", location: "", playlistId: "" };
 
 export default function Screens() {
@@ -39,8 +40,15 @@ export default function Screens() {
 
   const { toast } = useToast();
 
-  const { data: screens = [], isLoading } = useQuery<Screen[]>({ queryKey: ["/api/screens"], retry: false });
-  const { data: playlists = [] } = useQuery<Playlist[]>({ queryKey: ["/api/playlists"], retry: false });
+  const { data: screens = [], isLoading } = useQuery<Screen[]>({ 
+    queryKey: ["/api/screens"], 
+    retry: false 
+  });
+  
+  const { data: playlists = [] } = useQuery<Playlist[]>({ 
+    queryKey: ["/api/playlists"], 
+    retry: false 
+  });
 
   // WebSocket subscriptions for real-time updates
   useEffect(() => {
@@ -53,30 +61,32 @@ export default function Screens() {
         return;
       }
 
+      console.log('🔌 Setting up screen WebSocket subscriptions...');
+
       // Subscribe to screen deletion
       unsubscribeFunctions.push(
         wsManager.subscribe('screen-deleted', (data) => {
           console.log('Screen deleted via WebSocket:', data);
           toast({
             title: "Pantalla Eliminada",
-            description: `${data.screenName || 'La pantalla'} ha sido eliminada`,
+            description: `${data.data?.screenName || 'La pantalla'} ha sido eliminada`,
             variant: "destructive"
           });
           queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
         })
       );
 
-      // Subscribe to screen status changes
+      // Subscribe to screen status changes (heartbeat updates)
       unsubscribeFunctions.push(
         wsManager.subscribe('screen-status-changed', (data) => {
           console.log('Screen status changed:', data);
           queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
           
-          const statusText = data.isOnline ? 'conectó' : 'desconectó';
+          const statusText = data.data?.isOnline ? 'conectó' : 'desconectó';
           toast({
             title: `Pantalla ${statusText}`,
-            description: `${data.screenName || 'Una pantalla'} se ${statusText}`,
-            variant: data.isOnline ? "default" : "destructive"
+            description: `${data.data?.screenName || 'Una pantalla'} se ${statusText}`,
+            variant: data.data?.isOnline ? "default" : "destructive"
           });
         })
       );
@@ -107,26 +117,49 @@ export default function Screens() {
 
   const completePairingMutation = useMutation({
     mutationFn: (data: typeof pairFormData) => {
-      const payload = { ...data, playlistId: data.playlistId && data.playlistId !== 'none' ? parseInt(data.playlistId, 10) : null };
-      return apiRequest("/api/screens/complete-pairing", { method: "POST", body: JSON.stringify(payload) }).then(res => res.json());
+      const payload = { 
+        ...data, 
+        playlistId: data.playlistId && data.playlistId !== 'none' ? parseInt(data.playlistId, 10) : null 
+      };
+      return apiRequest("/api/screens/complete-pairing", { 
+        method: "POST", 
+        body: JSON.stringify(payload) 
+      }).then(res => res.json());
     },
     onSuccess: (data) => {
-      toast({ title: "¡Éxito!", description: `La pantalla "${data.screen.name}" ha sido emparejada.` });
+      toast({ 
+        title: "¡Éxito!", 
+        description: `La pantalla "${data.screen.name}" ha sido emparejada.` 
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
       setIsPairModalOpen(false);
       setPairFormData(initialPairFormState);
     },
-    onError: (error: any) => toast({ title: "Error de Emparejamiento", description: error.message, variant: "destructive" })
+    onError: (error: any) => toast({ 
+      title: "Error de Emparejamiento", 
+      description: error.message, 
+      variant: "destructive" 
+    })
   });
 
   const updateMutation = useMutation({
-    mutationFn: (screen: Screen) => apiRequest(`/api/screens/${screen.id}`, { method: 'PUT', body: JSON.stringify(screen) }),
+    mutationFn: (screen: Screen) => apiRequest(`/api/screens/${screen.id}`, { 
+      method: 'PUT', 
+      body: JSON.stringify(screen) 
+    }),
     onSuccess: () => {
-        toast({ title: 'Pantalla Actualizada', description: 'Los cambios se han guardado correctamente.' });
-        queryClient.invalidateQueries({ queryKey: ['/api/screens'] });
-        setEditingScreen(null);
+      toast({ 
+        title: 'Pantalla Actualizada', 
+        description: 'Los cambios se han guardado correctamente.' 
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/screens'] });
+      setEditingScreen(null);
     },
-    onError: (error: any) => toast({ title: 'Error al Actualizar', description: error.message, variant: 'destructive' })
+    onError: (error: any) => toast({ 
+      title: 'Error al Actualizar', 
+      description: error.message, 
+      variant: 'destructive' 
+    })
   });
 
   const deleteMutation = useMutation({
@@ -138,10 +171,17 @@ export default function Screens() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Pantalla eliminada", description: "La pantalla ha sido eliminada correctamente" });
+      toast({ 
+        title: "Pantalla eliminada", 
+        description: "La pantalla ha sido eliminada correctamente" 
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     },
-    onError: (error: any) => toast({ title: "Error", description: error.message || "No se pudo eliminar la pantalla.", variant: "destructive" })
+    onError: (error: any) => toast({ 
+      title: "Error", 
+      description: error.message || "No se pudo eliminar la pantalla.", 
+      variant: "destructive" 
+    })
   });
 
   // --- MANEJADORES DE FORMULARIOS ---
@@ -157,16 +197,20 @@ export default function Screens() {
 
   const handlePairSubmit = () => {
     if (!pairFormData.pairingCode.trim() || !pairFormData.name.trim()) {
-      toast({ title: "Error", description: "El código y el nombre son obligatorios.", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: "El código y el nombre son obligatorios.", 
+        variant: "destructive" 
+      });
       return;
     }
     completePairingMutation.mutate(pairFormData);
   };
 
-    // --- MANEJADORES DE PANTALLA ---
-    const handleEditScreen = (screen: Screen) => {
-      setEditingScreen(screen);
-    };
+  // --- MANEJADORES DE PANTALLA ---
+  const handleEditScreen = (screen: Screen) => {
+    setEditingScreen(screen);
+  };
 
   const togglePreview = (id: number) => {
     setVisiblePreviews(prev => ({
@@ -174,21 +218,28 @@ export default function Screens() {
       [id]: !prev[id]
     }));
   };
+
   // --- FUNCIONES AUXILIARES ---
 
   const formatDate = (date: Date | null | string) => {
     if (!date) return "N/A";
-    return new Date(date).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return new Date(date).toLocaleDateString("es-ES", { 
+      year: "numeric", 
+      month: "short", 
+      day: "numeric", 
+      hour: "2-digit", 
+      minute: "2-digit" 
+    });
   };
 
   const getStatusBadge = (isOnline: boolean | null, lastSeen?: string | Date) => {
-      if (isOnline) return <Badge className="bg-green-100 text-green-800 border-green-300">En línea</Badge>;
-      if (lastSeen) {
-        const diffInHours = (new Date().getTime() - new Date(lastSeen).getTime()) / 36e5;
-        if (diffInHours < 1) return <Badge variant="destructive">Desconectada</Badge>;
-        if (diffInHours < 24) return <Badge variant="secondary">Inactiva</Badge>;
-      }
-      return <Badge variant="secondary">Desconocido</Badge>;
+    if (isOnline) return <Badge className="bg-green-100 text-green-800 border-green-300">En línea</Badge>;
+    if (lastSeen) {
+      const diffInHours = (new Date().getTime() - new Date(lastSeen).getTime()) / 36e5;
+      if (diffInHours < 1) return <Badge variant="destructive">Desconectada</Badge>;
+      if (diffInHours < 24) return <Badge variant="secondary">Inactiva</Badge>;
+    }
+    return <Badge variant="secondary">Desconocido</Badge>;
   };
 
   if (isLoading) {
@@ -219,15 +270,30 @@ export default function Screens() {
           <div className="space-y-4 py-4">
             <div>
               <Label htmlFor="pairingCode">Código de Emparejamiento *</Label>
-              <Input id="pairingCode" value={pairFormData.pairingCode} onChange={handlePairFormChange} placeholder="123456" />
+              <Input 
+                id="pairingCode" 
+                value={pairFormData.pairingCode} 
+                onChange={handlePairFormChange} 
+                placeholder="123456" 
+              />
             </div>
             <div>
               <Label htmlFor="name">Nombre de la Pantalla *</Label>
-              <Input id="name" value={pairFormData.name} onChange={handlePairFormChange} placeholder="Ej: Pantalla Lobby" />
+              <Input 
+                id="name" 
+                value={pairFormData.name} 
+                onChange={handlePairFormChange} 
+                placeholder="Ej: Pantalla Lobby" 
+              />
             </div>
             <div>
               <Label htmlFor="location">Ubicación</Label>
-              <Input id="location" value={pairFormData.location} onChange={handlePairFormChange} placeholder="Ej: Recepción" />
+              <Input 
+                id="location" 
+                value={pairFormData.location} 
+                onChange={handlePairFormChange} 
+                placeholder="Ej: Recepción" 
+              />
             </div>
             <div>
               <Label htmlFor="playlist">Playlist Asignada</Label>
@@ -235,7 +301,11 @@ export default function Screens() {
                 <SelectTrigger><SelectValue placeholder="Seleccionar playlist (opcional)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sin playlist</SelectItem>
-                  {playlists.map((playlist) => <SelectItem key={playlist.id} value={playlist.id.toString()}>{playlist.name}</SelectItem>)}
+                  {playlists.map((playlist) => (
+                    <SelectItem key={playlist.id} value={playlist.id.toString()}>
+                      {playlist.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -257,19 +327,35 @@ export default function Screens() {
             <div className="space-y-4 py-4">
               <div>
                 <Label htmlFor="edit-name">Nombre</Label>
-                <Input id="edit-name" value={editingScreen.name} onChange={(e) => setEditingScreen({...editingScreen, name: e.target.value})} />
+                <Input 
+                  id="edit-name" 
+                  value={editingScreen.name} 
+                  onChange={(e) => setEditingScreen({...editingScreen, name: e.target.value})} 
+                />
               </div>
               <div>
                 <Label htmlFor="edit-location">Ubicación</Label>
-                <Input id="edit-location" value={editingScreen.location || ''} onChange={(e) => setEditingScreen({...editingScreen, location: e.target.value})} />
+                <Input 
+                  id="edit-location" 
+                  value={editingScreen.location || ''} 
+                  onChange={(e) => setEditingScreen({...editingScreen, location: e.target.value})} 
+                />
               </div>
               <div>
                 <Label htmlFor="edit-playlist">Playlist Asignada</Label>
-                <Select value={editingScreen.playlistId?.toString() || 'none'} onValueChange={(value) => setEditingScreen({...editingScreen, playlistId: value === 'none' ? null : parseInt(value, 10)})}>
+                <Select 
+                  value={editingScreen.playlistId?.toString() || 'none'} 
+                  onValueChange={(value) => setEditingScreen({
+                    ...editingScreen, 
+                    playlistId: value === 'none' ? null : parseInt(value, 10)
+                  })}
+                >
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sin playlist</SelectItem>
-                    {playlists.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}
+                    {playlists.map(p => (
+                      <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -277,12 +363,16 @@ export default function Screens() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingScreen(null)}>Cancelar</Button>
-            <Button onClick={() => editingScreen && updateMutation.mutate(editingScreen)} disabled={updateMutation.isPending}>
+            <Button 
+              onClick={() => editingScreen && updateMutation.mutate(editingScreen)} 
+              disabled={updateMutation.isPending}
+            >
               {updateMutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       {/* MODAL PARA VER EN VIVO */}
       <Dialog open={!!livePreviewScreenId} onOpenChange={() => setLivePreviewScreenId(null)}>
         <DialogContent className="max-w-4xl">
@@ -302,6 +392,7 @@ export default function Screens() {
           )}
         </DialogContent>
       </Dialog>
+
       {/* PESTAÑAS PRINCIPALES */}
       <div className="flex-1 flex flex-col">
         <Tabs defaultValue="screens" className="flex-1 flex flex-col">
@@ -328,7 +419,7 @@ export default function Screens() {
               </Button>
             </div>
             
-            <div className="flex-1 px-4 sm:px-6 py-6 overflow-y-auto max-h-[calc(100vh-200px)]">
+            <div className="flex-1 px-4 sm:px-6 py-6 overflow-y-auto max-h-[calc(100vh-280px)]">
               {screens.length === 0 ? (
                 <Card className="border-dashed">
                   <CardContent className="p-12 text-center">

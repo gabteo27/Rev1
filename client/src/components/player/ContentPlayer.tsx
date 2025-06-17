@@ -1,513 +1,92 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { AlertOverlay } from './AlertOverlay';
-import type { Playlist, PlaylistItem, Widget, Alert } from '@shared/schema';
-import { wsManager } from '@/lib/websocket';
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { wsManager } from "@/lib/websocket";
+import type { Playlist, Widget } from "@shared/schema";
+import { AlertOverlay } from "./AlertOverlay";
 
-// --- Estilos para el reproductor ---
-const styles = {
-  container: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: '#000', color: 'white', overflow: 'hidden' } as React.CSSProperties,
-  media: { width: '100%', height: '100%', objectFit: 'cover' } as React.CSSProperties,
-  zone: { position: 'relative', width: '100%', height: '100%', overflow: 'hidden' } as React.CSSProperties,
-};
-
-// --- Componentes para renderizar cada tipo de contenido ---
-const ImagePlayer = ({ src }: { src: string }) => <img src={src} style={styles.media} alt="" />;
-const VideoPlayer = ({ src }: { src: string }) => <video src={src} style={styles.media} autoPlay muted loop playsInline />;
-const WebpagePlayer = ({ src }: { src: string }) => <iframe src={src} style={{ ...styles.media, border: 'none' }} title="web-content" />;
-
-// PDF Player Component
-const PDFPlayer = ({ src }: { src: string }) => {
-  const pdfViewerUrl = src.startsWith('http') 
-    ? `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
-    : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + src)}&embedded=true`;
-
-  return (
-    <iframe
-      src={pdfViewerUrl}
-      style={{ 
-        ...styles.media, 
-        border: 'none',
-        background: '#f5f5f5'
-      }}
-      title="PDF document"
-      loading="eager"
-      sandbox="allow-scripts allow-same-origin"
-    />
-  );
-};
-
-// YouTube Player Component
-const YouTubePlayer = ({ url }: { url: string }) => {
-  const getYouTubeID = (url: string) => {
-    const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^#\&\?]*)/,
-      /youtube\.com\/watch\?.*v=([^#\&\?]*)/,
-      /youtu\.be\/([^#\&\?]*)/,
-      /youtube\.com\/embed\/([^#\&\?]*)/
-    ];
-
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match && match[1] && match[1].length === 11) {
-        return match[1];
-      }
-    }
-    return null;
-  };
-
-  const videoId = getYouTubeID(url);
-
-  if (!videoId) {
-    return (
-      <div style={{ 
-        ...styles.media, 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        color: 'rgba(255,255,255,0.7)',
-        fontSize: '18px',
-        backgroundColor: '#1a1a1a'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📺</div>
-          <div>URL de YouTube no válida</div>
-          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{url}</div>
-        </div>
-      </div>
-    );
-  }
-
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?` + [
-    'autoplay=1',
-    'mute=1',
-    'loop=1',
-    `playlist=${videoId}`,
-    'controls=0',
-    'showinfo=0',
-    'iv_load_policy=3',
-    'modestbranding=1',
-    'rel=0',
-    'fs=0',
-    'disablekb=1',
-    'cc_load_policy=0',
-    'playsinline=1',
-    'enablejsapi=1'
-  ].join('&');
-
-  return (
-    <iframe
-      key={`youtube-${videoId}-${Date.now()}`}
-      src={embedUrl}
-      style={{ 
-        ...styles.media, 
-        border: 'none',
-        background: '#000'
-      }}
-      title={`YouTube video player - ${videoId}`}
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      allowFullScreen={false}
-      loading="eager"
-    />
-  );
-};
-
-// Widget Components
-const ClockWidget = ({ config, position }: { config: any, position: string }) => {
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const format = config?.format || '24h';
-  const timezone = config?.timezone || 'America/Mexico_City';
-
-  const formatTime = (date: Date) => {
-    try {
-      return new Intl.DateTimeFormat('es-ES', {
-        timeZone: timezone,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: format === '12h'
-      }).format(date);
-    } catch (error) {
-      return date.toLocaleTimeString('es-ES');
-    }
-  };
-
-  const formatDate = (date: Date) => {
-    try {
-      return new Intl.DateTimeFormat('es-ES', {
-        timeZone: timezone,
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }).format(date);
-    } catch (error) {
-      return date.toLocaleDateString('es-ES');
-    }
-  };
-
-  return (
-    <div style={{
-      position: 'absolute',
-      ...getPositionStyles(position),
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      color: 'white',
-      padding: '15px 20px',
-      borderRadius: '8px',
-      zIndex: 1000,
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '5px' }}>
-        {formatTime(time)}
-      </div>
-      <div style={{ fontSize: '14px', opacity: 0.8 }}>
-        {formatDate(time)}
-      </div>
-    </div>
-  );
-};
-
-const WeatherWidget = ({ config, position }: { config: any, position: string }) => {
-  const [weather, setWeather] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchWeather = async () => {
-      setLoading(true);
-      try {
-        const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
-        const city = config?.city || 'Mexico City';
-
-        if (apiKey) {
-          const response = await fetch(
-            `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}&aqi=no`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            setWeather(data);
-          }
-        } else {
-          setWeather({
-            location: { name: city },
-            current: { temp_c: 22, condition: { text: 'Soleado' } }
-          });
-        }
-      } catch (error) {
-        console.error('Weather API error:', error);
-        setWeather({
-          location: { name: config?.city || 'Ciudad' },
-          current: { temp_c: 22, condition: { text: 'No disponible' } }
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWeather();
-    const interval = setInterval(fetchWeather, 10 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [config]);
-
-  if (loading) {
-    return (
-      <div style={{
-        position: 'absolute',
-        ...getPositionStyles(position),
-        backgroundColor: 'rgba(59, 130, 246, 0.9)',
-        color: 'white',
-        padding: '15px 20px',
-        borderRadius: '8px',
-        zIndex: 1000,
-        fontFamily: 'Arial, sans-serif'
-      }}>
-        <div style={{ fontSize: '16px' }}>Cargando clima...</div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{
-      position: 'absolute',
-      ...getPositionStyles(position),
-      backgroundColor: 'rgba(59, 130, 246, 0.9)',
-      color: 'white',
-      padding: '15px 20px',
-      borderRadius: '8px',
-      zIndex: 1000,
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '5px' }}>
-        {weather?.location?.name || 'Ciudad'}
-      </div>
-      <div style={{ fontSize: '16px' }}>
-        {weather?.current?.temp_c}°C - {weather?.current?.condition?.text || 'Sin datos'}
-      </div>
-    </div>
-  );
-};
-
-const NewsWidget = ({ config, position }: { config: any, position: string }) => {
-  const [news, setNews] = useState<any[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    const fetchNews = async () => {
-      try {
-        const rssUrl = config?.rssUrl || 'https://feeds.bbci.co.uk/mundo/rss.xml';
-        const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
-
-        const response = await fetch(proxyUrl);
-        if (response.ok) {
-          const data = await response.json();
-          setNews(data.items?.slice(0, config?.maxItems || 3) || []);
-        }
-      } catch (error) {
-        console.error('News API error:', error);
-        setNews([
-          { title: 'Noticias en tiempo real', description: 'Configure la URL RSS para mostrar noticias actualizadas' }
-        ]);
-      }
-    };
-
-    fetchNews();
-    const interval = setInterval(fetchNews, 15 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [config]);
-
-  useEffect(() => {
-    if (news.length > 1) {
-      const timer = setInterval(() => {
-        setCurrentIndex((prev) => (prev + 1) % news.length);
-      }, 10000);
-      return () => clearInterval(timer);
-    }
-  }, [news.length]);
-
-  if (news.length === 0) return null;
-
-  const currentNews = news[currentIndex];
-
-  return (
-    <div style={{
-      position: 'absolute',
-      ...getPositionStyles(position),
-      backgroundColor: 'rgba(249, 115, 22, 0.9)',
-      color: 'white',
-      padding: '15px 20px',
-      borderRadius: '8px',
-      zIndex: 1000,
-      fontFamily: 'Arial, sans-serif',
-      maxWidth: '300px'
-    }}>
-      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>
-        📰 Últimas Noticias
-      </div>
-      <div style={{ fontSize: '13px', lineHeight: '1.4' }}>
-        {currentNews?.title}
-      </div>
-      {news.length > 1 && (
-        <div style={{ fontSize: '10px', marginTop: '5px', opacity: 0.7 }}>
-          {currentIndex + 1} de {news.length}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const TextWidget = ({ config, position }: { config: any, position: string }) => {
-  const text = config?.text || 'Texto personalizado';
-  const fontSize = config?.fontSize || '16px';
-  const color = config?.color || '#ffffff';
-  const backgroundColor = config?.backgroundColor || 'rgba(0, 0, 0, 0.8)';
-
-  return (
-    <div style={{
-      position: 'absolute',
-      ...getPositionStyles(position),
-      backgroundColor,
-      color,
-      padding: '15px 20px',
-      borderRadius: '8px',
-      zIndex: 1000,
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <div style={{ fontSize, fontWeight: 'medium' }}>
-        {text}
-      </div>
-    </div>
-  );
-};
-
-// Función para obtener estilos de posición
-const getPositionStyles = (position: string) => {
-  switch (position) {
-    case 'top-left':
-      return { top: '20px', left: '20px' };
-    case 'top-right':
-      return { top: '20px', right: '20px' };
-    case 'bottom-left':
-      return { bottom: '20px', left: '20px' };
-    case 'bottom-right':
-      return { bottom: '20px', right: '20px' };
-    case 'center':
-      return { 
-        top: '50%', 
-        left: '50%', 
-        transform: 'translate(-50%, -50%)' 
-      };
-    default:
-      return { bottom: '20px', right: '20px' };
-  }
-};
-
-// Componente para renderizar widgets
-const WidgetRenderer = ({ widget }: { widget: Widget }) => {
-  if (!widget.isEnabled) return null;
-
-  let config = {};
-  try {
-    config = JSON.parse(widget.settings || "{}");
-  } catch (e) {
-    config = {};
-  }
-
-  switch (widget.type) {
-    case 'clock':
-      return <ClockWidget config={config} position={widget.position || 'bottom-right'} />;
-    case 'weather':
-      return <WeatherWidget config={config} position={widget.position || 'top-right'} />;
-    case 'news':
-      return <NewsWidget config={config} position={widget.position || 'top-left'} />;
-    case 'text':
-      return <TextWidget config={config} position={widget.position || 'center'} />;
-    default:
-      return null;
-  }
-};
-
-interface ZoneTracker {
-  currentIndex: number;
-  items: PlaylistItem[];
+interface ContentPlayerProps {
+  playlistId?: number;
+  isPreview?: boolean;
 }
 
-export default function ContentPlayer({ playlistId, isPreview = false }: { playlistId?: number, isPreview?: boolean }) {
-  const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
-  const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
-  const queryClient = useQueryClient();
+export function ContentPlayer({ playlistId, isPreview = false }: ContentPlayerProps) {
+  const [currentItemIndex, setCurrentItemIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [lastPlaylistId, setLastPlaylistId] = useState<number | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { data: playlist, isLoading } = useQuery<Playlist & { items: PlaylistItem[] }>({
+  // Fetch playlist data
+  const { data: playlist, error: playlistError } = useQuery<Playlist>({
     queryKey: isPreview ? ['/api/playlists', playlistId] : ['/api/player/playlists', playlistId],
     queryFn: () => {
       const endpoint = isPreview ? `/api/playlists/${playlistId}` : `/api/player/playlists/${playlistId}`;
-      console.log(`🎵 Fetching playlist data from: ${endpoint}`);
+      const authToken = localStorage.getItem('authToken');
 
       if (isPreview) {
-        return apiRequest(endpoint).then(res => res.json());
-      } else {
-        const authToken = localStorage.getItem('authToken');
-        return fetch(endpoint, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
-          }
-        }).then(res => {
-          if (!res.ok) {
-            throw new Error(`Failed to fetch playlist: ${res.status}`);
-          }
-          return res.json();
-        });
-      }
-    },
-    enabled: !!playlistId,
-    refetchInterval: isPreview ? 30000 : false, // Solo polling en preview
-    staleTime: isPreview ? 30000 : Infinity, // Cache infinito en player
-    gcTime: 300000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false, // No refetch automático en player
-  });
-
-  // Query para obtener alertas activas (solo en preview, en player se maneja por WebSocket)
-  const { data: alerts = [] } = useQuery<Alert[]>({
-    queryKey: [isPreview ? '/api/alerts/active' : '/api/player/alerts'],
-    queryFn: () => {
-      const endpoint = isPreview ? '/api/alerts/active' : '/api/player/alerts';
-      if (isPreview) {
-        return apiRequest(endpoint).then(res => res.json());
-      } else {
-        const authToken = localStorage.getItem('authToken');
         return fetch(endpoint, {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }
         }).then(res => {
           if (!res.ok) {
-            throw new Error('Failed to fetch alerts');
+            throw new Error('Failed to fetch playlist');
+          }
+          return res.json();
+        });
+      } else {
+        return fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }).then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to fetch playlist');
           }
           return res.json();
         });
       }
     },
-    refetchInterval: isPreview ? 10000 : false, // Solo polling en preview
-    enabled: isPreview ? !!playlistId : false, // Solo habilitado en preview
+    enabled: !!playlistId,
+    refetchInterval: false, // Disable automatic refetch, use WebSocket updates
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Actualizar alertas activas cuando cambian
-  useEffect(() => {
-    if (alerts) {
-      setActiveAlerts(alerts.filter(alert => alert.isActive));
-    }
-  }, [alerts]);
-
-  // Query para obtener widgets activos
+  // Fetch widgets for overlays
   const { data: widgets = [] } = useQuery<Widget[]>({
-    queryKey: [isPreview ? '/api/widgets' : '/api/player/widgets'],
+    queryKey: isPreview ? ['/api/widgets'] : ['/api/player/widgets'],
     queryFn: () => {
       const endpoint = isPreview ? '/api/widgets' : '/api/player/widgets';
-      if (isPreview) {
-        return apiRequest(endpoint).then(res => res.json());
-      } else {
-        const authToken = localStorage.getItem('authToken');
-        return fetch(endpoint, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
-        }).then(res => {
-          if (!res.ok) {
-            throw new Error('Failed to fetch widgets');
-          }
-          return res.json();
-        });
-      }
+      const authToken = localStorage.getItem('authToken');
+
+      return fetch(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      }).then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch widgets');
+        }
+        return res.json();
+      });
     },
-    refetchInterval: isPreview ? 10000 : 120000,
-    enabled: !!playlistId,
+    refetchInterval: false, // Use WebSocket updates
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Real-time update system using WebSocket with heartbeat
+  // WebSocket setup and heartbeat
   useEffect(() => {
-    if (isPreview) return;
+    if (isPreview) return; // No WebSocket for preview mode
 
     const authToken = localStorage.getItem('authToken');
     if (!authToken) return;
 
-    let heartbeatInterval: NodeJS.Timeout;
-    let lastPlaylistId = playlistId;
-
-    // Connect to WebSocket with player authentication
-    console.log('🔌 Connecting player WebSocket...');
+    // Connect WebSocket with player authentication
     wsManager.connect(undefined, authToken);
 
-    // Handle WebSocket messages
+    // WebSocket message handler
     const handleWebSocketMessage = (data: any) => {
-      console.log('🎵 WebSocket message received:', data);
+      console.log('🔌 WebSocket message received:', data);
 
       if (data.type === 'playlist-content-updated' && data.data?.playlistId === playlistId) {
         console.log('🔄 Playlist content updated, refreshing...');
@@ -522,11 +101,11 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         const newPlaylistId = data.data?.newPlaylistId;
         const messageScreenId = data.data?.screenId;
         const screenId = localStorage.getItem('screenId');
-        
-        if (messageScreenId === screenId || !messageScreenId) {
+
+        if (messageScreenId === parseInt(screenId || '0') || !messageScreenId) {
           if (newPlaylistId !== lastPlaylistId) {
             console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} (WebSocket)`);
-            lastPlaylistId = newPlaylistId;
+            setLastPlaylistId(newPlaylistId);
             setTimeout(() => {
               console.log('🔄 Reloading page due to playlist change (WebSocket)...');
               window.location.reload();
@@ -540,7 +119,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         const newPlaylistId = data.data?.playlistId;
         const screenId = localStorage.getItem('screenId');
 
-        if (messageScreenId === screenId) {
+        if (messageScreenId === parseInt(screenId || '0')) {
           console.log(`🔄 Screen playlist updated to ${newPlaylistId} (WebSocket)`);
           setTimeout(() => {
             console.log('🔄 Reloading page due to screen playlist update...');
@@ -549,441 +128,259 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         }
       }
     };
-    
+
     const unsubscribePlaylistChange = wsManager.subscribe('playlist-change', handleWebSocketMessage);
     const unsubscribePlaylistContent = wsManager.subscribe('playlist-content-updated', handleWebSocketMessage);
     const unsubscribePlaybackControl = wsManager.subscribe('playback-control', handleWebSocketMessage);
     const unsubscribeScreenPlaylist = wsManager.subscribe('screen-playlist-updated', handleWebSocketMessage);
-    
-    // Heartbeat cada 1 minuto
-    const sendHeartbeat = () => {
+
+    // Heartbeat every 1 minute
+    const heartbeatInterval = setInterval(() => {
       if (wsManager.isConnected()) {
         wsManager.send({ 
           type: 'player-heartbeat', 
           timestamp: new Date().toISOString(),
           screenId: localStorage.getItem('screenId')
         });
+        console.log('💓 Heartbeat sent via WebSocket');
       } else {
-        // Fallback HTTP heartbeat si WebSocket no está conectado
+        // Fallback HTTP heartbeat if WebSocket is not connected
         fetch('/api/screens/heartbeat', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${authToken}`,
             'Content-Type': 'application/json'
           }
+        }).then(response => {
+          if (response.ok) {
+            console.log('💓 Fallback HTTP heartbeat sent');
+          }
         }).catch(error => {
           console.error('HTTP Heartbeat failed:', error);
         });
       }
-    };
+    }, 60000); // 1 minute
 
-    // Enviar heartbeat cada 60 segundos (1 minuto)
-    console.log('💓 Starting heartbeat (1 minute interval)...');
-    heartbeatInterval = setInterval(sendHeartbeat, 60000);
-    
-    // Enviar heartbeat inicial
-    sendHeartbeat();
-    
     return () => {
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-      }
+      clearInterval(heartbeatInterval);
       unsubscribePlaylistChange();
       unsubscribePlaylistContent();
       unsubscribePlaybackControl();
       unsubscribeScreenPlaylist();
-      console.log('💓 Stopped heartbeat and monitoring');
     };
-  }, [isPreview, playlistId]);
+  }, [playlistId, lastPlaylistId]);
 
-  // Inicializa o actualiza los trackers cuando la playlist cambia
+  // Playlist playback logic
   useEffect(() => {
-    if (playlist?.items && Array.isArray(playlist.items)) {
-      console.log('Playlist changed, updating trackers:', playlist.items);
-
-      const zones: Record<string, PlaylistItem[]> = {};
-      const layout = playlist.layout || 'single_zone';
-
-      switch (layout) {
-        case 'split_vertical':
-          zones['left'] = [];
-          zones['right'] = [];
-          break;
-        case 'split_horizontal':
-          zones['top'] = [];
-          zones['bottom'] = [];
-          break;
-        case 'pip_bottom_right':
-          zones['main'] = [];
-          zones['pip'] = [];
-          break;
-        case 'single_zone':
-        default:
-          zones['main'] = [];
-          break;
+    if (!playlist?.items || playlist.items.length === 0 || !isPlaying) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
-
-      for (const item of playlist.items) {
-        const zone = item.zone || 'main';
-        if (!zones[zone]) {
-          zones[zone] = [];
-        }
-        zones[zone].push(item);
-      }
-
-      for(const zone in zones) {
-        zones[zone].sort((a,b) => (a.order || 0) - (b.order || 0));
-      }
-
-      const newTrackers: Record<string, ZoneTracker> = {};
-      for (const zoneId in zones) {
-        newTrackers[zoneId] = {
-          currentIndex: 0,
-          items: zones[zoneId],
-        };
-      }
-
-      setZoneTrackers(newTrackers);
-    } else {
-      setZoneTrackers({});
+      return;
     }
-  }, [playlist?.id, playlist?.items, playlist?.layout]);
 
-  // Lógica de temporizadores para cada zona
-  useEffect(() => {
-    const timers: NodeJS.Timeout[] = [];
+    const currentItem = playlist.items[currentItemIndex];
+    if (!currentItem) return;
 
-    for (const zoneId in zoneTrackers) {
-      const tracker = zoneTrackers[zoneId];
-      if (tracker.items.length > 0) {
-        const currentItem = tracker.items[tracker.currentIndex];
-        const duration = (currentItem.customDuration || currentItem.contentItem.duration || 10) * 1000;
+    const duration = (currentItem.customDuration || currentItem.contentItem?.duration || 30) * 1000;
 
-        const timer = setTimeout(() => {
-          setZoneTrackers(prev => ({
-            ...prev,
-            [zoneId]: {
-              ...prev[zoneId],
-              currentIndex: (prev[zoneId].currentIndex + 1) % prev[zoneId].items.length,
-            },
-          }));
-        }, duration);
-
-        timers.push(timer);
-      }
-    }
+    intervalRef.current = setTimeout(() => {
+      setCurrentItemIndex((prevIndex) => 
+        prevIndex + 1 >= playlist.items!.length ? 0 : prevIndex + 1
+      );
+    }, duration);
 
     return () => {
-      timers.forEach(clearTimeout);
-    };
-  }, [zoneTrackers]);
-
-  // Manejar la expiración de alertas
-  const handleAlertExpired = (alertId: number) => {
-    setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
-
-    if (!isPreview) {
-      const authToken = localStorage.getItem('authToken');
-      fetch(`/api/player/alerts/${alertId}/expire`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      }).catch(error => {
-        console.error('Failed to expire alert:', error);
-      });
-    }
-  };
-
-  // Escuchar actualizaciones de alertas via WebSocket con caducidad automática
-  useEffect(() => {
-    if (isPreview) return;
-
-    const alertTimers = new Map<number, NodeJS.Timeout>();
-
-    const handleAlertMessage = (data: any) => {
-      console.log('🔔 Alert message received:', data);
-      
-      if (data.type === 'alert') {
-        const alert = data.data;
-        if (alert.isActive) {
-          setActiveAlerts(prev => {
-            // Evitar duplicados
-            if (prev.some(a => a.id === alert.id)) {
-              return prev;
-            }
-            
-            // Configurar auto-caducidad si la alerta tiene duración
-            if (alert.duration && alert.duration > 0 && !alert.isFixed) {
-              const timer = setTimeout(() => {
-                console.log(`⏰ Alert ${alert.id} expired after ${alert.duration} seconds`);
-                setActiveAlerts(current => current.filter(a => a.id !== alert.id));
-                alertTimers.delete(alert.id);
-              }, alert.duration * 1000);
-              
-              alertTimers.set(alert.id, timer);
-            }
-            
-            return [...prev, alert];
-          });
-        } else {
-          setActiveAlerts(prev => prev.filter(a => a.id !== alert.id));
-          // Limpiar timer si existe
-          const timer = alertTimers.get(alert.id);
-          if (timer) {
-            clearTimeout(timer);
-            alertTimers.delete(alert.id);
-          }
-        }
-      } else if (data.type === 'alert-deleted') {
-        const alertId = data.data.id || data.data.alertId;
-        setActiveAlerts(prev => prev.filter(a => a.id !== alertId));
-        // Limpiar timer si existe
-        const timer = alertTimers.get(alertId);
-        if (timer) {
-          clearTimeout(timer);
-          alertTimers.delete(alertId);
-        }
+      if (intervalRef.current) {
+        clearTimeout(intervalRef.current);
+        intervalRef.current = null;
       }
     };
+  }, [playlist, currentItemIndex, isPlaying]);
 
-    const unsubscribeAlert = wsManager.subscribe('alert', handleAlertMessage);
-    const unsubscribeAlertDeleted = wsManager.subscribe('alert-deleted', handleAlertMessage);
-
-    // Cleanup timers on unmount
-    return () => {
-      unsubscribeAlert();
-      unsubscribeAlertDeleted();
-      alertTimers.forEach(timer => clearTimeout(timer));
-      alertTimers.clear();
-    };
-  }, [isPreview]);
-
-  // Función para renderizar el contenido de un item
-  const renderContentItem = (item: PlaylistItem) => {
-    if (!item?.contentItem) {
-      return (
-        <div style={{ 
-          ...styles.media, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          color: 'rgba(255,255,255,0.5)',
-          backgroundColor: '#1a1a1a'
-        }}>
-          Sin contenido disponible
+  // Handle playlist or widget errors
+  if (playlistError) {
+    console.error('Playlist error:', playlistError);
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <h1 className="text-2xl mb-4">Error de Conexión</h1>
+          <p className="text-lg">No se pudo cargar la playlist</p>
+          <p className="text-sm mt-2 opacity-70">
+            {playlistError.message || 'Error desconocido'}
+          </p>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    const { type, url, title } = item.contentItem;
+  // Loading state
+  if (!playlist) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-lg">Cargando contenido...</p>
+        </div>
+      </div>
+    );
+  }
 
-    const isYouTubeURL = (url: string) => {
-      return url && (
-        url.includes('youtube.com/watch') || 
-        url.includes('youtu.be/') || 
-        url.includes('youtube.com/embed/') ||
-        url.includes('youtube.com/v/')
-      );
-    };
+  // No content state
+  if (!playlist.items || playlist.items.length === 0) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <h1 className="text-2xl mb-4">Sin Contenido</h1>
+          <p className="text-lg">Esta playlist no tiene elementos para mostrar</p>
+        </div>
+      </div>
+    );
+  }
 
-    if (isYouTubeURL(url)) {
-      return <YouTubePlayer url={url} />;
-    }
+  const currentItem = playlist.items[currentItemIndex];
+  if (!currentItem?.contentItem) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <h1 className="text-2xl mb-4">Error de Contenido</h1>
+          <p className="text-lg">El elemento actual no es válido</p>
+        </div>
+      </div>
+    );
+  }
 
-    switch (type) {
-      case 'image': 
-        return <ImagePlayer src={url} />;
-      case 'video': 
-        return <VideoPlayer src={url} />;
-      case 'pdf':
-        return <PDFPlayer src={url} />;
-      case 'webpage': 
-        return <WebpagePlayer src={url} />;
-      default: 
+  const contentItem = currentItem.contentItem;
+
+  // Render content based on type
+  const renderContent = () => {
+    const baseUrl = window.location.origin;
+
+    switch (contentItem.type) {
+      case 'image':
         return (
-          <div style={{ 
-            ...styles.media, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: 'rgba(255,255,255,0.5)',
-            backgroundColor: '#1a1a1a'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '24px', marginBottom: '10px' }}>❓</div>
-              <div>Tipo de contenido no soportado: {type}</div>
+          <img
+            src={`${baseUrl}${contentItem.url}`}
+            alt={contentItem.title}
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              console.error('Error loading image:', contentItem.url);
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        );
+
+      case 'video':
+        return (
+          <video
+            src={`${baseUrl}${contentItem.url}`}
+            className="w-full h-full object-contain"
+            autoPlay
+            muted
+            onError={(e) => {
+              console.error('Error loading video:', contentItem.url);
+            }}
+            onEnded={() => {
+              // Move to next item when video ends naturally
+              setCurrentItemIndex((prevIndex) => 
+                prevIndex + 1 >= playlist.items!.length ? 0 : prevIndex + 1
+              );
+            }}
+          />
+        );
+
+      case 'webpage':
+        return (
+          <iframe
+            src={contentItem.url}
+            className="w-full h-full border-0"
+            title={contentItem.title}
+            onError={(e) => {
+              console.error('Error loading webpage:', contentItem.url);
+            }}
+          />
+        );
+
+      case 'pdf':
+        return (
+          <iframe
+            src={`${baseUrl}${contentItem.url}`}
+            className="w-full h-full border-0"
+            title={contentItem.title}
+            onError={(e) => {
+              console.error('Error loading PDF:', contentItem.url);
+            }}
+          />
+        );
+
+      default:
+        return (
+          <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-600">
+            <div className="text-center">
+              <h2 className="text-xl mb-2">{contentItem.title}</h2>
+              <p>Tipo de contenido no soportado: {contentItem.type}</p>
             </div>
           </div>
         );
     }
   };
 
-  // Función para renderizar una zona específica
-  const renderZone = (zoneId: string) => {
-    const tracker = zoneTrackers[zoneId];
-    if (!tracker || tracker.items.length === 0) {
-      return null;
-    }
-    const currentItem = tracker.items[tracker.currentIndex];
-    return renderContentItem(currentItem);
-  };
-
-  // Si no hay playlistId, mostrar mensaje de espera
-  if (!playlistId) {
-    return (
-      <div style={styles.container}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', marginBottom: '15px' }}>⏳ Esperando configuración</div>
-            <div style={{ fontSize: '16px', opacity: 0.8, maxWidth: '600px', lineHeight: '1.5' }}>
-              Esta pantalla está emparejada pero no tiene una playlist asignada.
-              <br />
-              Asigna una playlist desde el panel de administración para comenzar la reproducción.
-            </div>
-          </div>
-        </div>
+  return (
+    <div className="relative w-full h-screen bg-black overflow-hidden">
+      {/* Main content */}
+      <div className="w-full h-full">
+        {renderContent()}
       </div>
-    );
-  }
 
-  if (isLoading) return (
-    <div style={styles.container}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '20px', marginBottom: '10px' }}>Cargando Playlist...</div>
-          <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {playlistId}</div>
-        </div>
-      </div>
-    </div>
-  );
+      {/* Alert overlay */}
+      <AlertOverlay screenId={parseInt(localStorage.getItem('screenId') || '0')} />
 
-  if (!playlist) return (
-    <div style={styles.container}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '20px', marginBottom: '10px' }}>Playlist no encontrada</div>
-          <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {playlistId}</div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Renderizado del Layout
-  const layout = playlist?.layout || 'single_zone';
-
-  switch (layout) {
-    case 'split_vertical':
-      return (
-        <div style={{ ...styles.container, display: 'flex' }}>
-          <div style={{ ...styles.zone, width: '50%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
-            {renderZone('left') || (
-              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                Sin contenido en zona izquierda
+      {/* Widget overlays */}
+      {widgets.filter(widget => widget.isEnabled).map((widget) => (
+        <div
+          key={widget.id}
+          className={`absolute ${
+            widget.position === 'top-left' ? 'top-4 left-4' :
+            widget.position === 'top-right' ? 'top-4 right-4' :
+            widget.position === 'bottom-left' ? 'bottom-4 left-4' :
+            widget.position === 'bottom-right' ? 'bottom-4 right-4' :
+            'top-4 right-4'
+          } z-20`}
+        >
+          {widget.type === 'clock' && (
+            <div className="bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg">
+              <div className="text-lg font-mono">
+                {new Date().toLocaleTimeString()}
               </div>
-            )}
-          </div>
-          <div style={{ ...styles.zone, width: '50%' }}>
-            {renderZone('right') || (
-              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                Sin contenido en zona derecha
-              </div>
-            )}
-          </div>
-
-          {widgets.filter(w => w.isEnabled).map((widget) => (
-            <WidgetRenderer key={widget.id} widget={widget} />
-          ))}
-        </div>
-      );
-    case 'split_horizontal':
-      return (
-        <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ ...styles.zone, height: '50%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
-            {renderZone('top') || (
-              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                Sin contenido en zona superior
-              </div>
-            )}
-          </div>
-          <div style={{ ...styles.zone, height: '50%' }}>
-            {renderZone('bottom') || (
-              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                Sin contenido en zona inferior
-              </div>
-            )}
-          </div>
-
-          {widgets.filter(w => w.isEnabled).map((widget) => (
-            <WidgetRenderer key={widget.id} widget={widget} />
-          ))}
-        </div>
-      );
-    case 'pip_bottom_right':
-      return (
-        <div style={{...styles.container, position: 'relative' }}>
-          <div style={{...styles.zone}}>
-            {renderZone('main') || (
-              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                Sin contenido principal
-              </div>
-            )}
-          </div>
-          <div style={{
-            position: 'absolute', 
-            bottom: '20px', 
-            right: '20px', 
-            width: '25%', 
-            height: '25%', 
-            border: '3px solid rgba(255,255,255,0.8)', 
-            borderRadius: '8px',
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-            zIndex: 10
-          }}>
-            {renderZone('pip') || (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>
-                Sin PiP
-              </div>
-            )}
-          </div>
-
-          {widgets.filter(w => w.isEnabled).map((widget) => (
-            <WidgetRenderer key={widget.id} widget={widget} />
-          ))}
-
-          {activeAlerts.map((alert) => (
-            <AlertOverlay
-              key={alert.id}
-              alert={alert}
-              onAlertExpired={handleAlertExpired}
-            />
-          ))}
-        </div>
-      );
-    case 'single_zone':
-    default:
-      return (
-        <div style={styles.container}>
-          {renderZone('main') || (
-            <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-              Sin contenido
             </div>
           )}
-
-          {widgets.filter(w => w.isEnabled).map((widget) => (
-            <WidgetRenderer key={widget.id} widget={widget} />
-          ))}
-
-          {activeAlerts.map((alert) => (
-            <AlertOverlay
-              key={alert.id}
-              alert={alert}
-              onAlertExpired={handleAlertExpired}
-            />
-          ))}
+          {widget.type === 'weather' && (
+            <div className="bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg">
+              <div className="text-lg">
+                {widget.settings?.temperature || '22°C'}
+              </div>
+            </div>
+          )}
+          {widget.type === 'text' && (
+            <div className="bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg">
+              <div className="text-lg">
+                {widget.settings?.text || widget.name}
+              </div>
+            </div>
+          )}
         </div>
-      );
-  }
+      ))}
+
+      {/* Debug info in preview mode */}
+      {isPreview && (
+        <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white text-xs p-2 rounded z-30">
+          <div>Playlist: {playlist.name}</div>
+          <div>Item: {currentItemIndex + 1}/{playlist.items.length}</div>
+          <div>Tipo: {contentItem.type}</div>
+          <div>Título: {contentItem.title}</div>
+        </div>
+      )}
+    </div>
+  );
 }
