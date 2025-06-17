@@ -104,7 +104,7 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
           'Content-Type': 'application/json',
         },
       });
-      
+
       if (response.ok) {
         toast({
           title: "Layout guardado",
@@ -124,20 +124,20 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
   const handleMouseDown = (e: React.MouseEvent, zoneId: string, action: 'drag' | 'resize', direction?: string) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!isEditing) return;
-    
+
     setSelectedZone(zoneId);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const container = (e.currentTarget as HTMLElement).parentElement?.getBoundingClientRect();
-    
+
     if (container) {
       setDragStart({
         x: ((e.clientX - container.left) / container.width) * 100,
         y: ((e.clientY - container.top) / container.height) * 100
       });
     }
-    
+
     if (action === 'drag') {
       setIsDragging(true);
     } else {
@@ -148,32 +148,32 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isEditing || !selectedZone || (!isDragging && !isResizing)) return;
-    
+
     const container = e.currentTarget.getBoundingClientRect();
     const currentX = ((e.clientX - container.left) / container.width) * 100;
     const currentY = ((e.clientY - container.top) / container.height) * 100;
-    
+
     const selectedZoneData = zones.find(z => z.id === selectedZone);
     if (!selectedZoneData) return;
-    
+
     if (isDragging) {
       const deltaX = currentX - dragStart.x;
       const deltaY = currentY - dragStart.y;
-      
+
       const newX = Math.max(0, Math.min(90, selectedZoneData.x + deltaX));
       const newY = Math.max(0, Math.min(90, selectedZoneData.y + deltaY));
-      
+
       handleZoneResize(selectedZone, { x: newX, y: newY });
       setDragStart({ x: currentX, y: currentY });
     } else if (isResizing) {
       const deltaX = currentX - dragStart.x;
       const deltaY = currentY - dragStart.y;
-      
+
       let newWidth = selectedZoneData.width;
       let newHeight = selectedZoneData.height;
       let newX = selectedZoneData.x;
       let newY = selectedZoneData.y;
-      
+
       if (resizeDirection.includes('e')) {
         newWidth = Math.max(10, Math.min(100 - selectedZoneData.x, selectedZoneData.width + deltaX));
       }
@@ -190,7 +190,7 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
         newHeight = Math.max(10, selectedZoneData.height + heightChange);
         newY = Math.max(0, selectedZoneData.y - heightChange);
       }
-      
+
       handleZoneResize(selectedZone, { 
         x: newX, 
         y: newY, 
@@ -242,7 +242,7 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
           )}
         </div>
       </div>
-      
+
       <div 
         className="w-full h-64 bg-slate-100 rounded-lg relative border-2 border-dashed border-gray-300 overflow-hidden select-none"
         onMouseMove={handleMouseMove}
@@ -296,7 +296,7 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
                 </div>
               )}
             </div>
-            
+
             {/* Resize handles when editing */}
             {isEditing && selectedZone === zone.id && (
               <>
@@ -317,7 +317,7 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
                   className="absolute -top-1 -left-1 w-3 h-3 bg-blue-500 cursor-nw-resize border border-white"
                   onMouseDown={(e) => handleMouseDown(e, zone.id, 'resize', 'nw')}
                 />
-                
+
                 {/* Edge handles */}
                 <div 
                   className="absolute top-1/2 -right-1 w-2 h-4 bg-blue-500 cursor-e-resize transform -translate-y-1/2 border border-white"
@@ -335,7 +335,7 @@ const CustomLayoutEditor = ({ playlist, onZoneClick, playlistData }: {
                   className="absolute left-1/2 -bottom-1 w-4 h-2 bg-blue-500 cursor-s-resize transform -translate-x-1/2 border border-white"
                   onMouseDown={(e) => handleMouseDown(e, zone.id, 'resize', 's')}
                 />
-                
+
                 {/* Delete button */}
                 {zones.length > 1 && (
                   <Button
@@ -1215,7 +1215,8 @@ export default function Playlists() {
           </DialogHeader>
 
           {selectedPlaylistForLayout && (
-            <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+            <ScrollArea className="flex-1 overflow-hidden">
+              <div className="flex flex-col space-y-4">
               {/* Layout Selection */}
               <div className="flex-shrink-0">
                 <Label className="text-sm font-medium">Tipo de Layout</Label>
@@ -1527,7 +1528,7 @@ export default function Playlists() {
                         <div className="w-1/3 border-2 border-dashed border-indigo-400 rounded-lg bg-indigo-50 flex flex-col items-center justify-center hover:bg-indigo-100 transition-colors cursor-pointer"
                              onClick={() => handleOpenContentLibrary('sidebar')}>
                           <SidebarClose className="w-5 h-5 text-indigo-600 mb-2" />
-                          <span className="text-xs font-medium text-indigo-700">Sidebar</span>
+                          <span className="text-xs font-medium text-indigo-700Sidebar</span>
                           <span className="text-xs text-indigo-600 mt-1">
                             {playlistData?.items?.filter((item: any) => item.zone === 'sidebar')?.length || 0}
                           </span>
@@ -1643,7 +1644,7 @@ export default function Playlists() {
                                 </Badge>
                               </div>
                             </div>
-                            
+
                             {zoneItems.length > 0 ? (
                               <div className="space-y-2">
                                 {zoneItems.sort((a: any, b: any) => a.order - b.order).map((item: any) => (
@@ -1679,6 +1680,7 @@ export default function Playlists() {
                 </div>
               </div>
             </div>
+            </ScrollArea>
           )}
         </DialogContent>
       </Dialog>
@@ -1705,7 +1707,7 @@ export default function Playlists() {
           </div>
 
           {/* 3. LISTA DE CONTENIDO: Esta es la única parte que crece y se desplaza */}
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="p-6 pt-0 space-y-2">
               {filteredContent.map((item: any) => {
                 const IconComponent = getContentIcon(item.type);
@@ -1747,7 +1749,7 @@ export default function Playlists() {
                 </div>
               )}
             </div>
-          </div>
+          </ScrollArea>
 
           {/* 4. BOTONES DE ACCIÓN: Siempre fijos en la parte inferior */}
           <div className="flex-shrink-0 flex items-center justify-between p-4 border-t bg-background">
@@ -1767,7 +1769,6 @@ export default function Playlists() {
               </Button>
             </div>
           </div>
-
         </DialogContent>
       </Dialog>
     </div>

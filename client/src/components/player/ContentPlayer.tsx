@@ -517,6 +517,15 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         });
       }
 
+      if (data.type === 'playlist-item-deleted') {
+        console.log('🗑️ Playlist item deleted, updating zones...');
+        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+        queryClient.refetchQueries({ 
+          queryKey: ['/api/player/playlists', playlistId],
+          type: 'active'
+        });
+      }
+
       if (data.type === 'playlist-change') {
         const newPlaylistId = data.data?.newPlaylistId;
         const messageScreenId = data.data?.screenId;
@@ -1274,36 +1283,54 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       if (playlist?.customLayoutConfig) {
         try {
           const customConfig = JSON.parse(playlist.customLayoutConfig);
+          
+          console.log('🎨 Rendering custom layout with config:', customConfig);
+          console.log('🗂️ Available zone trackers:', Object.keys(zoneTrackers));
+          
           return (
-            <div style={{ ...styles.container, position: 'relative' }}>
-              {customConfig.zones?.map((zone: any) => (
-                <div
-                  key={zone.id}
-                  style={{
-                    position: 'absolute',
-                    left: `${zone.x}%`,
-                    top: `${zone.y}%`,
-                    width: `${zone.width}%`,
-                    height: `${zone.height}%`,
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    overflow: 'hidden'
-                  }}
-                >
-                  {renderZone(zone.id) || (
-                    <div style={{ 
-                      width: '100%', 
-                      height: '100%', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      color: 'rgba(255,255,255,0.5)',
-                      fontSize: '12px'
-                    }}>
-                      Zona {zone.id}
-                    </div>
-                  )}
-                </div>
-              ))}
+            <div style={{ ...styles.container, position: 'relative', overflow: 'hidden' }}>
+              {customConfig.zones?.map((zone: any) => {
+                const zoneContent = renderZone(zone.id);
+                console.log(`🎯 Zone ${zone.id} content:`, zoneContent ? 'Has content' : 'Empty');
+                
+                return (
+                  <div
+                    key={zone.id}
+                    style={{
+                      position: 'absolute',
+                      left: `${zone.x}%`,
+                      top: `${zone.y}%`,
+                      width: `${zone.width}%`,
+                      height: `${zone.height}%`,
+                      border: isPreview ? '1px solid rgba(255,255,255,0.2)' : 'none',
+                      overflow: 'hidden',
+                      backgroundColor: 'rgba(0,0,0,0.1)',
+                      zIndex: 1
+                    }}
+                  >
+                    {zoneContent || (
+                      <div style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        color: 'rgba(255,255,255,0.3)',
+                        fontSize: '14px',
+                        textAlign: 'center',
+                        padding: '10px'
+                      }}>
+                        {isPreview ? `${zone.title || zone.id}` : ''}
+                        {!isPreview && (
+                          <div style={{ fontSize: '12px', opacity: 0.5 }}>
+                            Sin contenido
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               {widgets.filter(w => w.isEnabled).map((widget) => (
                 <WidgetRenderer key={widget.id} widget={widget} />

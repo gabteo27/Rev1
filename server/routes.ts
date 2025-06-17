@@ -583,11 +583,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Playlist item not found" });
       }
 
-      // --- ADDED: Notify connected players and admins of playlist change ---
+      // --- ENHANCED: Notify connected players and admins of playlist content change ---
       if (playlistItem) {
-        broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-item-deleted');
+        console.log(`Broadcasting playlist item deletion for playlist ${playlistItem.playlistId}`);
+        await broadcastPlaylistUpdate(userId, playlistItem.playlistId, 'playlist-content-updated');
+        
+        // Also broadcast specific deletion event for immediate UI updates
+        broadcastToUser(userId, 'playlist-item-deleted', {
+          itemId: id,
+          playlistId: playlistItem.playlistId,
+          timestamp: new Date().toISOString()
+        });
       }
-      // --- END ADDED ---
+      // --- END ENHANCED ---
 
       res.json({ message: "Playlist item deleted successfully" });
     } catch (error) {
