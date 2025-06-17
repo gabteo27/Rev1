@@ -57,7 +57,17 @@ import {
   Move3D,
   Expand,
   MousePointer2,
-  AspectRatio
+  AspectRatio,
+  Image,
+  Video,
+  Globe,
+  FileText,
+  Type,
+  List,
+  Shuffle,
+  ScrollText,
+  SidebarOpen,
+  SidebarClose
 } from "lucide-react";
 
 // Tipos para mayor claridad
