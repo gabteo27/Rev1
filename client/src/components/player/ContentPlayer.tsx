@@ -84,7 +84,7 @@ const WebpagePlayer = ({ src }: { src: string }) => {
 // PDF Player Component
 const PDFPlayer = ({ src }: { src: string }) => {
   const [error, setError] = useState(false);
-  
+
   const pdfViewerUrl = src.startsWith('http') 
     ? `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
     : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + src)}&embedded=true`;
@@ -489,6 +489,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
   const queryClient = useQueryClient();
+  const [currentPlaylistId, setCurrentPlaylistId] = useState<number | undefined>(undefined);
 
   const { data: playlist, isLoading } = useQuery<Playlist & { items: PlaylistItem[] }>({
     queryKey: isPreview ? ['/api/playlists', playlistId] : ['/api/player/playlists', playlistId],
@@ -600,7 +601,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
       if (data.type === 'playlist-content-updated' && data.data?.playlistId === playlistId) {
         console.log('🔄 Playlist content updated, refreshing...');
-        
+
         // Immediate invalidation and refetch
         queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
         queryClient.refetchQueries({ 
@@ -611,9 +612,9 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
       if (data.type === 'playlist-item-deleted' && data.data?.playlistId === playlistId) {
         console.log('🗑️ Playlist item deleted, updating player state...');
-        
+
         const deletedItemId = data.data?.itemId;
-        
+
         // Reset zone trackers to avoid showing deleted items
         setZoneTrackers(prev => {
           const newTrackers = { ...prev };
@@ -626,14 +627,14 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           });
           return newTrackers;
         });
-        
+
         // Immediate invalidation and refetch
         queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
         queryClient.refetchQueries({ 
           queryKey: ['/api/player/playlists', playlistId],
           type: 'active'
         });
-        
+
         console.log(`🔄 Player state updated after deletion of item ${deletedItemId}`);
       }
 
@@ -648,9 +649,9 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           if (newPlaylistId !== lastPlaylistId) {
             console.log(`🎵 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} - IMMEDIATE RELOAD`);
             lastPlaylistId = newPlaylistId;
-            
+
             // Recarga inmediata sin delay
-            window.location.reload();
+            // window.location.reload();
           }
         }
       }
@@ -662,7 +663,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
         if (messageScreenId === screenId && currentPlaylistId === playlistId) {
           console.log(`🗑️ Content deleted from current playlist, refreshing player...`);
-          
+
           // Invalidar queries y refrescar inmediatamente
           queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
           queryClient.refetchQueries({ 
@@ -691,10 +692,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
         if (messageScreenId === screenId) {
           console.log(`🔄 Screen playlist updated to ${newPlaylistId} (WebSocket)`);
-          setTimeout(() => {
-            console.log('🔄 Reloading page due to screen playlist update...');
-            window.location.reload();
-          }, 500);
+          // setTimeout(() => {
+          //   console.log('🔄 Reloading page due to screen playlist update...');
+          //   window.location.reload();
+          // }, 500);
         }
       }
     };
@@ -749,6 +750,27 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       console.log('💓 Stopped heartbeat and monitoring');
     };
   }, [isPreview, playlistId]);
+
+  // Update current playlist ID when screen info changes or playlistId prop changes
+  useEffect(() => {
+    if (playlistId && playlistId !== currentPlaylistId) {
+      console.log(`Updating current playlist ID from ${currentPlaylistId} to ${playlistId}`);
+      setCurrentPlaylistId(playlistId);
+    } else if (screenInfo?.valid && screenInfo.screen?.playlistId) {
+      console.log(`Screen playlist ID: ${screenInfo.screen.playlistId}, Current: ${currentPlaylistId}`);
+      if (screenInfo.screen.playlistId !== currentPlaylistId) {
+        console.log(`Updating playlist ID from ${currentPlaylistId} to ${screenInfo.screen.playlistId}`);
+        setCurrentPlaylistId(screenInfo.screen.playlistId);
+      }
+    } else {
+      // Get playlistId from URL params if available
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlPlaylistId = urlParams.get('playlistId') ? parseInt(urlParams.get('playlistId')!) : undefined;
+      if (urlPlaylistId && !currentPlaylistId) {
+        setCurrentPlaylistId(urlPlaylistId);
+      }
+    }
+  }, [playlistId, screenInfo, currentPlaylistId]);
 
   // Inicializa o actualiza los trackers cuando la playlist cambia
   useEffect(() => {
@@ -928,13 +950,13 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     if (data.deleted || data.type === 'alert-deleted') {
       const alertId = data.id || data.data?.id;
       console.log(`🔔 Deleting alert ${alertId}`);
-      
+
       setActiveAlerts(prev => {
         const filtered = prev.filter(alert => alert.id !== alertId);
         console.log(`🔔 Alerts after deletion:`, filtered.length);
         return filtered;
       });
-      
+
       // Clear timer if exists
       if (alertTimers.has(alertId)) {
         clearTimeout(alertTimers.get(alertId));
@@ -1171,7 +1193,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     case 'custom_layout': {
       let customZones: any[] = [];
       let customConfig: any = {};
-      
+
       try {
         // Handle both string and object types for customLayoutConfig
         if (typeof playlist.customLayoutConfig === 'string') {
@@ -1179,7 +1201,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         } else if (typeof playlist.customLayoutConfig === 'object' && playlist.customLayoutConfig !== null) {
           customConfig = playlist.customLayoutConfig;
         }
-        
+
         customZones = customConfig.zones || [];
         console.log('Custom layout zones:', customZones);
       } catch (e) {
