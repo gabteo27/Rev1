@@ -143,6 +143,21 @@ export default function PlayerPage() {
         type: 'pairing-device',
         deviceId: deviceId
       }));
+      
+      // If already paired, also identify as screen
+      const authToken = localStorage.getItem('authToken');
+      const screenId = localStorage.getItem('screenId');
+      if (authToken && screenId) {
+        console.log(`Identifying as screen ${screenId} for playlist changes`);
+        ws.send(JSON.stringify({
+          type: 'player-auth',
+          token: authToken
+        }));
+        ws.send(JSON.stringify({
+          type: 'screen-identify',
+          screenId: parseInt(screenId)
+        }));
+      }
     };
 
     ws.onmessage = (event) => {
@@ -153,6 +168,12 @@ export default function PlayerPage() {
           console.log('¡Emparejamiento exitoso via WebSocket!', data);
           localStorage.setItem('authToken', data.authToken);
           localStorage.setItem('screenName', data.name);
+          
+          // Guardar screenId si está disponible
+          if (data.screenId) {
+            localStorage.setItem('screenId', data.screenId.toString());
+            console.log(`Screen ID ${data.screenId} guardado en localStorage`);
+          }
 
           if (data.playlistId) {
             localStorage.setItem('playlistId', data.playlistId.toString());

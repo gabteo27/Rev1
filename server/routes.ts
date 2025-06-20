@@ -217,9 +217,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             deviceId: screen.deviceHardwareId,
             authToken: authToken,
             name: updatedScreen?.name,
-            playlistId: updatedScreen?.playlistId
+            playlistId: updatedScreen?.playlistId,
+            screenId: updatedScreen?.id
           }));
-          console.log(`Pairing completion sent to device ${screen.deviceHardwareId}`);
+          console.log(`Pairing completion sent to device ${screen.deviceHardwareId} with screenId ${updatedScreen?.id}`);
         }
       });
 
@@ -884,12 +885,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const wssInstance = app.get('wss') as WebSocketServer;
         let messageSent = false;
+        let connectedClients = 0;
+        let adminClients = 0;
+        let playerClients = 0;
 
         wssInstance.clients.forEach((client: WebSocket) => {
           const clientWithId = client as WebSocketWithId;
           if (clientWithId.readyState === WebSocket.OPEN) {
+            connectedClients++;
+            
             // Send to admin clients
             if (clientWithId.userId === userId && !clientWithId.screenId) {
+              adminClients++;
               clientWithId.send(JSON.stringify({
                 type: 'screen-playlist-updated',
                 data: { 
@@ -900,9 +907,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   timestamp: new Date().toISOString()
                 }
               }));
+              console.log(`📤 Sent screen-playlist-updated to admin user ${userId}`);
             }
             // Send immediate playlist change to the specific screen
             else if (clientWithId.screenId === screenId) {
+              playerClients++;
               clientWithId.send(JSON.stringify({
                 type: 'playlist-change',
                 data: { 
@@ -913,11 +922,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }));
               
               messageSent = true;
-              console.log(`✅ Sent playlist change to screen ${screenId}`);
+              console.log(`✅ Sent playlist-change to screen ${screenId}`);
+            } else if (clientWithId.screenId) {
+              console.log(`🔍 Found screen ${clientWithId.screenId} but looking for ${screenId}`);
             }
           }
         });
 
+        console.log(`📊 WebSocket status: ${connectedClients} total, ${adminClients} admin, ${playerClients} players`);
+        
         if (!messageSent) {
           console.log(`⚠️ No connected screen found for screen ${screenId}`);
         }
@@ -1555,11 +1568,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle player authentication
         if (parsed.type === 'player-auth' && parsed.token) {
           try {
+            console.log(`🔐 Player auth attempt with token: ${parsed.token.substring(0, 8)}...`);
             const screen = await storage.getScreenByAuthToken(parsed.token);
             if (screen && screen.userId) {
               (ws as any).userId = screen.userId;
               (ws as any).screenId = screen.id;
-              console.log(`Player WebSocket authenticated for screen ${screen.id} (user: ${screen.userId})`);
+              console.log(`✅ Player WebSocket authenticated for screen ${screen.id} (user: ${screen.userId})`);
 
               // Send authentication success response
               ws.send(JSON.stringify({ 
@@ -1567,13 +1581,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 data: { screenId: screen.id, userId: screen.userId } 
               }));
             } else {
+              console.log(`❌ Player auth failed: screen not found or no userId`);
               ws.send(JSON.stringify({ 
                 type: 'auth_error', 
                 data: { message: 'Invalid token or screen not found' } 
               }));
             }
           } catch (error) {
-            console.error('Player authentication failed:', error);
+            console.error('❌ Player authentication failed:', error);
             ws.send(JSON.stringify({ 
               type: 'auth_error', 
               data: { message: 'Authentication failed' } 
@@ -1584,7 +1599,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle screen identification
         if (parsed.type === 'screen-identify' && parsed.screenId) {
           (ws as any).screenId = parsed.screenId;
-          console.log(`Screen ${parsed.screenId} identified via WebSocket`);
+          console.log(`🆔 Screen ${parsed.screenId} identified via WebSocket`);
+          
+          // Confirm identification
+          ws.send(JSON.stringify({
+            type: 'screen-identified',
+            data: { screenId: parsed.screenId }
+          }));
         }
       } catch (e) {
         console.warn("Invalid WebSocket message received");
