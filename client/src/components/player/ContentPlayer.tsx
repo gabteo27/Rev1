@@ -638,28 +638,20 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }
 
       if (data.type === 'playlist-change') {
-        const newPlaylistId = data.data?.playlistId;
+        const newPlaylistId = data.data?.playlistId; // Corregido: usar playlistId directamente
         const messageScreenId = data.data?.screenId;
         const screenId = localStorage.getItem('screenId');
 
-        console.log(`🔄 Playlist change received in ContentPlayer: ${lastPlaylistId} → ${newPlaylistId}, screenId: ${messageScreenId}, currentScreenId: ${screenId}`);
+        console.log(`🔄 Playlist change in ContentPlayer: ${lastPlaylistId} → ${newPlaylistId}, screenId: ${messageScreenId}`);
 
         if (messageScreenId && messageScreenId.toString() === screenId) {
-          console.log(`🎵 PLAYLIST CHANGE CONFIRMED for this screen - RELOADING IMMEDIATELY`);
-          // Forzar recarga inmediata sin condiciones adicionales
-          window.location.reload();
-        }
-      }
-
-      if (data.type === 'force-reload') {
-        const messageScreenId = data.data?.screenId;
-        const screenId = localStorage.getItem('screenId');
-        
-        console.log(`🔄 Force reload message received for screen ${messageScreenId}, current: ${screenId}`);
-        
-        if (messageScreenId && messageScreenId.toString() === screenId) {
-          console.log(`🔄 FORCE RELOAD CONFIRMED - RELOADING NOW (reason: ${data.data?.reason})`);
-          window.location.reload();
+          if (newPlaylistId !== lastPlaylistId) {
+            console.log(`🎵 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} - IMMEDIATE RELOAD`);
+            lastPlaylistId = newPlaylistId;
+            
+            // Recarga inmediata sin delay
+            window.location.reload();
+          }
         }
       }
 
@@ -712,7 +704,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     const unsubscribePlaylistItemDeleted = wsManager.subscribe('playlist-item-deleted', handleWebSocketMessage);
     const unsubscribePlaybackControl = wsManager.subscribe('playback-control', handleWebSocketMessage);
     const unsubscribeScreenPlaylist = wsManager.subscribe('screen-playlist-updated', handleWebSocketMessage);
-    const unsubscribeForceReload = wsManager.subscribe('force-reload', handleWebSocketMessage);
 
     // Heartbeat cada 2 minutos para reducir la carga
     const sendHeartbeat = () => {
@@ -755,7 +746,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       unsubscribePlaylistItemDeleted();
       unsubscribePlaybackControl();
       unsubscribeScreenPlaylist();
-      unsubscribeForceReload();
       console.log('💓 Stopped heartbeat and monitoring');
     };
   }, [isPreview, playlistId]);

@@ -202,24 +202,11 @@ export default function PlayerPage() {
           const { playlistId: newPlaylistId, screenId: messageScreenId } = data.data;
           const currentScreenId = localStorage.getItem('screenId');
           
-          console.log(`📋 Playlist change - messageScreenId: ${messageScreenId}, currentScreenId: ${currentScreenId}`);
+          console.log(`📋 Comparing screenIds: message=${messageScreenId}, current=${currentScreenId}`);
           
           if (messageScreenId && messageScreenId.toString() === currentScreenId) {
-            console.log(`🎵 PLAYLIST CHANGE CONFIRMED - RELOADING IMMEDIATELY (playlist: ${newPlaylistId})`);
-            // Forzar recarga inmediata, igual que cuando se borra un item
-            window.location.reload();
-          }
-        }
-
-        // Manejar forzado de recarga
-        if (data.type === 'force-reload') {
-          const messageScreenId = data.data?.screenId;
-          const currentScreenId = localStorage.getItem('screenId');
-          
-          console.log(`🔄 Force reload received for screen ${messageScreenId}, current: ${currentScreenId}`);
-          
-          if (messageScreenId && messageScreenId.toString() === currentScreenId) {
-            console.log(`🔄 FORCE RELOAD CONFIRMED - RELOADING NOW (reason: ${data.data?.reason})`);
+            console.log(`🎵 Playlist changed to ${newPlaylistId} for this screen - RELOADING NOW`);
+            // Cambio inmediato sin delay
             window.location.reload();
           }
         }
