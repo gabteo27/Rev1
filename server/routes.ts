@@ -398,7 +398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Notificar directamente a las pantallas afectadas
           const wssInstance = app.get('wss') as WebSocketServer;
-
+          
           wssInstance.clients.forEach((client: WebSocket) => {
             const clientWithId = client as WebSocketWithId;
             if (clientWithId.readyState === WebSocket.OPEN) {
@@ -406,7 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (clientWithId.screenId && affectedScreens.some(s => s.id === clientWithId.screenId)) {
                 const screen = affectedScreens.find(s => s.id === clientWithId.screenId);
                 console.log(`📺 Notifying screen ${clientWithId.screenId} about content deletion`);
-
+                
                 clientWithId.send(JSON.stringify({
                   type: 'content-deleted-from-playlist',
                   data: { 
@@ -853,8 +853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update screen
   app.put("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req```tool_code
-.user.claims.sub;
+      const userId = req.user.claims.sub;
       const screenId = parseInt(req.params.id);
       const { name, location, playlistId } = req.body;
 
@@ -880,84 +879,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastScreenUpdate(screen);
 
       // If playlist changed, send immediate update to the specific screen
-        if (req.body.hasOwnProperty('playlistId') && oldPlaylistId !== playlistId) {
-          console.log(`📡 Playlist changed for screen ${screenId}: ${oldPlaylistId} → ${playlistId}`);
+      if (req.body.hasOwnProperty('playlistId') && oldPlaylistId !== playlistId) {
+        console.log(`📡 Playlist changed for screen ${screenId}: ${oldPlaylistId} → ${playlistId}`);
 
-          const wssInstance = app.get('wss') as WebSocketServer;
-          let playerNotified = false;
-          let adminNotified = false;
+        const wssInstance = app.get('wss') as WebSocketServer;
+        let messageSent = false;
 
-          wssInstance.clients.forEach((client: WebSocket) => {
-            const clientWithId = client as WebSocketWithId;
-            if (clientWithId.readyState === WebSocket.OPEN) {
-              // Send to admin clients
-              if (clientWithId.userId === userId) {
-                clientWithId.send(JSON.stringify({
+        wssInstance.clients.forEach((client: WebSocket) => {
+          const clientWithId = client as WebSocketWithId;
+          if (clientWithId.readyState === WebSocket.OPEN) {
+            // Send to admin clients
+            if (clientWithId.userId === userId) {
+              clientWithId.send(JSON.stringify({
+                type: 'screen-playlist-updated',
+                data: { 
+                  screenId: screenId,
+                  playlistId: playlistId,
+                  oldPlaylistId: oldPlaylistId,
+                  screen: screen,
+                  timestamp: new Date().toISOString()
+                }
+              }));
+            }
+            // Send immediate playlist change to the specific screen
+            else if (clientWithId.screenId === screenId) {
+              // Send multiple events to ensure the player responds
+              const messages = [
+                {
+                  type: 'playlist-change',
+                  data: { 
+                    newPlaylistId: playlistId,
+                    oldPlaylistId: oldPlaylistId,
+                    screenId: screenId,
+                    timestamp: new Date().toISOString(),
+                    action: 'immediate-change',
+                    priority: 'high'
+                  }
+                },
+                {
                   type: 'screen-playlist-updated',
                   data: { 
                     screenId: screenId,
                     playlistId: playlistId,
-                    oldPlaylistId: oldPlaylistId,
-                    screen: screen,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    action: 'reload-content'
                   }
-                }));
-                adminNotified = true;
-              }
-              // Send immediate playlist change to the specific screen
-              else if (clientWithId.screenId === screenId || clientWithId.playerScreenId === screenId) {
-                // Send multiple events to ensure the player responds immediately
-                const messages = [
-                  {
-                    type: 'playlist-change',
-                    data: { 
-                      newPlaylistId: playlistId,
-                      oldPlaylistId: oldPlaylistId,
-                      screenId: screenId,
-                      timestamp: new Date().toISOString(),
-                      action: 'immediate-change',
-                      priority: 'high',
-                      forced: true
-                    }
-                  },
-                  {
-                    type: 'screen-playlist-updated',
-                    data: { 
-                      screenId: screenId,
-                      playlistId: playlistId,
-                      oldPlaylistId: oldPlaylistId,
-                      screen: screen,
-                      timestamp: new Date().toISOString(),
-                      forced: true
-                    }
-                  },
-                  {
-                    type: 'player-reload-required',
-                    data: {
-                      screenId: screenId,
-                      newPlaylistId: playlistId,
-                      reason: 'playlist-changed',
-                      timestamp: new Date().toISOString()
-                    }
-                  }
-                ];
+                }
+              ];
 
-                messages.forEach(message => {
-                  clientWithId.send(JSON.stringify(message));
-                });
-
-                console.log(`✅ Sent immediate playlist change to screen ${screenId} (${messages.length} messages)`);
-                playerNotified = true;
-              }
+              messages.forEach(message => {
+                clientWithId.send(JSON.stringify(message));
+              });
+              
+              messageSent = true;
+              console.log(`✅ Sent immediate playlist change to screen ${screenId}`);
             }
-          });
-
-          console.log(`📊 Notification status - Admin: ${adminNotified}, Player: ${playerNotified}`);
-
-          if (!playerNotified) {
-            console.log(`⚠️ No connected player found for screen ${screenId} - will update on next connection`);
           }
+        });
+
+        // Also broadcast playlist updates if there's a new playlist
+        if (playlistId) {
+          setTimeout(async () => {
+            await broadcastPlaylistUpdate(userId, playlistId, 'screen-playlist-updated');
+          }, 100);
         }
+
+        if (!messageSent) {
+          console.log(`⚠️ No connected screen found for screen ${screenId}`);
+        }
+      }
 
       res.json(screen);
     } catch (error) {
@@ -1509,8 +1499,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   interface WebSocketWithId extends WebSocket {
     userId?: string;
     screenId?: number; // Add screenId to the WebSocket interface
-    playerScreenId?: number;
-    isPlayer?: boolean;
   }
 
   wss.on("connection", (ws: WebSocket) => {
@@ -1522,23 +1510,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on("message", async (message) => {
       try {
         const parsed = JSON.parse(message.toString());
-        const data = parsed;
 
         // Handle ping/pong for heartbeat
-        if (data.type === 'ping') {
+        if (parsed.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong' }));
           return;
         }
 
         // Handle pairing device registration
-        if (data.type === 'pairing-device' && data.deviceId) {
-          (ws as any).pairingDeviceId = data.deviceId;
-          console.log(`Device ${data.deviceId} registered for pairing updates`);
+        if (parsed.type === 'pairing-device' && parsed.deviceId) {
+          (ws as any).pairingDeviceId = parsed.deviceId;
+          console.log(`Device ${parsed.deviceId} registered for pairing updates`);
           return;
         }
 
         // Handle player heartbeat
-        if (data.type === 'player-heartbeat' && (ws as any).screenId) {
+        if (parsed.type === 'player-heartbeat' && (ws as any).screenId) {
           try {
             const screenId = (ws as any).screenId;
             const userId = (ws as any).userId;
@@ -1579,49 +1566,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Handle admin panel authentication
-        if (data.type === 'auth' && data.userId) {
-          (ws as any).userId = data.userId;
+        if (parsed.type === 'auth' && parsed.userId) {
+          (ws as any).userId = parsed.userId;
           console.log(`WebSocket client authenticated for user: ${(ws as any).userId}`);
 
           // Send authentication success response
           ws.send(JSON.stringify({ 
             type: 'auth_success', 
-            data: { userId: data.userId } 
+            data: { userId: parsed.userId } 
           }));
           return;
         }
 
         // Handle player authentication
-        if (data.type === 'player-auth' && data.token) {
+        if (parsed.type === 'player-auth' && parsed.token) {
           try {
-            const screen = await storage.getScreenByAuthToken(data.token);
-            if (screen) {
-              (ws as WebSocketWithId).userId = screen.userId;
-              (ws as WebSocketWithId).screenId = screen.id;
-              (ws as WebSocketWithId).playerScreenId = screen.id; // Additional identifier for player
-              (ws as WebSocketWithId).isPlayer = true;
-
+            const screen = await storage.getScreenByAuthToken(parsed.token);
+            if (screen && screen.userId) {
+              (ws as any).userId = screen.userId;
+              (ws as any).screenId = screen.id;
               console.log(`Player WebSocket authenticated for screen ${screen.id} (user: ${screen.userId})`);
 
-              ws.send(JSON.stringify({
-                type: 'auth_success',
-                screenId: screen.id,
-                userId: screen.userId,
-                currentPlaylistId: screen.playlistId
-              }));
-
-              // Store screen ID in localStorage for future reference
-              ws.send(JSON.stringify({
-                type: 'store-screen-id',
-                screenId: screen.id
+              // Send authentication success response
+              ws.send(JSON.stringify({ 
+                type: 'auth_success', 
+                data: { screenId: screen.id, userId: screen.userId } 
               }));
             } else {
-              console.log('Player authentication failed: invalid token');
-              ws.send(JSON.stringify({ type: 'auth_error', message: 'Invalid token' }));
+              ws.send(JSON.stringify({ 
+                type: 'auth_error', 
+                data: { message: 'Invalid token or screen not found' } 
+              }));
             }
           } catch (error) {
-            console.error('Player authentication error:', error);
-            ws.send(JSON.stringify({ type: 'auth_error', message: 'Authentication failed' }));
+            console.error('Player authentication failed:', error);
+            ws.send(JSON.stringify({ 
+              type: 'auth_error', 
+              data: { message: 'Authentication failed' } 
+            }));
           }
         }
       } catch (e) {
@@ -1753,4 +1735,504 @@ export async function registerRoutes(app: Express): Promise<Server> {
             adminClientsNotified++;
           }
           // Send to specific player screens for this user
-          else if (clientWithId.screenId && clientWithId.userId === userId
+          else if (clientWithId.screenId && clientWithId.userId === userId) {
+            if (targetScreenIds.includes(clientWithId.screenId)) {
+              console.log(`✅ Sending alert to player screen ${clientWithId.screenId}`);
+              clientWithId.send(JSON.stringify({
+                type: alertData.deleted ? 'alert-deleted' : 'alert',
+                data: alertData
+              }));
+              playerClientsNotified++;
+            } else {
+              console.log(`⏭️ Skipping alert for screen ${clientWithId.screenId} (not in target list)`);
+            }
+          }
+        }
+      });
+
+      console.log(`📊 Alert broadcast complete: ${adminClientsNotified} admin clients, ${playerClientsNotified} player clients notified`);
+
+    } catch (error) {
+      console.error(`Error broadcasting alert:`, error);
+    }
+  }
+
+  // Enhanced function to broadcast playlist updates to relevant clients (admins and players)
+  async function broadcastPlaylistUpdate(userId: string, playlistId: number, eventType: string) {
+    const wssInstance = app.get('wss') as WebSocketServer;
+
+    try {
+      // Fetch the playlist to include in the update
+      const playlist = await storage.getPlaylistWithItems(playlistId, userId);
+
+      if (!playlist) {
+        console.warn(`Playlist ${playlistId} not found, cannot broadcast update`);
+        return;
+      }
+
+      console.log(`📡 Broadcasting playlist update: ${eventType} for playlist ${playlistId} to ${wssInstance.clients.size} clients`);
+
+      // Get all screens that use this playlist
+      const allScreens = await storage.getScreens(userId);
+      const affectedScreenIds = allScreens.filter(screen => screen.playlistId === playlistId).map(screen => screen.id);
+
+      console.log(`🎯 Affected screens for playlist ${playlistId}:`, affectedScreenIds);
+
+      let adminClientsNotified = 0;
+      let playerClientsNotified = 0;
+
+      wssInstance.clients.forEach((client: WebSocket) => {
+        const clientWithId = client as WebSocketWithId;
+
+        if (clientWithId.readyState === WebSocket.OPEN) {
+          // Send to admin users associated with the playlist
+          if (clientWithId.userId === userId) {
+            console.log(`✅ Sending playlist update (${eventType}) to admin user ${userId}`);
+            clientWithId.send(JSON.stringify({
+              type: 'playlist-content-updated',
+              data: { 
+                playlist, 
+                event: eventType,
+                playlistId: playlistId,
+                timestamp: new Date().toISOString()
+              }
+            }));
+            adminClientsNotified++;
+          }
+          // Send to players associated with the playlist
+          else if (clientWithId.screenId && affectedScreenIds.includes(clientWithId.screenId)) {
+            console.log(`✅ Sending playlist content update (${eventType}) to player for screen ${clientWithId.screenId}`);
+            clientWithId.send(JSON.stringify({
+              type: 'playlist-content-updated',
+              data: { 
+                playlist, 
+                event: eventType,
+                playlistId: playlistId,
+                screenId: clientWithId.screenId,
+                timestamp: new Date().toISOString()
+              }
+            }));
+            playerClientsNotified++;
+          }
+        }
+      });
+
+      console.log(`📊 Broadcast complete: ${adminClientsNotified} admin clients, ${playerClientsNotified} player clients notified`);
+
+    } catch (error) {
+      console.error(`Error broadcasting playlist update:`, error);
+    }
+  }
+
+  // Debug endpoint to check all screens (remove in production)
+  app.get("/api/debug/screens", isAuthenticated, async (req: any, res) => {
+    try {
+      const allScreens = await db.select().from(screens);
+      console.log("All screens in database:", allScreens);
+      res.json(allScreens);
+    } catch (error) {
+      console.error("Error fetching all screens:", error);
+      res.status(500).json({ message: "Failed to fetch all screens" });
+    }
+  });
+
+  // Player token validation endpoint
+  app.get("/api/player/validate-token", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ valid: false });
+      }
+
+      const token = authHeader.split(' ')[1];
+      const screen = await storage.getScreenByAuthToken(token);
+
+      if (screen && screen.userId) {
+        res.json({ 
+          valid: true, 
+          screen: { 
+            id: screen.id, 
+            name: screen.name, 
+            playlistId: screen.playlistId 
+          } 
+        });
+      } else {
+        res.status(401).json({ valid: false });
+      }
+    } catch (error) {
+      console.error("Error validating token:", error);
+      res.status(500).json({ valid: false });
+    }
+  });
+
+  // Screen Groups routes
+  app.get("/api/screen-groups", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groups = await storage.getScreenGroups(userId);
+      res.json(groups);
+    } catch (error) {
+      console.error("Error fetching screen groups:", error);
+      res.status(500).json({ message: "Failed to fetch screen groups" });
+    }
+  });
+
+  app.post("/api/screen-groups", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupData = { ...req.body, userId };
+
+      const validatedData = insertScreenGroupSchema.parse(groupData);
+      const group = await storage.createScreenGroup(validatedData);
+
+      // Broadcast group creation to all user's clients
+      broadcastToUser(userId, 'screen-group-created', group);
+
+      res.json(group);
+    } catch (error) {
+      console.error("Error creating screen group:", error);
+      res.status(500).json({ message: "Failed to create screen group" });
+    }
+  });
+
+  app.put("/api/screen-groups/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+
+      const group = await storage.updateScreenGroup(id, updates, userId);
+      if (!group) {
+        return res.status(404).json({ message: "Screen group not found" });
+      }
+
+      // Broadcast group update to all user's clients
+      broadcastToUser(userId, 'screen-group-updated', group);
+
+      // If playlist changed, broadcast to affected screens
+      if (updates.playlistId !== undefined && group.screenIds) {
+        const wssInstance = app.get('wss') as WebSocketServer;
+
+        group.screenIds.forEach(screenId => {
+          wssInstance.clients.forEach((client: WebSocket) => {
+            const clientWithId = client as any;
+            if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === screenId) {
+              console.log(`Sending playlist change to screen ${screenId} from group ${id}`);
+              clientWithId.send(JSON.stringify({
+                type: 'playlist-change',
+                data: { 
+                  playlistId: updates.playlistId,
+                  screenId: screenId,
+                  groupId: id,
+                  timestamp: new Date().toISOString(),
+                  action: 'reload'
+                }
+              }));
+            }
+          });
+        });
+      }
+
+      res.json(group);
+    } catch (error) {
+      console.error("Error updating screen group:", error);
+      res.status(500).json({ message: "Failed to update screen group" });
+    }
+  });
+
+  app.delete("/api/screen-groups/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+
+      const success = await storage.deleteScreenGroup(id, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Screen group not found" });
+      }
+
+      // Broadcast group deletion to all user's clients
+      broadcastToUser(userId, 'screen-group-deleted', { groupId: id });
+
+      res.json({ message: "Screengroup deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting screen group:", error);
+      res.status(500).json({ message: "Failed to delete screen group" });
+    }
+  });
+
+  app.post("/api/screen-groups/:id/play", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupId = parseInt(req.params.id);
+
+      // Get group data
+      const groups = await storage.getScreenGroups(userId);
+      const group = groups.find(g => g.id === groupId);
+
+      if (!group) {
+        return res.status(404).json({ message: "Screen group not found" });
+      }
+
+      // Broadcast play command to all screens in the group
+      const wssInstance = app.get('wss') as WebSocketServer;
+
+      if (group.screenIds) {
+        group.screenIds.forEach(screenId => {
+          wssInstance.clients.forEach((client: WebSocket) => {
+            const clientWithId = client as any;
+            if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === screenId) {
+              console.log(`Sending play command to screen ${screenId} from group ${groupId}`);
+              clientWithId.send(JSON.stringify({
+                type: 'group-play',
+                data: { 
+                  groupId: groupId,
+                  screenId: screenId,
+                  action: 'play',
+                  timestamp: new Date().toISOString()
+                }
+              }));
+            }
+          });
+        });
+      }
+
+      res.json({ message: "Play command sent to group", groupId });
+    } catch (error) {
+      console.error("Error playing group:", error);
+      res.status(500).json({ message: "Failed to play group" });
+    }
+  });
+
+  app.post("/api/screen-groups/:id/pause", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupId = parseInt(req.params.id);
+
+      // Get group data
+      const groups = await storage.getScreenGroups(userId);
+      const group = groups.find(g => g.id === groupId);
+
+      if (!group) {
+        return res.status(404).json({ message: "Screen group not found" });
+      }
+
+      // Broadcast pause command to all screens in the group
+      const wssInstance = app.get('wss') as WebSocketServer;
+
+      if (group.screenIds) {
+        group.screenIds.forEach(screenId => {
+          wssInstance.clients.forEach((client: WebSocket) => {
+            const clientWithId = client as any;
+            if (clientWithId.readyState === WebSocket.OPEN && clientWithId.screenId === screenId) {
+              console.log(`Sending pause command to screen ${screenId} from group ${groupId}`);
+              clientWithId.send(JSON.stringify({
+                type: 'group-pause',
+                data: { 
+                  groupId: groupId,
+                  screenId: screenId,
+                  action: 'pause',
+                  timestamp: new Date().toISOString()
+                }
+              }));
+            }
+          });
+        });
+      }
+
+      res.json({ message: "Pause command sent to group", groupId });
+    } catch (error) {
+      console.error("Error pausing group:", error);
+      res.status(500).json({ message: "Failed to pause group" });
+    }
+  });
+
+  // Analytics routes
+  app.get("/api/analytics", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const timeRange = req.query.timeRange || "7d";
+
+      // Mock data for analytics
+      const analytics = {
+        activeScreens: Math.floor(Math.random() * 10) + 1,
+        totalViews: Math.floor(Math.random() * 10000) + 1000,
+        avgPlaytime: Math.floor(Math.random() * 60) + 30,
+        contentItems: Math.floor(Math.random() * 50) + 10,
+        usageData: [],
+        recentActivity: []
+      };
+
+      // Generate usage data
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        analytics.usageData.push({
+          date: date.toISOString().split('T')[0],
+          screens: Math.floor(Math.random() * 20) + 5,
+          views: Math.floor(Math.random() * 500) + 100
+        });
+      }
+
+      // Generate recent activity
+      for (let i = 0; i < 5; i++) {
+        analytics.recentActivity.push({
+          description: `Actividad ${i + 1}`,
+          timestamp: new Date(Date.now() - i * 1000 * 60 * 60).toISOString()
+        });
+      }
+
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  app.get("/api/analytics/screens", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const screens = await storage.getScreens(userId);
+
+      const screenMetrics = screens.map(screen => ({
+        id: screen.id,
+        name: screen.name,
+        location: screen.location,
+        uptime: Math.floor(Math.random() * 100),
+        views: Math.floor(Math.random() * 1000) + 100,
+        status: screen.isOnline ? 'online' : 'offline'
+      }));
+
+      res.json(screenMetrics);
+    } catch (error) {
+      console.error("Error fetching screen analytics:", error);
+      res.status(500).json({ message: "Failed to fetch screen analytics" });
+    }
+  });
+
+  app.get("/api/analytics/content", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const content = await storage.getContentItems(userId);
+
+      const contentMetrics = content.map(item => ({
+        id: item.id,
+        title: item.title,
+        type: item.type,
+        views: Math.floor(Math.random() * 500) + 50,
+        engagement: Math.floor(Math.random() * 100),
+        duration: item.duration || 30
+      }));
+
+      res.json(contentMetrics);
+    } catch (error) {
+      console.error("Error fetching content analytics:", error);
+      res.status(500).json({ message: "Failed to fetch content analytics" });
+    }
+  });
+
+  app.get("/api/analytics/playback", isAuthenticated, async (req: any, res) => {
+    try {
+      // Mock playback data
+      const playbackData = [];
+      const today = new Date();
+
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+
+        playbackData.push({
+          date: date.toISOString().split('T')[0],
+          plays: Math.floor(Math.random() * 200) + 100,          views: Math.floor(Math.random() * 1000) + 500,
+          duration: Math.floor(Math.random() * 10000) + 5000
+        });
+      }
+
+      res.json(playbackData);
+    } catch (error) {
+      console.error("Error fetching playback analytics:", error);
+      res.status(500).json({ message: "Failed to fetch playback analytics" });
+    }
+  });
+  
+    // Update playlist item (custom duration, zone, etc.)
+    app.put("/api/playlist-items/:id", isAuthenticated, async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const id = parseInt(req.params.id);
+        const updates = req.body;
+  
+        // Validate customDuration if provided
+        if (updates.customDuration !== undefined) {
+          const duration = parseInt(updates.customDuration);
+          if (isNaN(duration) || duration < 1 || duration > 86400) {
+            return res.status(400).json({ 
+              message: "La duración debe ser un número entre 1 y 86400 segundos" 
+            });
+          }
+          updates.customDuration = duration;
+        }
+  
+        const item = await storage.updatePlaylistItem(id, updates, userId);
+        if (!item) {
+          return res.status(404).json({ message: "Playlist item not found" });
+        }
+  
+        // Get the playlistId associated with this item.
+        const playlistItem = await storage.getPlaylistItem(id);
+        const playlistId = playlistItem?.playlistId;
+  
+         // --- ADDED: Notify connected players and admins of playlist change ---
+         if (playlistId) {
+           broadcastPlaylistUpdate(userId, playlistId, 'playlist-item-updated');
+         }
+         // --- END ADDED ---
+  
+        res.json(item);
+      } catch (error) {
+        console.error("Error updating playlist item:", error);
+        res.status(500).json({ message: "Failed to update playlist item" });
+      }
+    });
+  
+    // Broadcast playlist updates - Added
+    app.post("/api/playlists/:id/broadcast", isAuthenticated, async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const playlistId = parseInt(req.params.id);
+        const { action, itemId, timestamp } = req.body;
+  
+        // Verify the playlist belongs to the user
+        const playlist = await storage.getPlaylistWithItems(playlistId, userId);
+        if (!playlist) {
+          return res.status(404).json({ message: "Playlist not found" });
+        }
+  
+        // Get all screens using this playlist before deletion
+        const allScreens = await storage.getScreens(userId);
+        const affectedScreenIds = allScreens.filter(screen => screen.playlistId === playlistId).map(screen => screen.id);
+  
+        console.log(`📡 Manual broadcast: ${action} for playlist ${playlistId} to ${affectedScreenIds.length} screens`);
+  
+        // Broadcast to both admin and player clients
+        broadcastToUser(userId, 'playlist-updated', {
+          playlistId: playlistId,
+          action,
+          itemId,
+          timestamp,
+          affectedScreens: affectedScreenIds
+        });
+  
+        res.json({ 
+          success: true, 
+          message: `Broadcast sent to ${affectedScreenIds.length} screens`,
+          affectedScreens: affectedScreenIds
+        });
+      } catch (error) {
+        console.error("Error broadcasting playlist update:", error);
+        res.status(500).json({ message: "Failed to broadcast playlist update" });
+      }
+    });
+
+  return httpServer;
+}
+// The code defines several API endpoints and integrates WebSocket for real-time updates, including playlist updates.
