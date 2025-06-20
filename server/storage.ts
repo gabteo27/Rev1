@@ -554,28 +554,45 @@ export class DatabaseStorage implements IStorage {
         console.log(`✅ Verified playlist item ${id} belongs to user ${userId} in playlist ${playlistId}`);
       }
 
-      // Delete the item
-      const result = await db
-        .delete(playlistItems)
-        .where(eq(playlistItems.id, id));
+      // Delete the item in a transaction to ensure consistency
+      const result = await db.transaction(async (tx) => {
+        const deleteResult = await tx
+          .delete(playlistItems)
+          .where(eq(playlistItems.id, id));
+
+        // Update playlist duration immediately in the same transaction
+        if (playlistId && deleteResult.rowCount && deleteResult.rowCount > 0) {
+          const items = await tx
+            .select({
+              customDuration: playlistItems.customDuration,
+              defaultDuration: contentItems.duration
+            })
+            .from(playlistItems)
+            .innerJoin(contentItems, eq(playlistItems.contentItemId, contentItems.id))
+            .where(eq(playlistItems.playlistId, playlistId));
+
+          const totalDuration = items.reduce((total, item) => {
+            return total + (item.customDuration || item.defaultDuration || 0);
+          }, 0);
+
+          await tx
+            .update(playlists)
+            .set({ totalDuration })
+            .where(eq(playlists.id, playlistId));
+
+          console.log(`✅ Updated playlist ${playlistId} duration to ${totalDuration}s`);
+        }
+
+        return deleteResult;
+      });
 
       const deletedRowCount = result.rowCount || 0;
       const success = deletedRowCount > 0;
 
       if (!success) {
-        console.log(`❌ Failed to delete playlist item ${id} - no rows affected (rowCount: ${deletedRowCount})`);
+        console.log(`❌ Failed to delete playlist item ${id} - no rows affected`);
       } else {
-        console.log(`✅ Successfully deleted playlist item ${id} (${deletedRowCount} rows affected)`);
-        
-        // Update playlist duration after successful deletion
-        if (playlistId) {
-          try {
-            await this.updatePlaylistDuration(playlistId);
-            console.log(`✅ Updated playlist ${playlistId} duration after item deletion`);
-          } catch (durationError) {
-            console.warn(`⚠️ Failed to update playlist ${playlistId} duration:`, durationError);
-          }
-        }
+        console.log(`✅ Successfully deleted playlist item ${id} and updated playlist duration`);
       }
 
       return success;

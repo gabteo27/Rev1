@@ -600,25 +600,25 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
       if (data.type === 'playlist-content-updated' && data.data?.playlistId === playlistId) {
         console.log('🔄 Playlist content updated, refreshing...');
-        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
         
-        // Force immediate refetch
-        setTimeout(() => {
-          queryClient.refetchQueries({ 
-            queryKey: ['/api/player/playlists', playlistId],
-            type: 'active'
-          });
-        }, 100);
+        // Immediate invalidation and refetch
+        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+        queryClient.refetchQueries({ 
+          queryKey: ['/api/player/playlists', playlistId],
+          type: 'active'
+        });
       }
 
       if (data.type === 'playlist-item-deleted' && data.data?.playlistId === playlistId) {
-        console.log('🗑️ Playlist item deleted, updating zones...');
-        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+        console.log('🗑️ Playlist item deleted, updating player state...');
+        
+        const deletedItemId = data.data?.itemId;
         
         // Reset zone trackers to avoid showing deleted items
         setZoneTrackers(prev => {
           const newTrackers = { ...prev };
           Object.keys(newTrackers).forEach(zoneId => {
+            // Reset index to 0 to avoid invalid indices
             newTrackers[zoneId] = {
               ...newTrackers[zoneId],
               currentIndex: 0
@@ -627,13 +627,14 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           return newTrackers;
         });
         
-        // Force immediate refetch
-        setTimeout(() => {
-          queryClient.refetchQueries({ 
-            queryKey: ['/api/player/playlists', playlistId],
-            type: 'active'
-          });
-        }, 100);
+        // Immediate invalidation and refetch
+        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+        queryClient.refetchQueries({ 
+          queryKey: ['/api/player/playlists', playlistId],
+          type: 'active'
+        });
+        
+        console.log(`🔄 Player state updated after deletion of item ${deletedItemId}`);
       }
 
       if (data.type === 'playlist-change') {

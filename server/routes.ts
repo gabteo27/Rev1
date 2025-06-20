@@ -603,8 +603,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid playlist item ID" });
       }
 
-      // Get playlist ID before deletion for broadcasting
+      // Get playlist item info before deletion
       let playlistId: number | null = null;
+      let itemExists = false;
+      
       try {
         const playlistItem = await storage.getPlaylistItem(id);
         if (playlistItem) {
@@ -615,12 +617,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(404).json({ message: "Playlist item not found" });
           }
           playlistId = playlistItem.playlistId;
-        } else {
-          console.log(`❌ Playlist item ${id} not found in database`);
-          return res.status(404).json({ message: "Playlist item not found" });
+          itemExists = true;
         }
       } catch (error) {
         console.error(`Error checking playlist item ${id}:`, error);
+      }
+
+      // If item doesn't exist, it might already be deleted
+      if (!itemExists) {
+        console.log(`❌ Playlist item ${id} not found - may already be deleted`);
         return res.status(404).json({ message: "Playlist item not found" });
       }
 
@@ -634,40 +639,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ Successfully deleted playlist item ${id} from playlist ${playlistId}`);
 
-      // Broadcast updates
-      if (playlistId) {
-        try {
-          // Broadcast to admin clients first
-          broadcastToUser(userId, 'playlist-item-deleted', {
-            itemId: id,
-            playlistId: playlistId,
-            timestamp: new Date().toISOString()
-          });
-
-          // Broadcast playlist list update for counts
-          broadcastToUser(userId, 'playlists-updated', {
-            timestamp: new Date().toISOString()
-          });
-
-          // Broadcast to player clients
-          await broadcastPlaylistUpdate(userId, playlistId, 'playlist-item-deleted');
-          console.log(`✅ Broadcasted deletion of item ${id}`);
-          
-          // Add small delay to ensure WebSocket messages are sent
-          setTimeout(() => {
-            console.log(`📡 Completed broadcast cycle for item ${id} deletion`);
-          }, 100);
-        } catch (broadcastError) {
-          console.warn(`⚠️ Broadcast failed:`, broadcastError);
-        }
-      }
-
+      // Immediate response to client
       res.json({ 
         success: true,
         message: "Playlist item deleted successfully",
         itemId: id,
         playlistId: playlistId
       });
+
+      // Broadcast updates asynchronously
+      if (playlistId) {
+        setImmediate(async () => {
+          try {
+            console.log(`📡 Broadcasting deletion of item ${id} from playlist ${playlistId}`);
+            
+            // Broadcast to admin clients
+            broadcastToUser(userId, 'playlist-item-deleted', {
+              itemId: id,
+              playlistId: playlistId,
+              timestamp: new Date().toISOString()
+            });
+
+            // Broadcast to player clients
+            await broadcastPlaylistUpdate(userId, playlistId, 'playlist-item-deleted');
+            
+            // Broadcast general playlist update
+            broadcastToUser(userId, 'playlists-updated', {
+              timestamp: new Date().toISOString()
+            });
+            
+            console.log(`✅ Completed broadcasting deletion of item ${id}`);
+          } catch (broadcastError) {
+            console.error(`⚠️ Broadcast failed for item ${id}:`, broadcastError);
+          }
+        });
+      }
+
     } catch (error) {
       console.error("Error deleting playlist item:", error);
       res.status(500).json({ message: "Failed to delete playlist item" });

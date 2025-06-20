@@ -886,7 +886,7 @@ export default function Playlists() {
 
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: number) => {
-      console.log(`🗑️ Starting deletion of playlist item ${itemId}`);
+      console.log(`🗑️ Deleting playlist item ${itemId}`);
 
       const response = await apiRequest(`/api/playlist-items/${itemId}`, {
         method: "DELETE"
@@ -894,34 +894,15 @@ export default function Playlists() {
 
       if (!response.ok) {
         const errorData = await response.text();
-        throw new Error(`Server error: ${response.status} - ${errorData}`);
+        console.error(`❌ Delete failed for item ${itemId}:`, errorData);
+        throw new Error(errorData || `Server error: ${response.status}`);
       }
 
+      const result = await response.json();
       console.log(`✅ Server confirmed deletion of item ${itemId}`);
-      return itemId;
+      return result;
     },
-    onSuccess: async (itemId: number) => {
-      console.log(`✅ Successfully deleted item ${itemId}`);
-
-      // Invalidate queries to refresh UI
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      if (selectedPlaylistForLayout?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
-      }
-
-      // Refetch playlist data
-      setTimeout(async () => {
-        try {
-          await refetchPlaylist();
-        } catch (refetchError) {
-          console.warn("Warning: Failed to refetch playlist:", refetchError);
-        }
-      }, 100);
-    },
-    onError: (error: any) => {
-      console.error("❌ Error removing item:", error);
-      // Error handling is done in handleRemoveFromPlaylist
-    },
+    // Remove onSuccess and onError to prevent duplicate handling
   });
 
   const deletePlaylistMutation = useMutation({
@@ -1017,8 +998,9 @@ export default function Playlists() {
 
   // Track items being deleted to prevent duplicates
   const [deletingItems, setDeletingItems] = useState<Set<number>>(new Set());
+  const [deletionPromises, setDeletionPromises] = useState<Map<number, Promise<any>>>(new Map());
 
-  // Handle item removal with proper state tracking
+  // Handle item removal with proper state tracking and debouncing
   const handleRemoveFromPlaylist = async (itemId: number) => {
     // Prevent duplicate deletion attempts
     if (deletingItems.has(itemId) || removeItemMutation.isPending) {
@@ -1026,49 +1008,79 @@ export default function Playlists() {
       return;
     }
 
+    // Check if there's already a promise for this item
+    if (deletionPromises.has(itemId)) {
+      console.log(`❌ Item ${itemId} already has pending deletion promise`);
+      return deletionPromises.get(itemId);
+    }
+
     // Add to deleting set
     setDeletingItems(prev => new Set(prev).add(itemId));
 
     console.log(`🗑️ Starting removal of item ${itemId}`);
 
-    try {
-      await removeItemMutation.mutateAsync(itemId);
-      
-      toast({
-        title: "Elemento eliminado",
-        description: "El elemento se ha eliminado de la playlist.",
-      });
-      
-      // Force refetch to ensure UI is updated
-      setTimeout(() => {
-        refetchPlaylist();
+    // Create a single promise for this deletion
+    const deletionPromise = (async () => {
+      try {
+        const result = await removeItemMutation.mutateAsync(itemId);
+        
+        toast({
+          title: "Elemento eliminado",
+          description: "El elemento se ha eliminado de la playlist.",
+        });
+        
+        // Force immediate UI refresh
         queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      }, 200);
-      
-    } catch (error: any) {
-      console.error(`❌ Failed to delete item ${itemId}:`, error);
-      
-      // Show specific error message
-      const errorMessage = error.message?.includes('not found') 
-        ? "El elemento ya no existe en la playlist."
-        : "No se pudo eliminar el elemento. Intenta de nuevo.";
-      
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      
-      // Refetch to sync UI state
-      refetchPlaylist();
-    } finally {
-      // Remove from deleting set regardless of success/failure
-      setDeletingItems(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(itemId);
-        return newSet;
-      });
-    }
+        if (selectedPlaylistForLayout?.id) {
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
+        }
+        
+        return result;
+        
+      } catch (error: any) {
+        console.error(`❌ Failed to delete item ${itemId}:`, error);
+        
+        // If item not found, refresh the playlist to sync state
+        if (error.message?.includes('not found')) {
+          console.log(`🔄 Item ${itemId} not found, refreshing playlist state`);
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+          if (selectedPlaylistForLayout?.id) {
+            queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
+          }
+          
+          toast({
+            title: "Elemento eliminado",
+            description: "El elemento ya había sido eliminado.",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "No se pudo eliminar el elemento. Intenta de nuevo.",
+            variant: "destructive",
+          });
+        }
+        
+        throw error;
+      } finally {
+        // Clean up tracking state
+        setDeletingItems(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(itemId);
+          return newSet;
+        });
+        
+        setDeletionPromises(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(itemId);
+          return newMap;
+        });
+      }
+    })();
+
+    // Store the promise to prevent duplicates
+    setDeletionPromises(prev => new Map(prev).set(itemId, deletionPromise));
+
+    return deletionPromise;
   };
 
   const handleZoneSettingChange = async (zoneId: string, setting: string, value: string) => {
