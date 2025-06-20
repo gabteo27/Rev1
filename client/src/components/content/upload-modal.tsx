@@ -139,6 +139,16 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
     e.stopPropagation();
     setDragActive(false);
 
+    // Si ya hay un archivo seleccionado, no permitir más
+    if (selectedFiles.length > 0) {
+      toast({
+        title: "Solo un archivo permitido",
+        description: "Ya tienes un archivo seleccionado. Elimínalo primero para subir otro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const files = Array.from(e.dataTransfer.files);
     const validFiles = files.filter(file => isValidFileType(file));
 
@@ -150,57 +160,36 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
       });
     }
 
-    // Filtrar archivos duplicados
-    const newFiles = validFiles.filter(file => {
-      const isDuplicate = selectedFiles.some(existingFile => 
-        existingFile.name === file.name && 
-        existingFile.size === file.size &&
-        existingFile.lastModified === file.lastModified
-      );
-      return !isDuplicate;
-    });
-
-    if (newFiles.length !== validFiles.length) {
-      toast({
-        title: "Archivos duplicados",
-        description: "Algunos archivos ya estaban seleccionados y fueron omitidos.",
-        variant: "destructive",
-      });
-    }
-
-    if (newFiles.length > 0) {
+    if (validFiles.length > 0) {
+      // Solo tomar el primer archivo válido
+      const firstFile = validFiles[0];
       // Limpiar URL al seleccionar archivos
       setUrl("");
-      setSelectedFiles(prev => [...prev, ...newFiles]);
+      setSelectedFiles([firstFile]);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const validFiles = files.filter(file => isValidFileType(file));
-    
-    // Filtrar archivos duplicados
-    const newFiles = validFiles.filter(file => {
-      const isDuplicate = selectedFiles.some(existingFile => 
-        existingFile.name === file.name && 
-        existingFile.size === file.size &&
-        existingFile.lastModified === file.lastModified
-      );
-      return !isDuplicate;
-    });
-
-    if (newFiles.length !== validFiles.length) {
+    // Si ya hay un archivo seleccionado, no permitir más
+    if (selectedFiles.length > 0) {
       toast({
-        title: "Archivos duplicados",
-        description: "Algunos archivos ya estaban seleccionados y fueron omitidos.",
+        title: "Solo un archivo permitido",
+        description: "Ya tienes un archivo seleccionado. Elimínalo primero para subir otro.",
         variant: "destructive",
       });
+      e.target.value = '';
+      return;
     }
 
-    if (newFiles.length > 0) {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(file => isValidFileType(file));
+
+    if (validFiles.length > 0) {
+      // Solo tomar el primer archivo válido
+      const firstFile = validFiles[0];
       // Limpiar URL al seleccionar archivos
       setUrl("");
-      setSelectedFiles(prev => [...prev, ...newFiles]);
+      setSelectedFiles([firstFile]);
     }
 
     // Limpiar el input para permitir seleccionar el mismo archivo después de eliminarlo
@@ -245,7 +234,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
     if (selectedFiles.length === 0) {
       toast({
         title: "Error",
-        description: "Selecciona al menos un archivo para subir.",
+        description: "Selecciona un archivo para subir.",
         variant: "destructive",
       });
       return;
@@ -270,9 +259,8 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
     }
 
     const formData = new FormData();
-    selectedFiles.forEach(file => {
-      formData.append("file", file);
-    });
+    // Solo subir el archivo seleccionado
+    formData.append("file", selectedFiles[0]);
 
     formData.append("title", title);
     formData.append("description", description);
@@ -379,28 +367,31 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
             </Label>
             <div
               className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-                dragActive
+                selectedFiles.length > 0
+                  ? "border-slate-200 bg-slate-100 opacity-60"
+                  : dragActive
                   ? "border-blue-400 bg-blue-50"
                   : "border-slate-300 hover:border-blue-400"
               }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
+              onDragEnter={selectedFiles.length === 0 ? handleDrag : undefined}
+              onDragLeave={selectedFiles.length === 0 ? handleDrag : undefined}
+              onDragOver={selectedFiles.length === 0 ? handleDrag : undefined}
+              onDrop={selectedFiles.length === 0 ? handleDrop : undefined}
             >
-              <CloudUpload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-lg font-medium text-slate-900 mb-2">
-                Arrastra archivos aquí o haz clic para seleccionar
+              <CloudUpload className={`w-12 h-12 mx-auto mb-4 ${selectedFiles.length > 0 ? 'text-slate-300' : 'text-slate-400'}`} />
+              <p className={`text-lg font-medium mb-2 ${selectedFiles.length > 0 ? 'text-slate-500' : 'text-slate-900'}`}>
+                {selectedFiles.length > 0 ? 'Archivo seleccionado' : 'Arrastra archivos aquí o haz clic para seleccionar'}
               </p>
-              <p className="text-sm text-slate-500 mb-4">
-                Soporta imágenes (JPG, PNG, GIF), videos (MP4), PDFs
+              <p className={`text-sm mb-4 ${selectedFiles.length > 0 ? 'text-slate-400' : 'text-slate-500'}`}>
+                {selectedFiles.length > 0 ? 'Solo se permite un archivo a la vez' : 'Soporta imágenes (JPG, PNG, GIF), videos (MP4), PDFs'}
               </p>
               <Button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-blue-600 hover:bg-blue-700"
+                disabled={selectedFiles.length > 0}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed"
               >
-                Seleccionar Archivos
+                {selectedFiles.length > 0 ? 'Archivo Seleccionado' : 'Seleccionar Archivo'}
               </Button>
               <input
                 ref={fileInputRef}
@@ -408,6 +399,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
                 accept="image/*,video/*,.pdf,application/pdf"
                 onChange={handleFileSelect}
                 className="hidden"
+                disabled={selectedFiles.length > 0}
               />
             </div>
           </div>
