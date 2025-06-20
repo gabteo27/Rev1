@@ -136,35 +136,7 @@ export default function Content() {
     }
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const { duration, ...updateData } = data;
-      const response = await apiRequest(`/api/content/${data.id}`, {
-        method: "PUT",
-        body: JSON.stringify(updateData),
-      });
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Contenido actualizado",
-        description: "El contenido ha sido actualizado exitosamente.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/content"] });
-      setEditModalOpen(false);
-      setEditingContent(null);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo actualizar el contenido.",
-        variant: "destructive",
-      });
-    },
-  });
+  
 
   const getContentIcon = (type: string) => {
     const iconProps = { className: "w-5 h-5" };
@@ -277,24 +249,7 @@ export default function Content() {
     setPreviewModalOpen(true);
   };
 
-  const handleEditSubmit = () => {
-    if (!editingContent.title.trim()) {
-      toast({
-        title: "Error",
-        description: "El título es requerido.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const updateData = {
-      ...editingContent,
-      category: editingContent.category === "none" ? "" : editingContent.category,
-      tags: editingContent.tags ? editingContent.tags.split(",").map((t: string) => t.trim()) : [],
-    };
-
-    updateMutation.mutate(updateData);
-  };
+  
 
   const toggleItemSelected = (itemId: number) => {
     setSelectedItems(prev => 
@@ -775,84 +730,7 @@ export default function Content() {
         )}
       </div>
 
-      {/* Edit Modal */}
-      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Editar Contenido</DialogTitle>
-          </DialogHeader>
-
-          {editingContent && (
-            <div className="space-y-4 py-4">
-              <div>
-                <Label htmlFor="edit-title">Título *</Label>
-                <Input
-                  id="edit-title"
-                  value={editingContent.title}
-                  onChange={(e) => setEditingContent({...editingContent, title: e.target.value})}
-                  placeholder="Título del contenido"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="edit-description">Descripción</Label>
-                <Textarea
-                  id="edit-description"
-                  value={editingContent.description}
-                  onChange={(e) => setEditingContent({...editingContent, description: e.target.value})}
-                  placeholder="Descripción opcional"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="edit-category">Categoría</Label>
-                <Select 
-                  value={editingContent.category} 
-                  onValueChange={(value) => setEditingContent({...editingContent, category: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sin categoría</SelectItem>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="edit-tags">Etiquetas</Label>
-                <Input
-                  id="edit-tags"
-                  value={editingContent.tags}
-                  onChange={(e) => setEditingContent({...editingContent, tags: e.target.value})}
-                  placeholder="promoción, verano, descuento"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Separa las etiquetas con comas
-                </p>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleEditSubmit}
-              disabled={updateMutation.isPending}
-            >
-              {updateMutation.isPending ? "Guardando..." : "Guardar Cambios"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      
 
       {/* Preview Modal */}
       <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
