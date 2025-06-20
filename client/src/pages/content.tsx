@@ -620,36 +620,31 @@ export default function Content() {
                     )}
 
                     {/* Actions */}
-                    <div className="mt-4 flex justify-between items-center">
-                      <div className="flex space-x-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="h-8 px-2"
-                          onClick={() => handlePreview(item)}
-                        >
-                          <Eye className="w-3 h-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="h-8 px-2"
-                          onClick={() => handleEdit(item)}
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="h-8 px-2 text-red-600 hover:text-red-700"
-                          onClick={() => deleteMutation.mutate(item.id)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <Button size="sm" className="h-8 px-3 text-xs">
-                        Usar
+                    <div className="mt-4 flex space-x-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-8 px-2"
+                        onClick={() => handlePreview(item)}
+                      >
+                        <Eye className="w-3 h-3" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-8 px-2"
+                        onClick={() => handleEdit(item)}
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-8 px-2 text-red-600 hover:text-red-700"
+                        onClick={() => deleteMutation.mutate(item.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
                   </div>
@@ -768,9 +763,6 @@ export default function Content() {
                             disabled={deleteMutation.isPending}
                           >
                             <Trash2 className="w-3 h-3" />
-                          </Button>
-                          <Button size="sm" className="h-8 px-3 text-xs">
-                            Usar
                           </Button>
                         </div>
                       </div>

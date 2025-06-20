@@ -36,7 +36,7 @@ export default function EditModal({ open, onClose, content }: EditModalProps) {
         title: content.title || "",
         description: content.description || "",
         url: content.url || "",
-        category: content.category || "",
+        category: content.category || "none",
         tags: Array.isArray(content.tags) ? content.tags.join(", ") : (content.tags || ""),
         duration: content.duration || 30
       });
@@ -107,7 +107,7 @@ export default function EditModal({ open, onClose, content }: EditModalProps) {
     const updateData = {
       title: formData.title,
       description: formData.description,
-      category: formData.category === "none" ? "" : formData.category,
+      category: formData.category === "none" || formData.category === "" ? "" : formData.category,
       tags: formData.tags ? formData.tags.split(",").map((t: string) => t.trim()) : [],
       duration: parseInt(formData.duration.toString()) || 30,
       ...(content.type === "webpage" && { url: formData.url })
@@ -191,7 +191,7 @@ export default function EditModal({ open, onClose, content }: EditModalProps) {
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin categoría</SelectItem>
+                  <SelectItem value="none">Sin categoría</SelectItem>
                   {categories.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
