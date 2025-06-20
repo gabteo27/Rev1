@@ -637,10 +637,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast updates
       if (playlistId) {
         try {
+          // Invalidate and refetch playlists to update counts
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+
           // Broadcast to admin clients
           broadcastToUser(userId, 'playlist-item-deleted', {
             itemId: id,
             playlistId: playlistId,
+            timestamp: new Date().toISOString()
+          });
+
+          // Broadcast playlist list update for counts
+          broadcastToUser(userId, 'playlists-updated', {
             timestamp: new Date().toISOString()
           });
 

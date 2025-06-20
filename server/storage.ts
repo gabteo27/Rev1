@@ -321,6 +321,7 @@ export class DatabaseStorage implements IStorage {
         const items = await db
           .select({
             id: playlistItems.id,
+            zone: playlistItems.zone,
             customDuration: playlistItems.customDuration,
             contentItem: {
               duration: contentItems.duration,
@@ -336,6 +337,7 @@ export class DatabaseStorage implements IStorage {
 
         return {
           ...playlist,
+          items: items, // Include items for frontend processing
           totalItems: items.length,
           totalDuration,
           // Ensure these fields exist with defaults
@@ -514,8 +516,10 @@ export class DatabaseStorage implements IStorage {
     console.log(`🗑️ Starting deletePlaylistItem for item ${id}, user ${userId}`);
 
     try {
+      let playlistId: number | null = null;
+      
       if (userId) {
-        // Verify the playlist item belongs to the user
+        // Verify the playlist item belongs to the user and get playlist ID
         const [playlistItem] = await db
           .select({ 
             id: playlistItems.id, 
@@ -535,7 +539,18 @@ export class DatabaseStorage implements IStorage {
           return false;
         }
 
-        console.log(`✅ Verified playlist item ${id} belongs to user ${userId} in playlist ${playlistItem.playlistId}`);
+        playlistId = playlistItem.playlistId;
+        console.log(`✅ Verified playlist item ${id} belongs to user ${userId} in playlist ${playlistId}`);
+      } else {
+        // Get playlist ID even without user verification
+        const [item] = await db
+          .select({ playlistId: playlistItems.playlistId })
+          .from(playlistItems)
+          .where(eq(playlistItems.id, id));
+        
+        if (item) {
+          playlistId = item.playlistId;
+        }
       }
 
       // Delete the item
@@ -550,6 +565,16 @@ export class DatabaseStorage implements IStorage {
         console.log(`❌ Failed to delete playlist item ${id} - no rows affected (rowCount: ${deletedRowCount})`);
       } else {
         console.log(`✅ Successfully deleted playlist item ${id} (${deletedRowCount} rows affected)`);
+        
+        // Update playlist duration after successful deletion
+        if (playlistId) {
+          try {
+            await this.updatePlaylistDuration(playlistId);
+            console.log(`✅ Updated playlist ${playlistId} duration after item deletion`);
+          } catch (durationError) {
+            console.warn(`⚠️ Failed to update playlist ${playlistId} duration:`, durationError);
+          }
+        }
       }
 
       return success;

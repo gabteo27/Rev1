@@ -643,7 +643,62 @@ export default function Playlists() {
           throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
         const data = await response.json();
-        return Array.isArray(data) ? data : [];
+        
+        // Process playlists to calculate correct item counts for current layout
+        const processedPlaylists = data.map((playlist: any) => {
+          const layout = playlist.layout || 'single_zone';
+          let validZones = ['main'];
+          
+          switch (layout) {
+            case 'split_vertical':
+              validZones = ['left', 'right'];
+              break;
+            case 'split_horizontal':
+              validZones = ['top', 'bottom'];
+              break;
+            case 'pip_bottom_right':
+              validZones = ['main', 'pip'];
+              break;
+            case 'grid_2x2':
+              validZones = ['top_left', 'top_right', 'bottom_left', 'bottom_right'];
+              break;
+            case 'grid_3x3':
+              validZones = ['grid_1', 'grid_2', 'grid_3', 'grid_4', 'grid_5', 'grid_6', 'grid_7', 'grid_8', 'grid_9'];
+              break;
+            case 'sidebar_left':
+            case 'sidebar_right':
+              validZones = ['main', 'sidebar'];
+              break;
+            case 'header_footer':
+              validZones = ['header', 'main', 'footer'];
+              break;
+            case 'triple_vertical':
+              validZones = ['left', 'center', 'right'];
+              break;
+            case 'triple_horizontal':
+              validZones = ['top', 'middle', 'bottom'];
+              break;
+            case 'custom_layout':
+              // For custom layouts, count all items
+              validZones = null;
+              break;
+            case 'single_zone':
+            case 'carousel':
+            case 'web_scroll':
+            default:
+              validZones = ['main'];
+              break;
+          }
+          
+          return {
+            ...playlist,
+            currentLayoutItemCount: validZones ? 
+              (playlist.items || []).filter((item: any) => validZones.includes(item.zone || 'main')).length :
+              (playlist.items || []).length
+          };
+        });
+        
+        return Array.isArray(processedPlaylists) ? processedPlaylists : [];
       } catch (error) {
         console.error('Error fetching playlists:', error);
         return [];
@@ -1192,6 +1247,34 @@ export default function Playlists() {
     setSelectedContent(newSelection);
   };
 
+  // Listen for WebSocket updates to refresh playlist counts
+  useEffect(() => {
+    const handleWebSocketMessage = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        
+        if (message.type === 'playlist-item-deleted' || 
+            message.type === 'playlist-item-added' || 
+            message.type === 'playlists-updated') {
+          // Refetch playlists to get updated counts
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+        }
+      } catch (error) {
+        console.warn("Error parsing WebSocket message:", error);
+      }
+    };
+
+    // Add WebSocket message listener if WebSocket exists
+    const ws = (window as any).websocket;
+    if (ws) {
+      ws.addEventListener('message', handleWebSocketMessage);
+      
+      return () => {
+        ws.removeEventListener('message', handleWebSocketMessage);
+      };
+    }
+  }, []);
+
   // --- HELPERS ---
   const getContentIcon = (type: string) => {
     const iconProps = { className: "w-4 h-4" };
@@ -1357,7 +1440,7 @@ export default function Playlists() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{playlist.totalItems || 0} elementos</span>
+                      <span>{playlist.currentLayoutItemCount ?? playlist.totalItems ?? 0} elementos</span>
                       <span>{Math.floor((playlist.totalDuration || 0) / 60)} min</span>
                     </div>
                     <div className="flex items-center gap-2">
