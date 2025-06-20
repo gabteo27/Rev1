@@ -150,13 +150,61 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
       });
     }
 
-    setSelectedFiles(prev => [...prev, ...validFiles]);
+    // Filtrar archivos duplicados
+    const newFiles = validFiles.filter(file => {
+      const isDuplicate = selectedFiles.some(existingFile => 
+        existingFile.name === file.name && 
+        existingFile.size === file.size &&
+        existingFile.lastModified === file.lastModified
+      );
+      return !isDuplicate;
+    });
+
+    if (newFiles.length !== validFiles.length) {
+      toast({
+        title: "Archivos duplicados",
+        description: "Algunos archivos ya estaban seleccionados y fueron omitidos.",
+        variant: "destructive",
+      });
+    }
+
+    if (newFiles.length > 0) {
+      // Limpiar URL al seleccionar archivos
+      setUrl("");
+      setSelectedFiles(prev => [...prev, ...newFiles]);
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const validFiles = files.filter(file => isValidFileType(file));
-    setSelectedFiles(prev => [...prev, ...validFiles]);
+    
+    // Filtrar archivos duplicados
+    const newFiles = validFiles.filter(file => {
+      const isDuplicate = selectedFiles.some(existingFile => 
+        existingFile.name === file.name && 
+        existingFile.size === file.size &&
+        existingFile.lastModified === file.lastModified
+      );
+      return !isDuplicate;
+    });
+
+    if (newFiles.length !== validFiles.length) {
+      toast({
+        title: "Archivos duplicados",
+        description: "Algunos archivos ya estaban seleccionados y fueron omitidos.",
+        variant: "destructive",
+      });
+    }
+
+    if (newFiles.length > 0) {
+      // Limpiar URL al seleccionar archivos
+      setUrl("");
+      setSelectedFiles(prev => [...prev, ...newFiles]);
+    }
+
+    // Limpiar el input para permitir seleccionar el mismo archivo después de eliminarlo
+    e.target.value = '';
   };
 
   const isValidFileType = (file: File) => {
@@ -421,7 +469,13 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
                   id="url"
                   type="url"
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  onChange={(e) => {
+                    setUrl(e.target.value);
+                    // Limpiar archivos al escribir URL
+                    if (e.target.value.trim() && selectedFiles.length > 0) {
+                      setSelectedFiles([]);
+                    }
+                  }}
                   placeholder="https://ejemplo.com/pagina-web"
                   className="pl-10"
                   disabled={selectedFiles.length > 0}
