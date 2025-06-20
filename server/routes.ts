@@ -906,12 +906,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/screens", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      console.log(`Fetching screens for user: ${userId}`);
       const screens = await storage.getScreens(userId);
-      console.log(
-        `Found ${screens.length} screens for user ${userId}:`,
-        screens.map((s) => ({ id: s.id, name: s.name, userId: s.userId })),
-      );
+    // Only log when there are issues or significant changes
+    if (screens.length === 0) {
+      console.log(`No screens found for user: ${userId}`);
+    }
       res.json(screens);
     } catch (error) {
       console.error("Error fetching screens:", error);

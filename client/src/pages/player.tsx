@@ -63,7 +63,7 @@ export default function PlayerPage() {
       }
       return failureCount < 3;
     },
-    refetchInterval: 30000, // Check token validity every 30 seconds
+    refetchInterval: 60000, // Check token validity every 60 seconds
     enabled: status === 'paired', // Only run when paired
     onError: (error) => {
       console.error('Token validation error:', error);

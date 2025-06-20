@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -51,7 +50,7 @@ export default function Screens() {
     staleTime: 90000, // Consider data fresh for 90 seconds
     refetchOnWindowFocus: false // Don't refetch on window focus
   });
-  
+
   const { data: playlists = [] } = useQuery<Playlist[]>({ 
     queryKey: ["/api/playlists"], 
     retry: false 
@@ -97,7 +96,7 @@ export default function Screens() {
       unsubscribeFunctions.push(
         wsManager.subscribe('screen-status-changed', (data) => {
           console.log('Screen status changed:', data);
-          
+
           setScreenStatuses(prev => ({
             ...prev,
             [data.screenId]: {
@@ -105,7 +104,7 @@ export default function Screens() {
               lastSeen: data.lastSeen || new Date().toISOString()
             }
           }));
-          
+
           const statusText = data.isOnline ? 'se conectó' : 'se desconectó';
           toast({
             title: `Pantalla ${statusText}`,
@@ -173,14 +172,14 @@ export default function Screens() {
     },
     onSuccess: (_, deletedScreenId) => {
       toast({ title: "Pantalla eliminada", description: "La pantalla ha sido eliminada correctamente" });
-      
+
       // Update local state immediately for better UX
       setScreenStatuses(prev => {
         const newStatuses = { ...prev };
         delete newStatuses[deletedScreenId];
         return newStatuses;
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
     },
     onError: (error: any) => toast({ title: "Error", description: error.message || "No se pudo eliminar la pantalla.", variant: "destructive" })
@@ -243,7 +242,7 @@ export default function Screens() {
         </Badge>
       );
     }
-    
+
     if (lastSeen) {
       const diffInHours = (new Date().getTime() - new Date(lastSeen).getTime()) / 36e5;
       if (diffInHours < 1) {
@@ -263,7 +262,7 @@ export default function Screens() {
         );
       }
     }
-    
+
     return (
       <Badge variant="secondary" className="flex items-center gap-1">
         <WifiOff className="w-3 h-3" />
@@ -410,7 +409,7 @@ export default function Screens() {
                 Nueva Pantalla
               </Button>
             </div>
-            
+
             <div className="flex-1 px-4 sm:px-6 py-6 overflow-y-auto max-h-[calc(100vh-200px)]">
               {screens.length === 0 ? (
                 <Card className="border-dashed">
@@ -447,9 +446,9 @@ export default function Screens() {
                             {getStatusBadge(screen.id, screen.isOnline, screen.lastSeen)}
                           </div>
                         </div>
-                        
+
                         <ScreenPreview screen={screen} onPlayClick={setLivePreviewScreenId} />
-                        
+
                         <div className="flex-grow my-4 space-y-2 text-sm">
                           <div className="text-slate-600">
                             <span className="font-medium text-slate-700">Playlist:</span> {
