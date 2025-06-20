@@ -24,14 +24,90 @@ const ImagePlayer = ({ src, objectFit = 'contain' }: { src: string, objectFit?: 
   <img src={src} style={getMediaStyle(objectFit)} alt="" />;
 const VideoPlayer = ({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => 
   <video src={src} style={getMediaStyle(objectFit)} autoPlay muted loop playsInline />;
-const WebpagePlayer = ({ src }: { src: string }) => 
-  <iframe src={src} style={{ ...styles.media, border: 'none' }} title="web-content" />;
+const WebpagePlayer = ({ src }: { src: string }) => {
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  if (error) {
+    return (
+      <div style={{ 
+        ...styles.media, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: '18px',
+        backgroundColor: '#1a1a1a'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>🌐</div>
+          <div>Error cargando página web</div>
+          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{src}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ ...styles.media, position: 'relative' }}>
+      {loading && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#1a1a1a',
+          color: 'white',
+          zIndex: 1
+        }}>
+          <div>Cargando página web...</div>
+        </div>
+      )}
+      <iframe 
+        src={src} 
+        style={{ ...styles.media, border: 'none' }} 
+        title="web-content"
+        onLoad={() => setLoading(false)}
+        onError={() => {
+          setError(true);
+          setLoading(false);
+        }}
+      />
+    </div>
+  );
+};
 
 // PDF Player Component
 const PDFPlayer = ({ src }: { src: string }) => {
+  const [error, setError] = useState(false);
+  
   const pdfViewerUrl = src.startsWith('http') 
     ? `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
     : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + src)}&embedded=true`;
+
+  if (error) {
+    return (
+      <div style={{ 
+        ...styles.media, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: '18px',
+        backgroundColor: '#1a1a1a'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📄</div>
+          <div>Error cargando PDF</div>
+          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{src}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <iframe
@@ -44,6 +120,7 @@ const PDFPlayer = ({ src }: { src: string }) => {
       title="PDF document"
       loading="eager"
       sandbox="allow-scripts allow-same-origin"
+      onError={() => setError(true)}
     />
   );
 };
@@ -1099,11 +1176,19 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }
 
       if (customZones.length === 0) {
+        // Check if there are items in the main zone
+        const mainZoneItems = zoneTrackers['main']?.items || [];
         return (
           <div style={styles.container}>
-            {renderZone('main') || (
+            {mainZoneItems.length > 0 ? renderZone('main') : (
               <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                Layout personalizado sin zonas configuradas
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚙️</div>
+                  <div>Layout personalizado sin zonas configuradas</div>
+                  <div style={{ fontSize: '14px', opacity: 0.7, marginTop: '5px' }}>
+                    Configure las zonas en el editor de layout
+                  </div>
+                </div>
               </div>
             )}
             {widgets.filter(w => w.isEnabled).map((widget) => (

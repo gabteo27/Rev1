@@ -1032,32 +1032,35 @@ export default function Playlists() {
     console.log(`🗑️ Starting removal of item ${itemId}`);
 
     try {
-      // Optimistic update - remove from UI immediately
-      if (playlistData?.items) {
-        const updatedItems = playlistData.items.filter((item: any) => item.id !== itemId);
-        queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout.id], {
-          ...playlistData,
-          items: updatedItems
-        });
-      }
-
       await removeItemMutation.mutateAsync(itemId);
       
       toast({
         title: "Elemento eliminado",
         description: "El elemento se ha eliminado de la playlist.",
       });
-    } catch (error) {
+      
+      // Force refetch to ensure UI is updated
+      setTimeout(() => {
+        refetchPlaylist();
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+      }, 200);
+      
+    } catch (error: any) {
       console.error(`❌ Failed to delete item ${itemId}:`, error);
       
-      // Revert optimistic update on error
-      await refetchPlaylist();
+      // Show specific error message
+      const errorMessage = error.message?.includes('not found') 
+        ? "El elemento ya no existe en la playlist."
+        : "No se pudo eliminar el elemento. Intenta de nuevo.";
       
       toast({
         title: "Error",
-        description: "No se pudo eliminar el elemento. Intenta de nuevo.",
+        description: errorMessage,
         variant: "destructive",
       });
+      
+      // Refetch to sync UI state
+      refetchPlaylist();
     } finally {
       // Remove from deleting set regardless of success/failure
       setDeletingItems(prev => {

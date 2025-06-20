@@ -637,10 +637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast updates
       if (playlistId) {
         try {
-          // Invalidate and refetch playlists to update counts
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-
-          // Broadcast to admin clients
+          // Broadcast to admin clients first
           broadcastToUser(userId, 'playlist-item-deleted', {
             itemId: id,
             playlistId: playlistId,
@@ -655,6 +652,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Broadcast to player clients
           await broadcastPlaylistUpdate(userId, playlistId, 'playlist-item-deleted');
           console.log(`✅ Broadcasted deletion of item ${id}`);
+          
+          // Add small delay to ensure WebSocket messages are sent
+          setTimeout(() => {
+            console.log(`📡 Completed broadcast cycle for item ${id} deletion`);
+          }, 100);
         } catch (broadcastError) {
           console.warn(`⚠️ Broadcast failed:`, broadcastError);
         }

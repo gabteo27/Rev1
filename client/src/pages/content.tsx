@@ -78,9 +78,10 @@ export default function Content() {
         method: "DELETE",
       });
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        const errorData = await response.text();
+        throw new Error(`Error ${response.status}: ${errorData}`);
       }
-      return response;
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -91,6 +92,7 @@ export default function Content() {
       setSelectedItems([]);
     },
     onError: (error: any) => {
+      console.error("Error deleting content:", error);
       toast({
         title: "Error",
         description: error.message || "No se pudo eliminar el contenido.",
@@ -101,9 +103,19 @@ export default function Content() {
 
   const batchDeleteMutation = useMutation({
     mutationFn: async (ids: number[]) => {
-      await Promise.all(ids.map(id => 
-        apiRequest(`/api/content/${id}`, { method: "DELETE" })
-      ));
+      const results = await Promise.allSettled(ids.map(async id => {
+        const response = await apiRequest(`/api/content/${id}`, { method: "DELETE" });
+        if (!response.ok) {
+          const errorData = await response.text();
+          throw new Error(`Error ${response.status}: ${errorData}`);
+        }
+        return response.json();
+      }));
+      
+      const failed = results.filter(result => result.status === 'rejected');
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} elementos no pudieron ser eliminados`);
+      }
     },
     onSuccess: () => {
       toast({
@@ -114,9 +126,10 @@ export default function Content() {
       setSelectedItems([]);
     },
     onError: (error: any) => {
+      console.error("Batch delete error:", error);
       toast({
         title: "Error", 
-        description: error.message,
+        description: error.message || "Error eliminando contenido seleccionado",
         variant: "destructive"
       });
     }

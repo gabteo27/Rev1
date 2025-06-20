@@ -518,39 +518,40 @@ export class DatabaseStorage implements IStorage {
     try {
       let playlistId: number | null = null;
       
+      // First, get the playlist item to verify it exists and get playlist ID
+      const [existingItem] = await db
+        .select({ 
+          id: playlistItems.id, 
+          playlistId: playlistItems.playlistId 
+        })
+        .from(playlistItems)
+        .where(eq(playlistItems.id, id));
+
+      if (!existingItem) {
+        console.log(`❌ Playlist item ${id} not found in database`);
+        return false;
+      }
+
+      playlistId = existingItem.playlistId;
+
       if (userId) {
-        // Verify the playlist item belongs to the user and get playlist ID
-        const [playlistItem] = await db
-          .select({ 
-            id: playlistItems.id, 
-            playlistId: playlistItems.playlistId 
-          })
-          .from(playlistItems)
-          .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+        // Verify the playlist belongs to the user
+        const [playlist] = await db
+          .select({ id: playlists.id })
+          .from(playlists)
           .where(
             and(
-              eq(playlistItems.id, id),
+              eq(playlists.id, playlistId),
               eq(playlists.userId, userId)
             )
           );
 
-        if (!playlistItem) {
-          console.log(`❌ Playlist item ${id} not found for user ${userId}`);
+        if (!playlist) {
+          console.log(`❌ User ${userId} does not have access to playlist ${playlistId}`);
           return false;
         }
 
-        playlistId = playlistItem.playlistId;
         console.log(`✅ Verified playlist item ${id} belongs to user ${userId} in playlist ${playlistId}`);
-      } else {
-        // Get playlist ID even without user verification
-        const [item] = await db
-          .select({ playlistId: playlistItems.playlistId })
-          .from(playlistItems)
-          .where(eq(playlistItems.id, id));
-        
-        if (item) {
-          playlistId = item.playlistId;
-        }
       }
 
       // Delete the item
@@ -580,7 +581,7 @@ export class DatabaseStorage implements IStorage {
       return success;
     } catch (error) {
       console.error(`Error deleting playlist item ${id}:`, error);
-      throw error; // Re-throw to handle in the route
+      throw error;
     }
   }
 
