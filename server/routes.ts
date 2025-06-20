@@ -888,11 +888,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let connectedClients = 0;
         let adminClients = 0;
         let playerClients = 0;
+        let targetPlayerFound = false;
+
+        console.log(`🔍 Searching for screen ${screenId} among connected clients...`);
 
         wssInstance.clients.forEach((client: WebSocket) => {
           const clientWithId = client as WebSocketWithId;
           if (clientWithId.readyState === WebSocket.OPEN) {
             connectedClients++;
+            
+            console.log(`🔌 Client: userId=${clientWithId.userId}, screenId=${clientWithId.screenId}, isPlayer=${(clientWithId as any).isPlayer}`);
             
             // Send to admin clients
             if (clientWithId.userId === userId && !clientWithId.screenId) {
@@ -911,28 +916,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             // Send immediate playlist change to the specific screen
             else if (clientWithId.screenId === screenId) {
+              targetPlayerFound = true;
               playerClients++;
+              console.log(`🎯 Found target screen ${screenId}! Sending playlist-change...`);
+              
               clientWithId.send(JSON.stringify({
                 type: 'playlist-change',
                 data: { 
                   playlistId: playlistId,
                   screenId: screenId,
+                  oldPlaylistId: oldPlaylistId,
                   timestamp: new Date().toISOString()
                 }
               }));
               
               messageSent = true;
-              console.log(`✅ Sent playlist-change to screen ${screenId}`);
+              console.log(`✅ Successfully sent playlist-change to screen ${screenId}`);
             } else if (clientWithId.screenId) {
-              console.log(`🔍 Found screen ${clientWithId.screenId} but looking for ${screenId}`);
+              console.log(`🔍 Different screen found: ${clientWithId.screenId} (looking for ${screenId})`);
             }
+          } else {
+            console.log(`❌ Client with closed connection found`);
           }
         });
 
-        console.log(`📊 WebSocket status: ${connectedClients} total, ${adminClients} admin, ${playerClients} players`);
+        console.log(`📊 WebSocket summary: ${connectedClients} total, ${adminClients} admin, ${playerClients} players, target found: ${targetPlayerFound}`);
         
         if (!messageSent) {
-          console.log(`⚠️ No connected screen found for screen ${screenId}`);
+          console.log(`⚠️ PLAYLIST CHANGE FAILED - No connected screen found for screen ${screenId}`);
+          console.log(`💡 Available screens: ${Array.from(wssInstance.clients).map(c => (c as any).screenId).filter(Boolean).join(', ')}`);
         }
       }
 
@@ -1489,10 +1501,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   wss.on("connection", (ws: WebSocket) => {
-    console.log("Client connected to WebSocket");
+    const connectionId = Math.random().toString(36).substring(2, 8);
+    console.log(`🔌 Client ${connectionId} connected to WebSocket`);
 
     // Send immediate response to confirm connection
-    ws.send(JSON.stringify({ type: 'connection_established' }));
+    ws.send(JSON.stringify({ type: 'connection_established', connectionId }));
 
     ws.on("message", async (message) => {
       try {
@@ -1570,18 +1583,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             console.log(`🔐 Player auth attempt with token: ${parsed.token.substring(0, 8)}...`);
             const screen = await storage.getScreenByAuthToken(parsed.token);
+            console.log(`🔍 Screen lookup result:`, screen ? { id: screen.id, userId: screen.userId, name: screen.name } : 'Not found');
+            
             if (screen && screen.userId) {
               (ws as any).userId = screen.userId;
               (ws as any).screenId = screen.id;
-              console.log(`✅ Player WebSocket authenticated for screen ${screen.id} (user: ${screen.userId})`);
+              (ws as any).isPlayer = true;
+              console.log(`✅ Player WebSocket authenticated - Screen: ${screen.id}, User: ${screen.userId}, Name: ${screen.name}`);
 
               // Send authentication success response
               ws.send(JSON.stringify({ 
                 type: 'auth_success', 
-                data: { screenId: screen.id, userId: screen.userId } 
+                data: { screenId: screen.id, userId: screen.userId, screenName: screen.name } 
               }));
             } else {
-              console.log(`❌ Player auth failed: screen not found or no userId`);
+              console.log(`❌ Player auth failed: screen not found or no userId. Screen:`, screen);
               ws.send(JSON.stringify({ 
                 type: 'auth_error', 
                 data: { message: 'Invalid token or screen not found' } 
@@ -1598,13 +1614,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Handle screen identification
         if (parsed.type === 'screen-identify' && parsed.screenId) {
+          const previousScreenId = (ws as any).screenId;
           (ws as any).screenId = parsed.screenId;
-          console.log(`🆔 Screen ${parsed.screenId} identified via WebSocket`);
+          console.log(`🆔 Screen identification - Previous: ${previousScreenId}, New: ${parsed.screenId}`);
           
           // Confirm identification
           ws.send(JSON.stringify({
             type: 'screen-identified',
-            data: { screenId: parsed.screenId }
+            data: { screenId: parsed.screenId, previousScreenId }
           }));
         }
       } catch (e) {

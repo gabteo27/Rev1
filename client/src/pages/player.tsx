@@ -137,7 +137,7 @@ export default function PlayerPage() {
     const ws = new WebSocket(`wss://${window.location.host}/ws`);
 
     ws.onopen = () => {
-      console.log('WebSocket connected for pairing');
+      console.log('🔌 Player WebSocket connected for pairing');
       // Send device identification
       ws.send(JSON.stringify({
         type: 'pairing-device',
@@ -147,32 +147,43 @@ export default function PlayerPage() {
       // If already paired, also identify as screen
       const authToken = localStorage.getItem('authToken');
       const screenId = localStorage.getItem('screenId');
+      console.log(`📱 Player status - AuthToken: ${authToken ? 'Yes' : 'No'}, ScreenId: ${screenId}`);
+      
       if (authToken && screenId) {
-        console.log(`Identifying as screen ${screenId} for playlist changes`);
+        console.log(`🆔 Identifying as screen ${screenId} for playlist changes`);
+        
+        // Enviar autenticación primero
+        console.log(`🔐 Sending player-auth with token: ${authToken.substring(0, 8)}...`);
         ws.send(JSON.stringify({
           type: 'player-auth',
           token: authToken
         }));
-        ws.send(JSON.stringify({
-          type: 'screen-identify',
-          screenId: parseInt(screenId)
-        }));
+        
+        // Luego identificar como screen
+        setTimeout(() => {
+          console.log(`🏷️ Sending screen-identify for screenId: ${screenId}`);
+          ws.send(JSON.stringify({
+            type: 'screen-identify',
+            screenId: parseInt(screenId)
+          }));
+        }, 100);
       }
     };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('📨 Player WebSocket message received:', data.type, data);
 
         if (data.type === 'pairing-completed' && data.deviceId === deviceId) {
-          console.log('¡Emparejamiento exitoso via WebSocket!', data);
+          console.log('✅ ¡Emparejamiento exitoso via WebSocket!', data);
           localStorage.setItem('authToken', data.authToken);
           localStorage.setItem('screenName', data.name);
           
           // Guardar screenId si está disponible
           if (data.screenId) {
             localStorage.setItem('screenId', data.screenId.toString());
-            console.log(`Screen ID ${data.screenId} guardado en localStorage`);
+            console.log(`💾 Screen ID ${data.screenId} guardado en localStorage`);
           }
 
           if (data.playlistId) {
@@ -183,6 +194,32 @@ export default function PlayerPage() {
 
           ws.close();
           setStatus('paired');
+        }
+
+        // Manejar cambios de playlist
+        if (data.type === 'playlist-change') {
+          console.log('🔄 Playlist change received:', data.data);
+          const { playlistId: newPlaylistId, screenId: messageScreenId } = data.data;
+          const currentScreenId = localStorage.getItem('screenId');
+          
+          if (messageScreenId && messageScreenId.toString() === currentScreenId) {
+            console.log(`🎵 Playlist changed to ${newPlaylistId} for this screen`);
+            setCurrentPlaylistId(newPlaylistId);
+            window.location.reload();
+          }
+        }
+
+        // Respuestas de autenticación
+        if (data.type === 'auth_success') {
+          console.log('✅ Player authentication successful:', data.data);
+        }
+
+        if (data.type === 'auth_error') {
+          console.log('❌ Player authentication error:', data.data);
+        }
+
+        if (data.type === 'screen-identified') {
+          console.log('✅ Screen identification confirmed:', data.data);
         }
       } catch (err) {
         console.error("Error parsing WebSocket message:", err);
