@@ -1,0 +1,84 @@
+@radix-ui_react-select.js?v=c3b9f91b:875 Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at @radix-ui_react-select.js?v=c3b9f91b:875:13
+    at renderWithHooks (chunk-PNGJSGSD.js?v=c3b9f91b:11596:26)
+    at updateForwardRef (chunk-PNGJSGSD.js?v=c3b9f91b:14373:28)
+    at beginWork (chunk-PNGJSGSD.js?v=c3b9f91b:15994:22)
+    at HTMLUnknownElement.callCallback2 (chunk-PNGJSGSD.js?v=c3b9f91b:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-PNGJSGSD.js?v=c3b9f91b:3705:24)
+    at invokeGuardedCallback (chunk-PNGJSGSD.js?v=c3b9f91b:3739:39)
+    at beginWork$1 (chunk-PNGJSGSD.js?v=c3b9f91b:19818:15)
+    at performUnitOfWork (chunk-PNGJSGSD.js?v=c3b9f91b:19251:20)
+    at workLoopSync (chunk-PNGJSGSD.js?v=c3b9f91b:19190:13)Understand this error
+chunk-PNGJSGSD.js?v=c3b9f91b:14080 The above error occurred in the <SelectItem> component:
+
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=c3b9f91b:848:7
+    at _c1 (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/select.tsx:208:12)
+    at div
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-35OF3SJS.js?v=c3b9f91b:43:13
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-6LRRM7M2.js?v=c3b9f91b:79:13
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-6LRRM7M2.js?v=c3b9f91b:56:13
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-5QK2G43K.js?v=c3b9f91b:41:15
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=c3b9f91b:759:13
+    at div
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-6LRRM7M2.js?v=c3b9f91b:79:13
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-6LRRM7M2.js?v=c3b9f91b:56:13
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-5QK2G43K.js?v=c3b9f91b:41:15
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=c3b9f91b:38:15)
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=c3b9f91b:302:58
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-6LRRM7M2.js?v=c3b9f91b:79:13
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-6LRRM7M2.js?v=c3b9f91b:56:13
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-35OF3SJS.js?v=c3b9f91b:43:13
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WBWUMMOD.js?v=c3b9f91b:260:22
+    at SelectPortal
+    at _c7 (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/select.tsx:123:12)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=c3b9f91b:38:15)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=c3b9f91b:38:15)
+    at CollectionProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-5QK2G43K.js?v=c3b9f91b:31:13)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=c3b9f91b:38:15)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=c3b9f91b:38:15)
+    at Popper (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-O6AYXKAQ.js?v=c3b9f91b:1937:11)
+    at Select (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=c3b9f91b:88:5)
+    at div
+    at div
+    at div
+    at div
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-35OF3SJS.js?v=c3b9f91b:43:13
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WBWUMMOD.js?v=c3b9f91b:61:7
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-6LRRM7M2.js?v=c3b9f91b:79:13
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-6LRRM7M2.js?v=c3b9f91b:56:13
+    at https://dd03958b-29
+logCapturedError @ chunk-PNGJSGSD.js?v=c3b9f91b:14080Understand this error
+chunk-PNGJSGSD.js?v=c3b9f91b:9176 Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at @radix-ui_react-select.js?v=c3b9f91b:875:13
+    at renderWithHooks (chunk-PNGJSGSD.js?v=c3b9f91b:11596:26)
+    at updateForwardRef (chunk-PNGJSGSD.js?v=c3b9f91b:14373:28)
+    at beginWork (chunk-PNGJSGSD.js?v=c3b9f91b:15994:22)
+    at beginWork$1 (chunk-PNGJSGSD.js?v=c3b9f91b:19806:22)
+    at performUnitOfWork (chunk-PNGJSGSD.js?v=c3b9f91b:19251:20)
+    at workLoopSync (chunk-PNGJSGSD.js?v=c3b9f91b:19190:13)
+    at renderRootSync (chunk-PNGJSGSD.js?v=c3b9f91b:19169:15)
+    at recoverFromConcurrentError (chunk-PNGJSGSD.js?v=c3b9f91b:18786:28)
+    at performSyncWorkOnRoot (chunk-PNGJSGSD.js?v=c3b9f91b:18932:28)Understand this error
+2client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (VM497 screens:13:7)
+    at VM497 screens:17:3
+    at Object.invokeGuardedCallbackDev (chunk-PNGJSGSD.js?v=c3b9f91b:3705:24)
+    at invokeGuardedCallback (chunk-PNGJSGSD.js?v=c3b9f91b:3739:39)
+error @ client:882Understand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (VM497 screens:13:7)
+    at VM497 screens:17:3
+error @ client:882Understand this error
+websocket.ts:86 WebSocket disconnected: 1005 
