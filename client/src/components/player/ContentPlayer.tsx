@@ -84,7 +84,7 @@ const WebpagePlayer = ({ src }: { src: string }) => {
 // PDF Player Component
 const PDFPlayer = ({ src }: { src: string }) => {
   const [error, setError] = useState(false);
-  
+
   const pdfViewerUrl = src.startsWith('http') 
     ? `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
     : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + src)}&embedded=true`;
@@ -600,7 +600,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
       if (data.type === 'playlist-content-updated' && data.data?.playlistId === playlistId) {
         console.log('🔄 Playlist content updated, refreshing...');
-        
+
         // Immediate invalidation and refetch
         queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
         queryClient.refetchQueries({ 
@@ -611,9 +611,9 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
       if (data.type === 'playlist-item-deleted' && data.data?.playlistId === playlistId) {
         console.log('🗑️ Playlist item deleted, updating player state...');
-        
+
         const deletedItemId = data.data?.itemId;
-        
+
         // Reset zone trackers to avoid showing deleted items
         setZoneTrackers(prev => {
           const newTrackers = { ...prev };
@@ -626,14 +626,14 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           });
           return newTrackers;
         });
-        
+
         // Immediate invalidation and refetch
         queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
         queryClient.refetchQueries({ 
           queryKey: ['/api/player/playlists', playlistId],
           type: 'active'
         });
-        
+
         console.log(`🔄 Player state updated after deletion of item ${deletedItemId}`);
       }
 
@@ -647,7 +647,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           if (newPlaylistId !== lastPlaylistId) {
             console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} (WebSocket, priority: ${priority})`);
             lastPlaylistId = newPlaylistId;
-            
+
             // Si es prioridad alta, recarga inmediatamente
             const delay = priority === 'high' ? 100 : 500;
             setTimeout(() => {
@@ -665,7 +665,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
         if (messageScreenId === screenId && currentPlaylistId === playlistId) {
           console.log(`🗑️ Content deleted from current playlist, refreshing player...`);
-          
+
           // Invalidar queries y refrescar inmediatamente
           queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
           queryClient.refetchQueries({ 
@@ -931,13 +931,13 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     if (data.deleted || data.type === 'alert-deleted') {
       const alertId = data.id || data.data?.id;
       console.log(`🔔 Deleting alert ${alertId}`);
-      
+
       setActiveAlerts(prev => {
         const filtered = prev.filter(alert => alert.id !== alertId);
         console.log(`🔔 Alerts after deletion:`, filtered.length);
         return filtered;
       });
-      
+
       // Clear timer if exists
       if (alertTimers.has(alertId)) {
         clearTimeout(alertTimers.get(alertId));
@@ -1174,7 +1174,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     case 'custom_layout': {
       let customZones: any[] = [];
       let customConfig: any = {};
-      
+
       try {
         // Handle both string and object types for customLayoutConfig
         if (typeof playlist.customLayoutConfig === 'string') {
@@ -1182,7 +1182,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         } else if (typeof playlist.customLayoutConfig === 'object' && playlist.customLayoutConfig !== null) {
           customConfig = playlist.customLayoutConfig;
         }
-        
+
         customZones = customConfig.zones || [];
         console.log('Custom layout zones:', customZones);
       } catch (e) {
