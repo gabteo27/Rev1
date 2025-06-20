@@ -179,7 +179,18 @@ export default function Dashboard() {
 
       // Subscribe to content deletion
       unsubscribeFunctions.push(
-        wsManager.subscribe('content-deleted', () => {
+        wsManager.subscribe('content-deleted', (data) => {
+          console.log('Content deletion received:', data);
+          const { contentTitle, affectedPlaylists } = data;
+          
+          // Show notification
+          if (contentTitle && affectedPlaylists?.length > 0) {
+            toast({
+              title: "Contenido eliminado",
+              description: `"${contentTitle}" ha sido eliminado de ${affectedPlaylists.length} playlist(s)`,
+            });
+          }
+          
           queryClient.invalidateQueries({ queryKey: ["/api/content"] });
           queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
           if (selectedPlaylist) {

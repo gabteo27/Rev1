@@ -1000,6 +1000,60 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
   }
+
+  async getPlaylistsContainingContent(contentItemId: number, userId: string): Promise<Playlist[]> {
+    try {
+      const result = await db
+        .select({
+          id: playlists.id,
+          name: playlists.name,
+          userId: playlists.userId,
+          description: playlists.description,
+          layout: playlists.layout,
+          isActive: playlists.isActive,
+          totalDuration: playlists.totalDuration,
+          createdAt: playlists.createdAt,
+          updatedAt: playlists.updatedAt
+        })
+        .from(playlists)
+        .innerJoin(playlistItems, eq(playlists.id, playlistItems.playlistId))
+        .where(
+          and(
+            eq(playlists.userId, userId),
+            eq(playlistItems.contentItemId, contentItemId)
+          )
+        )
+        .groupBy(playlists.id);
+
+      return result;
+    } catch (error) {
+      console.error(`Error fetching playlists containing content ${contentItemId}:`, error);
+      return [];
+    }
+  }
+
+  async getScreensUsingPlaylists(playlistIds: number[], userId: string): Promise<Screen[]> {
+    try {
+      if (playlistIds.length === 0) {
+        return [];
+      }
+
+      const result = await db
+        .select()
+        .from(screens)
+        .where(
+          and(
+            eq(screens.userId, userId),
+            inArray(screens.playlistId, playlistIds)
+          )
+        );
+
+      return result;
+    } catch (error) {
+      console.error(`Error fetching screens using playlists:`, error);
+      return [];
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();

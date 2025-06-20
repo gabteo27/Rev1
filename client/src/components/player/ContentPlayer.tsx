@@ -641,16 +641,49 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         const newPlaylistId = data.data?.newPlaylistId;
         const messageScreenId = data.data?.screenId;
         const screenId = localStorage.getItem('screenId');
+        const priority = data.data?.priority;
 
         if (messageScreenId === screenId || !messageScreenId) {
           if (newPlaylistId !== lastPlaylistId) {
-            console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} (WebSocket)`);
+            console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} (WebSocket, priority: ${priority})`);
             lastPlaylistId = newPlaylistId;
+            
+            // Si es prioridad alta, recarga inmediatamente
+            const delay = priority === 'high' ? 100 : 500;
             setTimeout(() => {
-              console.log('🔄 Reloading page due to playlist change (WebSocket)...');
+              console.log(`🔄 Reloading page due to playlist change (WebSocket, delay: ${delay}ms)...`);
               window.location.reload();
-            }, 500);
+            }, delay);
           }
+        }
+      }
+
+      if (data.type === 'content-deleted-from-playlist') {
+        const messageScreenId = data.data?.screenId;
+        const screenId = localStorage.getItem('screenId');
+        const currentPlaylistId = data.data?.playlistId;
+
+        if (messageScreenId === screenId && currentPlaylistId === playlistId) {
+          console.log(`🗑️ Content deleted from current playlist, refreshing player...`);
+          
+          // Invalidar queries y refrescar inmediatamente
+          queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+          queryClient.refetchQueries({ 
+            queryKey: ['/api/player/playlists', playlistId],
+            type: 'active'
+          });
+
+          // Reset zone trackers para evitar mostrar contenido eliminado
+          setZoneTrackers(prev => {
+            const newTrackers = { ...prev };
+            Object.keys(newTrackers).forEach(zoneId => {
+              newTrackers[zoneId] = {
+                ...newTrackers[zoneId],
+                currentIndex: 0
+              };
+            });
+            return newTrackers;
+          });
         }
       }
 

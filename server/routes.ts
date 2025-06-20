@@ -338,29 +338,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de contenido inválido" });
       }
 
-      // 1. Usamos la función que ya tienes para verificar si el contenido existe.
+      // 1. Verificar si el contenido existe y obtener las playlists afectadas
       const contentItem = await storage.getContentItem(id, userId);
 
-      // 2. Si no existe, es porque ya fue borrado. Lo consideramos un éxito y terminamos.
       if (!contentItem) {
         console.log(`✅ Contenido ${id} no encontrado, probablemente ya fue borrado.`);
         return res.json({ success: true, message: "El contenido ya ha sido eliminado." });
       }
 
-      // 3. Si el contenido SÍ existe, procedemos con toda la lógica de borrado.
+      // 2. Obtener todas las playlists que contienen este contenido
+      const affectedPlaylists = await storage.getPlaylistsContainingContent(id, userId);
+      console.log(`📋 Contenido ${id} está en ${affectedPlaylists.length} playlists:`, affectedPlaylists.map(p => p.id));
+
+      // 3. Obtener todas las pantallas afectadas
+      const affectedScreens = await storage.getScreensUsingPlaylists(affectedPlaylists.map(p => p.id), userId);
+      console.log(`📺 Pantallas afectadas:`, affectedScreens.map(s => ({ id: s.id, name: s.name, playlistId: s.playlistId })));
+
+      // 4. Eliminar el contenido de todas las playlists
       console.log(`🗑️ Eliminando contenido ${id} de todas las playlists...`);
       await storage.removeContentFromAllPlaylists(id, userId);
 
+      // 5. Eliminar el ítem de contenido
       console.log(`🗑️ Eliminando ítem de contenido ${id} de la base de datos...`);
       await storage.deleteContentItem(id, userId);
 
       console.log(`✅ Petición de borrado para el contenido ${id} procesada exitosamente.`);
 
-      // 4. Notificamos al frontend para que la UI se actualice en tiempo real.
-      broadcastToUser(userId, 'content-deleted', { contentId: id });
-      broadcastToUser(userId, 'playlists-updated', { timestamp: new Date() });
+      // 6. Responder inmediatamente
+      res.json({ 
+        success: true, 
+        message: "Contenido eliminado exitosamente",
+        affectedPlaylists: affectedPlaylists.length,
+        affectedScreens: affectedScreens.length
+      });
 
-      res.json({ success: true, message: "Contenido eliminado exitosamente" });
+      // 7. Notificar cambios de manera asíncrona para no bloquear la respuesta
+      setImmediate(async () => {
+        try {
+          // Notificar a usuarios admin
+          broadcastToUser(userId, 'content-deleted', { 
+            contentId: id,
+            contentTitle: contentItem.title,
+            affectedPlaylists: affectedPlaylists.map(p => ({ id: p.id, name: p.name })),
+            timestamp: new Date().toISOString()
+          });
+
+          // Notificar actualización de playlists a admin
+          broadcastToUser(userId, 'playlists-updated', { 
+            reason: 'content-deleted',
+            contentId: id,
+            timestamp: new Date().toISOString()
+          });
+
+          // Notificar a cada playlist afectada para que se actualice
+          for (const playlist of affectedPlaylists) {
+            console.log(`📡 Broadcasting playlist ${playlist.id} update due to content deletion`);
+            await broadcastPlaylistUpdate(userId, playlist.id, 'content-removed');
+          }
+
+          // Notificar directamente a las pantallas afectadas
+          const wssInstance = app.get('wss') as WebSocketServer;
+          
+          wssInstance.clients.forEach((client: WebSocket) => {
+            const clientWithId = client as WebSocketWithId;
+            if (clientWithId.readyState === WebSocket.OPEN) {
+              // Notificar a pantallas que usan las playlists afectadas
+              if (clientWithId.screenId && affectedScreens.some(s => s.id === clientWithId.screenId)) {
+                const screen = affectedScreens.find(s => s.id === clientWithId.screenId);
+                console.log(`📺 Notifying screen ${clientWithId.screenId} about content deletion`);
+                
+                clientWithId.send(JSON.stringify({
+                  type: 'content-deleted-from-playlist',
+                  data: { 
+                    contentId: id,
+                    contentTitle: contentItem.title,
+                    playlistId: screen?.playlistId,
+                    screenId: clientWithId.screenId,
+                    timestamp: new Date().toISOString(),
+                    action: 'refresh-content'
+                  }
+                }));
+              }
+            }
+          });
+
+          console.log(`✅ Completed broadcasting content deletion for ${id}`);
+        } catch (broadcastError) {
+          console.error(`⚠️ Error broadcasting content deletion:`, broadcastError);
+        }
+      });
 
     } catch (error) {
       console.error("Error al eliminar contenido:", error);
@@ -793,6 +859,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Updating screen ${screenId} with data:`, { name, location, playlistId });
 
+      // Get current screen data to compare playlist changes
+      const currentScreen = await storage.getScreenById(screenId);
+      const oldPlaylistId = currentScreen?.playlistId;
+
       const screen = await storage.updateScreen(screenId, {
         name,
         location,
@@ -808,15 +878,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast screen update to all connected clients
       broadcastScreenUpdate(screen);
 
-      // If playlist changed, also broadcast playlist change to the specific screen
-      if (req.body.hasOwnProperty('playlistId')) {
-        console.log(`Broadcasting playlist change for screen ${screenId} to playlist ${playlistId}`);
+      // If playlist changed, send immediate update to the specific screen
+      if (req.body.hasOwnProperty('playlistId') && oldPlaylistId !== playlistId) {
+        console.log(`📡 Playlist changed for screen ${screenId}: ${oldPlaylistId} → ${playlistId}`);
 
-        if (playlistId) {
-          await broadcastPlaylistUpdate(userId, playlistId, 'screen-playlist-updated');
-        }
-
-        // Send direct update to the affected screen
         const wssInstance = app.get('wss') as WebSocketServer;
         let messageSent = false;
 
@@ -830,29 +895,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 data: { 
                   screenId: screenId,
                   playlistId: playlistId,
+                  oldPlaylistId: oldPlaylistId,
                   screen: screen,
                   timestamp: new Date().toISOString()
                 }
               }));
             }
-            // Send to the specific screen
+            // Send immediate playlist change to the specific screen
             else if (clientWithId.screenId === screenId) {
-              clientWithId.send(JSON.stringify({
-                type: 'playlist-change',
-                data: { 
-                  newPlaylistId: playlistId,
-                  screenId: screenId,
-                  timestamp: new Date().toISOString(),
-                  action: 'reload'
+              // Send multiple events to ensure the player responds
+              const messages = [
+                {
+                  type: 'playlist-change',
+                  data: { 
+                    newPlaylistId: playlistId,
+                    oldPlaylistId: oldPlaylistId,
+                    screenId: screenId,
+                    timestamp: new Date().toISOString(),
+                    action: 'immediate-change',
+                    priority: 'high'
+                  }
+                },
+                {
+                  type: 'screen-playlist-updated',
+                  data: { 
+                    screenId: screenId,
+                    playlistId: playlistId,
+                    timestamp: new Date().toISOString(),
+                    action: 'reload-content'
+                  }
                 }
-              }));
+              ];
+
+              messages.forEach(message => {
+                clientWithId.send(JSON.stringify(message));
+              });
+              
               messageSent = true;
-              console.log(`✅ Sent playlist change to screen ${screenId}`);
+              console.log(`✅ Sent immediate playlist change to screen ${screenId}`);
             }
           }
         });
 
-        if (!messageSent && playlistId) {
+        // Also broadcast playlist updates if there's a new playlist
+        if (playlistId) {
+          setTimeout(async () => {
+            await broadcastPlaylistUpdate(userId, playlistId, 'screen-playlist-updated');
+          }, 100);
+        }
+
+        if (!messageSent) {
           console.log(`⚠️ No connected screen found for screen ${screenId}`);
         }
       }
