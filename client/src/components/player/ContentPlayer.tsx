@@ -522,19 +522,39 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       if (data.type === 'playlist-content-updated' && data.data?.playlistId === playlistId) {
         console.log('🔄 Playlist content updated, refreshing...');
         queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
-        queryClient.refetchQueries({ 
-          queryKey: ['/api/player/playlists', playlistId],
-          type: 'active'
-        });
+        
+        // Force immediate refetch
+        setTimeout(() => {
+          queryClient.refetchQueries({ 
+            queryKey: ['/api/player/playlists', playlistId],
+            type: 'active'
+          });
+        }, 100);
       }
 
       if (data.type === 'playlist-item-deleted' && data.data?.playlistId === playlistId) {
         console.log('🗑️ Playlist item deleted, updating zones...');
         queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
-        queryClient.refetchQueries({ 
-          queryKey: ['/api/player/playlists', playlistId],
-          type: 'active'
+        
+        // Reset zone trackers to avoid showing deleted items
+        setZoneTrackers(prev => {
+          const newTrackers = { ...prev };
+          Object.keys(newTrackers).forEach(zoneId => {
+            newTrackers[zoneId] = {
+              ...newTrackers[zoneId],
+              currentIndex: 0
+            };
+          });
+          return newTrackers;
         });
+        
+        // Force immediate refetch
+        setTimeout(() => {
+          queryClient.refetchQueries({ 
+            queryKey: ['/api/player/playlists', playlistId],
+            type: 'active'
+          });
+        }, 100);
       }
 
       if (data.type === 'playlist-change') {
@@ -761,8 +781,19 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   }, [zoneTrackers]);
 
   // Manejar la expiración de alertas
-  const handleAlertExpired = (alertId: number) => {
-    setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+  const handleAlertExpired = useCallback((alertId: number) => {
+    console.log(`🔔 Alert ${alertId} expired`);
+    setActiveAlerts(prev => {
+      const filtered = prev.filter(alert => alert.id !== alertId);
+      console.log(`🔔 Removed alert ${alertId}, remaining alerts:`, filtered.length);
+      return filtered;
+    });
+
+    // Clear any existing timer for this alert
+    if (alertTimers.has(alertId)) {
+      clearTimeout(alertTimers.get(alertId));
+      alertTimers.delete(alertId);
+    }
 
     if (!isPreview) {
       const authToken = localStorage.getItem('authToken');
@@ -776,7 +807,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         console.error('Failed to expire alert:', error);
       });
     }
-  };
+  }, [isPreview]);
 
   // Escuchar actualizaciones de alertas via WebSocket con caducidad automática
   const alertTimers = new Map<number, NodeJS.Timeout>();
@@ -784,44 +815,60 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   const handleAlertMessage = useCallback((data: any) => {
     console.log('🔔 Alert message received:', data);
 
-    if (data.deleted) {
-      setActiveAlerts(prev => prev.filter(alert => alert.id !== data.id));
+    if (data.deleted || data.type === 'alert-deleted') {
+      const alertId = data.id || data.data?.id;
+      console.log(`🔔 Deleting alert ${alertId}`);
+      
+      setActiveAlerts(prev => {
+        const filtered = prev.filter(alert => alert.id !== alertId);
+        console.log(`🔔 Alerts after deletion:`, filtered.length);
+        return filtered;
+      });
+      
       // Clear timer if exists
-      if (alertTimers.has(data.id)) {
-        clearTimeout(alertTimers.get(data.id));
-        alertTimers.delete(data.id);
+      if (alertTimers.has(alertId)) {
+        clearTimeout(alertTimers.get(alertId));
+        alertTimers.delete(alertId);
+        console.log(`🔔 Cleared timer for deleted alert ${alertId}`);
       }
       return;
     }
 
-    const alert = data as Alert;
-    if (!alert.isActive) return;
+    const alert = (data.data || data) as Alert;
+    if (!alert || !alert.isActive) {
+      console.log('🔔 Ignoring inactive alert:', alert);
+      return;
+    }
+
+    console.log(`🔔 Processing alert ${alert.id}:`, alert);
 
     setActiveAlerts(prev => {
       const existing = prev.find(a => a.id === alert.id);
       if (existing) {
         // Update existing alert
+        console.log(`🔔 Updating existing alert ${alert.id}`);
         return prev.map(a => a.id === alert.id ? alert : a);
       }
+      console.log(`🔔 Adding new alert ${alert.id}`);
       return [...prev, alert];
     });
 
     // Auto-remove alert after duration (only for non-fixed alerts)
     if (alert.duration > 0 && !alert.isFixed) {
+      // Clear any existing timer for this alert
       if (alertTimers.has(alert.id)) {
         clearTimeout(alertTimers.get(alert.id));
       }
 
       const timer = setTimeout(() => {
-        setActiveAlerts(prev => prev.filter(a => a.id !== alert.id));
-        alertTimers.delete(alert.id);
-        console.log(`🔔 Alert ${alert.id} auto-expired after ${alert.duration} seconds`);
+        console.log(`🔔 Auto-expiring alert ${alert.id} after ${alert.duration} seconds`);
+        handleAlertExpired(alert.id);
       }, alert.duration * 1000);
 
       alertTimers.set(alert.id, timer);
       console.log(`🔔 Alert ${alert.id} will expire in ${alert.duration} seconds`);
     }
-  }, []);
+  }, [handleAlertExpired]);
 
   useEffect(() => {
     if (isPreview) return;
@@ -997,19 +1044,26 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   switch (layout) {
     case 'custom_layout': {
       let customZones: any[] = [];
+      let customConfig: any = {};
+      
       try {
-        if (playlist.customLayoutConfig) {
-          const customConfig = JSON.parse(playlist.customLayoutConfig);
-          customZones = customConfig.zones || [];
+        // Handle both string and object types for customLayoutConfig
+        if (typeof playlist.customLayoutConfig === 'string') {
+          customConfig = JSON.parse(playlist.customLayoutConfig);
+        } else if (typeof playlist.customLayoutConfig === 'object' && playlist.customLayoutConfig !== null) {
+          customConfig = playlist.customLayoutConfig;
         }
+        
+        customZones = customConfig.zones || [];
+        console.log('Custom layout zones:', customZones);
       } catch (e) {
-        console.error('Error parsing custom layout config:', e);
+        console.error('Error parsing custom layout config:', e, 'Config:', playlist.customLayoutConfig);
         // Fallback to default layout if custom config fails
         return (
           <div style={styles.container}>
             {renderZone('main') || (
               <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                Error en configuración personalizada
+                Error en configuración personalizada: {e.message}
               </div>
             )}
             {widgets.filter(w => w.isEnabled).map((widget) => (

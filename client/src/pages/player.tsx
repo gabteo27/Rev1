@@ -134,42 +134,83 @@ export default function PlayerPage() {
 
     initiatePairing();
 
-    // Intervalo para verificar si el emparejamiento se ha completado
-    const intervalId = setInterval(async () => {
-      // --- CORRECCIÓN: SOLO VERIFICAR SI ESTAMOS EN MODO DE EMPAREJAMIENTO ---
-      if (status !== 'pairing' && document.visibilityState !== 'visible') return;
+    // WebSocket connection for real-time pairing updates
+    const ws = new WebSocket(`wss://${window.location.host}/ws`);
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected for pairing');
+      // Send device identification
+      ws.send(JSON.stringify({
+        type: 'pairing-device',
+        deviceId: deviceId
+      }));
+    };
 
+    ws.onmessage = (event) => {
       try {
-        const encodedDeviceId = encodeURIComponent(deviceId);
-        const statusResponse = await fetch(`/api/screens/pairing-status/${encodedDeviceId}`);
-
-        if (!statusResponse.ok) return;
-
-        const data = await statusResponse.json();
-
-        if (data.status === 'paired') {
-          console.log('¡Emparejamiento exitoso!', data);
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'pairing-completed' && data.deviceId === deviceId) {
+          console.log('¡Emparejamiento exitoso via WebSocket!', data);
           localStorage.setItem('authToken', data.authToken);
           localStorage.setItem('screenName', data.name);
 
-          // --- CORRECCIÓN CLAVE: MANEJO DE PLAYLIST ID NULO ---
           if (data.playlistId) {
             localStorage.setItem('playlistId', data.playlistId.toString());
           } else {
-            // Si no hay playlist, nos aseguramos de que no quede uno antiguo.
             localStorage.removeItem('playlistId');
           }
 
-          clearInterval(intervalId); // Detenemos el polling
-          setStatus('paired'); // Cambiamos al estado final
+          ws.close();
+          setStatus('paired');
         }
       } catch (err) {
-        console.error("Error durante el polling de estado:", err);
+        console.error("Error parsing WebSocket message:", err);
       }
-    }, 3000); // Verificamos cada 3 segundos
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      // Fallback to polling if WebSocket fails
+      const intervalId = setInterval(async () => {
+        if (status !== 'pairing') return;
+
+        try {
+          const encodedDeviceId = encodeURIComponent(deviceId);
+          const statusResponse = await fetch(`/api/screens/pairing-status/${encodedDeviceId}`);
+
+          if (!statusResponse.ok) return;
+
+          const data = await statusResponse.json();
+
+          if (data.status === 'paired') {
+            console.log('¡Emparejamiento exitoso!', data);
+            localStorage.setItem('authToken', data.authToken);
+            localStorage.setItem('screenName', data.name);
+
+            if (data.playlistId) {
+              localStorage.setItem('playlistId', data.playlistId.toString());
+            } else {
+              localStorage.removeItem('playlistId');
+            }
+
+            clearInterval(intervalId);
+            setStatus('paired');
+          }
+        } catch (err) {
+          console.error("Error durante el polling de estado:", err);
+        }
+      }, 10000); // Reduced to 10 seconds as fallback
+
+      return () => clearInterval(intervalId);
+    };
 
     // Limpieza al desmontar el componente
-    return () => clearInterval(intervalId);
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
   }, [status]); // El useEffect se re-ejecuta si el 'status' cambia
 
   // Update current playlist ID when screen info changes

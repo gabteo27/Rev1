@@ -206,6 +206,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Pairing completed for screen: ${updatedScreen?.id}`);
 
+      // Broadcast pairing completion via WebSocket
+      const wssInstance = app.get('wss') as WebSocketServer;
+      wssInstance.clients.forEach((client: WebSocket) => {
+        const clientWithId = client as any;
+        if (clientWithId.readyState === WebSocket.OPEN && 
+            clientWithId.pairingDeviceId === screen.deviceHardwareId) {
+          clientWithId.send(JSON.stringify({
+            type: 'pairing-completed',
+            deviceId: screen.deviceHardwareId,
+            authToken: authToken,
+            name: updatedScreen?.name,
+            playlistId: updatedScreen?.playlistId
+          }));
+          console.log(`Pairing completion sent to device ${screen.deviceHardwareId}`);
+        }
+      });
+
       res.json({
         message: "Pairing completed successfully",
         screen: updatedScreen
@@ -1368,6 +1385,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle ping/pong for heartbeat
         if (parsed.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong' }));
+          return;
+        }
+
+        // Handle pairing device registration
+        if (parsed.type === 'pairing-device' && parsed.deviceId) {
+          (ws as any).pairingDeviceId = parsed.deviceId;
+          console.log(`Device ${parsed.deviceId} registered for pairing updates`);
           return;
         }
 
