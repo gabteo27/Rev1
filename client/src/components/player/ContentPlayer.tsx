@@ -127,18 +127,34 @@ const PDFPlayer = ({ src }: { src: string }) => {
 
 // YouTube Player Component
 const YouTubePlayer = ({ url }: { url: string }) => {
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
   const getYouTubeID = (url: string) => {
+    if (!url || typeof url !== 'string') {
+      return null;
+    }
+
+    // Limpiar la URL de espacios y caracteres extraños
+    const cleanUrl = url.trim();
+
     const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^#\&\?]*)/,
-      /youtube\.com\/watch\?.*v=([^#\&\?]*)/,
-      /youtu\.be\/([^#\&\?]*)/,
-      /youtube\.com\/embed\/([^#\&\?]*)/
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+      /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/
     ];
 
     for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match && match[1] && match[1].length === 11) {
-        return match[1];
+      try {
+        const match = cleanUrl.match(pattern);
+        if (match && match[1] && match[1].length === 11) {
+          return match[1];
+        }
+      } catch (e) {
+        console.error('Error matching YouTube URL pattern:', e);
+        continue;
       }
     }
     return null;
@@ -146,7 +162,7 @@ const YouTubePlayer = ({ url }: { url: string }) => {
 
   const videoId = getYouTubeID(url);
 
-  if (!videoId) {
+  if (!videoId || error) {
     return (
       <div style={{ 
         ...styles.media, 
@@ -159,8 +175,10 @@ const YouTubePlayer = ({ url }: { url: string }) => {
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '24px', marginBottom: '10px' }}>📺</div>
-          <div>URL de YouTube no válida</div>
-          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{url}</div>
+          <div>{error ? 'Error cargando video de YouTube' : 'URL de YouTube no válida'}</div>
+          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>
+            {url?.substring(0, 50)}{url?.length > 50 ? '...' : ''}
+          </div>
         </div>
       </div>
     );
@@ -184,20 +202,43 @@ const YouTubePlayer = ({ url }: { url: string }) => {
   ].join('&');
 
   return (
-    <iframe
-      key={`youtube-${videoId}-${Date.now()}`}
-      src={embedUrl}
-      style={{ 
-        ...styles.media, 
-        border: 'none',
-        background: '#000',
-        objectFit: 'contain'
-      }}
-      title={`YouTube video player - ${videoId}`}
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      allowFullScreen={false}
-      loading="eager"
-    />
+    <div style={{ ...styles.media, position: 'relative' }}>
+      {loading && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#1a1a1a',
+          color: 'white',
+          zIndex: 1
+        }}>
+          <div>Cargando video de YouTube...</div>
+        </div>
+      )}
+      <iframe
+        key={`youtube-${videoId}-${Date.now()}`}
+        src={embedUrl}
+        style={{ 
+          ...styles.media, 
+          border: 'none',
+          background: '#000'
+        }}
+        title={`YouTube video player - ${videoId}`}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen={false}
+        loading="eager"
+        onLoad={() => setLoading(false)}
+        onError={() => {
+          setError(true);
+          setLoading(false);
+        }}
+      />
+    </div>
   );
 };
 
@@ -1065,12 +1106,20 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     console.log(`Zone ${currentZoneId} objectFit:`, objectFit, 'from settings:', zoneSettings);
 
     const isYouTubeURL = (url: string) => {
-      return url && (
-        url.includes('youtube.com/watch') || 
-        url.includes('youtu.be/') || 
-        url.includes('youtube.com/embed/') ||
-        url.includes('youtube.com/v/')
-      );
+      if (!url || typeof url !== 'string') {
+        return false;
+      }
+      
+      try {
+        const cleanUrl = url.trim().toLowerCase();
+        return cleanUrl.includes('youtube.com/watch') || 
+               cleanUrl.includes('youtu.be/') || 
+               cleanUrl.includes('youtube.com/embed/') ||
+               cleanUrl.includes('youtube.com/v/');
+      } catch (e) {
+        console.error('Error validating YouTube URL:', e);
+        return false;
+      }
     };
 
     if (isYouTubeURL(url)) {
