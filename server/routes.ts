@@ -629,7 +629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!success) {
         console.log(`❌ Failed to delete playlist item ${id}`);
-        return res.status(404).json({ message: "Failed to delete playlist item" });
+        return res.status(500).json({ message: "Failed to delete playlist item" });
       }
 
       console.log(`✅ Successfully deleted playlist item ${id} from playlist ${playlistId}`);
@@ -637,12 +637,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast updates
       if (playlistId) {
         try {
+          // Broadcast to admin clients
           broadcastToUser(userId, 'playlist-item-deleted', {
             itemId: id,
             playlistId: playlistId,
             timestamp: new Date().toISOString()
           });
 
+          // Broadcast to player clients
           await broadcastPlaylistUpdate(userId, playlistId, 'playlist-item-deleted');
           console.log(`✅ Broadcasted deletion of item ${id}`);
         } catch (broadcastError) {
@@ -650,7 +652,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ message: "Playlist item deleted successfully" });
+      res.json({ 
+        success: true,
+        message: "Playlist item deleted successfully",
+        itemId: id,
+        playlistId: playlistId
+      });
     } catch (error) {
       console.error("Error deleting playlist item:", error);
       res.status(500).json({ message: "Failed to delete playlist item" });

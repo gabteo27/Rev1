@@ -445,7 +445,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     refetchOnReconnect: false, // No refetch automático en player
   });
 
-  // Query para obtener alertas activas (solo en preview, en player se maneja por WebSocket)
+  // Query para obtener alertas activas
   const { data: alerts = [] } = useQuery<Alert[]>({
     queryKey: [isPreview ? '/api/alerts/active' : '/api/player/alerts'],
     queryFn: () => {
@@ -460,14 +460,16 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           }
         }).then(res => {
           if (!res.ok) {
-            throw new Error('Failed to fetch alerts');
+            console.warn('Failed to fetch alerts via API:', res.status);
+            return []; // Return empty array instead of throwing
           }
           return res.json();
         });
       }
     },
     refetchInterval: isPreview ? 10000 : false, // Solo polling en preview
-    enabled: isPreview ? !!playlistId : false, // Solo habilitado en preview
+    enabled: !!playlistId, // Habilitado tanto en preview como en player
+    retry: false, // No retry automático para evitar spam
   });
 
   // Actualizar alertas activas cuando cambian
@@ -880,17 +882,33 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     // Fetch active alerts on mount
     const fetchActiveAlerts = async () => {
       try {
-        const response = await apiRequest('/api/player/alerts');
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+          console.warn('No auth token available for fetching alerts');
+          return;
+        }
+
+        const response = await fetch('/api/player/alerts', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
         if (response.ok) {
           const alerts = await response.json();
+          console.log('📡 Fetched active alerts for player:', alerts.length);
           setActiveAlerts(alerts.filter((alert: Alert) => alert.isActive));
+        } else {
+          console.warn('Failed to fetch player alerts:', response.status);
         }
       } catch (error) {
         console.error('Error fetching active alerts:', error);
       }
     };
 
-    fetchActiveAlerts();
+    // Wait a bit for auth to be ready, then fetch alerts
+    setTimeout(fetchActiveAlerts, 500);
 
     // Cleanup timers on unmount
     return () => {
@@ -899,7 +917,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       alertTimers.forEach(timer => clearTimeout(timer));
       alertTimers.clear();
     };
-  }, [isPreview]);
+  }, [isPreview, handleAlertMessage]);
 
   // Función para renderizar el contenido de un item
   const renderContentItem = (item: PlaylistItem, zoneId?: string) => {

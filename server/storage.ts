@@ -435,7 +435,7 @@ export class DatabaseStorage implements IStorage {
         .set(sanitizedUpdates)
         .where(and(eq(playlists.id, id), eq(playlists.userId, userId)))
         .returning();
-      
+
       if (!item) {
         console.log(`Playlist ${id} not found or no permission for user ${userId}`);
         return undefined;
@@ -510,60 +510,52 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
-  async deletePlaylistItem(id: number, userId: string): Promise<boolean> {
+  async deletePlaylistItem(id: number, userId?: string): Promise<boolean> {
+    console.log(`🗑️ Starting deletePlaylistItem for item ${id}, user ${userId}`);
+
     try {
-      console.log(`🗑️ Starting deletePlaylistItem for item ${id}, user ${userId}`);
-      
-      // First verify the item exists and get playlist info
-      const itemWithPlaylist = await db
-        .select({
-          itemId: playlistItems.id,
-          playlistId: playlistItems.playlistId,
-          playlistUserId: playlists.userId
-        })
-        .from(playlistItems)
-        .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
-        .where(eq(playlistItems.id, id))
-        .limit(1);
+      if (userId) {
+        // Verify the playlist item belongs to the user
+        const [playlistItem] = await db
+          .select({ 
+            id: playlistItems.id, 
+            playlistId: playlistItems.playlistId 
+          })
+          .from(playlistItems)
+          .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
+          .where(
+            and(
+              eq(playlistItems.id, id),
+              eq(playlists.userId, userId)
+            )
+          );
 
-      if (itemWithPlaylist.length === 0) {
-        console.log(`❌ Playlist item ${id} not found in database`);
-        return false;
+        if (!playlistItem) {
+          console.log(`❌ Playlist item ${id} not found for user ${userId}`);
+          return false;
+        }
+
+        console.log(`✅ Verified playlist item ${id} belongs to user ${userId} in playlist ${playlistItem.playlistId}`);
       }
 
-      const { playlistId, playlistUserId } = itemWithPlaylist[0];
-
-      // Verify user ownership
-      if (playlistUserId !== userId) {
-        console.log(`❌ User ${userId} does not own playlist ${playlistId} for item ${id}`);
-        return false;
-      }
-
-      console.log(`✅ Verified playlist item ${id} belongs to user ${userId} in playlist ${playlistId}`);
-
-      // Delete the item directly
+      // Delete the item
       const result = await db
         .delete(playlistItems)
         .where(eq(playlistItems.id, id));
 
-      const success = (result.rowCount ?? 0) > 0;
+      const deletedRowCount = result.rowCount || 0;
+      const success = deletedRowCount > 0;
 
-      if (success) {
-        console.log(`✅ Successfully deleted playlist item ${id}`);
-        // Recalculate total duration
-        try {
-          await this.updatePlaylistDuration(playlistId);
-        } catch (durationError) {
-          console.warn(`Warning: Failed to update playlist duration:`, durationError);
-        }
+      if (!success) {
+        console.log(`❌ Failed to delete playlist item ${id} - no rows affected (rowCount: ${deletedRowCount})`);
       } else {
-        console.log(`❌ Failed to delete playlist item ${id} - no rows affected`);
+        console.log(`✅ Successfully deleted playlist item ${id} (${deletedRowCount} rows affected)`);
       }
 
       return success;
     } catch (error) {
-      console.error(`Error in deletePlaylistItem for item ${id}:`, error);
-      return false;
+      console.error(`Error deleting playlist item ${id}:`, error);
+      throw error; // Re-throw to handle in the route
     }
   }
 
@@ -835,7 +827,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return item;
   }
-  
+
 
   async updatePlaylistDuration(playlistId: number) {
     // Get all items in the playlist with their durations
@@ -955,7 +947,7 @@ export class DatabaseStorage implements IStorage {
         .innerJoin(playlists, eq(playlistItems.playlistId, playlists.id))
         .where(and(eq(playlistItems.id, id), eq(playlists.userId, userId)))
         .limit(1);
-      
+
       return result.length > 0 ? result[0] : undefined;
     } catch (error) {
       console.error(`Error fetching playlist item ${id} for user ${userId}:`, error);

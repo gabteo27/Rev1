@@ -855,25 +855,17 @@ export default function Playlists() {
       }
 
       // Refetch playlist data
-      try {
-        await refetchPlaylist();
-      } catch (refetchError) {
-        console.warn("Warning: Failed to refetch playlist:", refetchError);
-      }
-
-      toast({
-        title: "Elemento eliminado",
-        description: "El elemento se ha eliminado de la playlist.",
-      });
+      setTimeout(async () => {
+        try {
+          await refetchPlaylist();
+        } catch (refetchError) {
+          console.warn("Warning: Failed to refetch playlist:", refetchError);
+        }
+      }, 100);
     },
     onError: (error: any) => {
       console.error("❌ Error removing item:", error);
-
-      toast({
-        title: "Error al eliminar",
-        description: error.message || "No se pudo eliminar el elemento. Intenta recargar la página.",
-        variant: "destructive",
-      });
+      // Error handling is done in handleRemoveFromPlaylist
     },
   });
 
@@ -985,9 +977,32 @@ export default function Playlists() {
     console.log(`🗑️ Starting removal of item ${itemId}`);
 
     try {
+      // Optimistic update - remove from UI immediately
+      if (playlistData?.items) {
+        const updatedItems = playlistData.items.filter((item: any) => item.id !== itemId);
+        queryClient.setQueryData(["/api/playlists", selectedPlaylistForLayout.id], {
+          ...playlistData,
+          items: updatedItems
+        });
+      }
+
       await removeItemMutation.mutateAsync(itemId);
+      
+      toast({
+        title: "Elemento eliminado",
+        description: "El elemento se ha eliminado de la playlist.",
+      });
     } catch (error) {
       console.error(`❌ Failed to delete item ${itemId}:`, error);
+      
+      // Revert optimistic update on error
+      await refetchPlaylist();
+      
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el elemento. Intenta de nuevo.",
+        variant: "destructive",
+      });
     } finally {
       // Remove from deleting set regardless of success/failure
       setDeletingItems(prev => {
