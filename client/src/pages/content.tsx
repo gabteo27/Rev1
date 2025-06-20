@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -112,7 +111,7 @@ export default function Content() {
         }
         return response.json();
       }));
-      
+
       const failed = results.filter(result => result.status === 'rejected');
       if (failed.length > 0) {
         throw new Error(`${failed.length} elementos no pudieron ser eliminados`);
@@ -136,7 +135,7 @@ export default function Content() {
     }
   });
 
-  
+
 
   const getContentIcon = (type: string) => {
     const iconProps = { className: "w-5 h-5" };
@@ -240,6 +239,10 @@ export default function Content() {
   });
 
   const handleEdit = (item: any) => {
+    // Prevent opening multiple edit modals
+    if (editModalOpen) {
+      return;
+    }
     setEditingContent(item);
     setEditModalOpen(true);
   };
@@ -249,7 +252,7 @@ export default function Content() {
     setPreviewModalOpen(true);
   };
 
-  
+
 
   const toggleItemSelected = (itemId: number) => {
     setSelectedItems(prev => 
@@ -730,7 +733,7 @@ export default function Content() {
         )}
       </div>
 
-      
+
 
       {/* Preview Modal */}
       <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>

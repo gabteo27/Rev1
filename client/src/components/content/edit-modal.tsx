@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -84,7 +83,7 @@ export default function EditModal({ open, onClose, content }: EditModalProps) {
     // Validar URL para webpages
     if (content.type === "webpage" && formData.url) {
       let processedUrl = formData.url.trim();
-      
+
       // Add protocol if missing
       if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
         processedUrl = 'https://' + processedUrl;
@@ -191,13 +190,13 @@ export default function EditModal({ open, onClose, content }: EditModalProps) {
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sin categoría</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                    <SelectItem value="">Seleccionar categoría</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
               </Select>
             </div>
 
