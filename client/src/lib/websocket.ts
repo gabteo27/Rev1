@@ -73,12 +73,7 @@ class WebSocketManager {
         this.send({ type: 'auth', userId: this.userId });
       } else if (this.authToken) {
         console.log('Authenticating player WebSocket connection with token:', this.authToken?.substring(0, 8) + '...');
-        // Send both player auth and screen identification
-        this.send({ 
-          type: 'player-auth', 
-          token: this.authToken,
-          screenId: localStorage.getItem('screenId')
-        });
+        this.send({ type: 'player-auth', token: this.authToken });
       }
 
       // Start heartbeat
