@@ -5,6 +5,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import UploadModal from "@/components/content/upload-modal";
+import EditModal from "@/components/content/edit-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -268,7 +269,7 @@ export default function Content() {
 
   const handleEdit = (item: any) => {
     setEditingContent(item);
-    setUploadModalOpen(true);
+    setEditModalOpen(true);
   };
 
   const handlePreview = (item: any) => {
@@ -959,9 +960,19 @@ export default function Content() {
 
       <UploadModal 
         open={uploadModalOpen}
-        onClose={() => setUploadModalOpen(false)}
-        editingContent={editingContent}
-        isEditing={!!editingContent}
+        onClose={() => {
+          setUploadModalOpen(false);
+          setEditingContent(null);
+        }}
+      />
+
+      <EditModal 
+        open={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingContent(null);
+        }}
+        content={editingContent}
       />
     </div>
   );
