@@ -168,6 +168,9 @@ export class DatabaseStorage implements IStorage {
     return screen;
   }
 
+
+  
+  
   async findScreenByPairingCode(code: string): Promise<Screen | undefined> {
     const [screen] = await db
       .select()

@@ -328,30 +328,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   app.delete("/api/content/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseInt(req.params.id);
 
-      // First remove content from all playlists
-      await storage.removeContentFromAllPlaylists(id, userId);
-
-      // Then delete the content item
-      const success = await storage.deleteContentItem(id, userId);
-      if (!success) {
-        return res.status(404).json({ message: "Content not found" });
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "ID de contenido inválido" });
       }
 
-      // Broadcast content deletion to update UI
-      broadcastToUser(userId, 'content-deleted', { contentId: id });
+      // 1. Usamos la función que ya tienes para verificar si el contenido existe.
+      const contentItem = await storage.getContentItem(id, userId);
 
-      // Also broadcast playlist updates to refresh all playlist views
+      // 2. Si no existe, es porque ya fue borrado. Lo consideramos un éxito y terminamos.
+      if (!contentItem) {
+        console.log(`✅ Contenido ${id} no encontrado, probablemente ya fue borrado.`);
+        return res.json({ success: true, message: "El contenido ya ha sido eliminado." });
+      }
+
+      // 3. Si el contenido SÍ existe, procedemos con toda la lógica de borrado.
+      console.log(`🗑️ Eliminando contenido ${id} de todas las playlists...`);
+      await storage.removeContentFromAllPlaylists(id, userId);
+
+      console.log(`🗑️ Eliminando ítem de contenido ${id} de la base de datos...`);
+      await storage.deleteContentItem(id, userId);
+
+      console.log(`✅ Petición de borrado para el contenido ${id} procesada exitosamente.`);
+
+      // 4. Notificamos al frontend para que la UI se actualice en tiempo real.
+      broadcastToUser(userId, 'content-deleted', { contentId: id });
       broadcastToUser(userId, 'playlists-updated', { timestamp: new Date() });
 
-      res.json({ message: "Content deleted successfully" });
+      res.json({ success: true, message: "Contenido eliminado exitosamente" });
+
     } catch (error) {
-      console.error("Error deleting content:", error);
-      res.status(500).json({ message: "Failed to delete content" });
+      console.error("Error al eliminar contenido:", error);
+      res.status(500).json({ message: "Error al eliminar el contenido" });
     }
   });
 
@@ -590,95 +603,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/playlist-items/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const id = parseInt(req.params.id);
-
-      console.log(`🗑️ DELETE request for playlist item ${id} from user ${userId}`);
-
-      // Validate the ID
-      if (isNaN(id) || id <= 0) {
-        console.log(`❌ Invalid playlist item ID: ${req.params.id}`);
-        return res.status(400).json({ message: "Invalid playlist item ID" });
-      }
-
-      // Get playlist item info before deletion
-      let playlistId: number | null = null;
-      let itemExists = false;
-      
+    app.delete("/api/playlist-items/:id", isAuthenticated, async (req: any, res) => {
       try {
-        const playlistItem = await storage.getPlaylistItem(id);
-        if (playlistItem) {
-          // Verify ownership through playlist
-          const playlist = await storage.getPlaylist(playlistItem.playlistId, userId);
-          if (!playlist) {
-            console.log(`❌ User ${userId} does not have access to playlist ${playlistItem.playlistId}`);
-            return res.status(404).json({ message: "Playlist item not found" });
-          }
-          playlistId = playlistItem.playlistId;
-          itemExists = true;
+        const userId = req.user.claims.sub;
+        const id = parseInt(req.params.id);
+
+        console.log(`🗑️ DELETE request for playlist item ${id} from user ${userId}`);
+
+        if (isNaN(id) || id <= 0) {
+          return res.status(400).json({ message: "Invalid playlist item ID" });
         }
-      } catch (error) {
-        console.error(`Error checking playlist item ${id}:`, error);
-      }
 
-      // If item doesn't exist, it might already be deleted
-      if (!itemExists) {
-        console.log(`❌ Playlist item ${id} not found - may already be deleted`);
-        return res.status(404).json({ message: "Playlist item not found" });
-      }
+        // 1. Obtén la información del item ANTES de borrarlo para saber a qué playlist pertenece
+        const playlistItem = await storage.getPlaylistItem(id);
 
-      // Perform the deletion
-      const success = await storage.deletePlaylistItem(id, userId);
+        // 2. Si el item no existe, significa que ya fue borrado. La operación es un éxito.
+        if (!playlistItem) {
+          console.log(`✅ Playlist item ${id} not found, likely already deleted.`);
+          return res.json({
+            success: true,
+            message: "Playlist item already deleted",
+            itemId: id,
+          });
+        }
 
-      if (!success) {
-        console.log(`❌ Failed to delete playlist item ${id}`);
-        return res.status(500).json({ message: "Failed to delete playlist item" });
-      }
+        // 3. Verifica que el usuario es el propietario de la playlist
+        const playlist = await storage.getPlaylist(playlistItem.playlistId, userId);
+        if (!playlist) {
+          // Desde la perspectiva del usuario, el item no existe si no tiene acceso a él
+          return res.status(404).json({ message: "Playlist item not found" });
+        }
 
-      console.log(`✅ Successfully deleted playlist item ${id} from playlist ${playlistId}`);
+        const playlistId = playlistItem.playlistId;
 
-      // Immediate response to client
-      res.json({ 
-        success: true,
-        message: "Playlist item deleted successfully",
-        itemId: id,
-        playlistId: playlistId
-      });
+        // 4. Realiza el borrado. Ya no es necesario comprobar el valor de retorno `success`,
+        // porque el único caso en el que podría fallar (que el item no exista) ya lo hemos manejado.
+        await storage.deletePlaylistItem(id, userId);
 
-      // Broadcast updates asynchronously
-      if (playlistId) {
-        setImmediate(async () => {
-          try {
-            console.log(`📡 Broadcasting deletion of item ${id} from playlist ${playlistId}`);
-            
-            // Broadcast to admin clients
-            broadcastToUser(userId, 'playlist-item-deleted', {
-              itemId: id,
-              playlistId: playlistId,
-              timestamp: new Date().toISOString()
-            });
+        console.log(`✅ Successfully processed delete request for playlist item ${id}`);
 
-            // Broadcast to player clients
-            await broadcastPlaylistUpdate(userId, playlistId, 'playlist-item-deleted');
-            
-            // Broadcast general playlist update
-            broadcastToUser(userId, 'playlists-updated', {
-              timestamp: new Date().toISOString()
-            });
-            
-            console.log(`✅ Completed broadcasting deletion of item ${id}`);
-          } catch (broadcastError) {
-            console.error(`⚠️ Broadcast failed for item ${id}:`, broadcastError);
-          }
+        // 5. Responde inmediatamente al cliente
+        res.json({
+          success: true,
+          message: "Playlist item deleted successfully",
+          itemId: id,
+          playlistId: playlistId,
         });
-      }
 
-    } catch (error) {
-      console.error("Error deleting playlist item:", error);
-      res.status(500).json({ message: "Failed to delete playlist item" });
-    }
+        // 6. Realiza las notificaciones de manera asíncrona para no bloquear la respuesta
+        if (playlistId) {
+          setImmediate(() => {
+            try {
+              console.log(`📡 Broadcasting deletion of item ${id} from playlist ${playlistId}`);
+              broadcastPlaylistUpdate(userId, playlistId, 'playlist-item-deleted');
+              broadcastToUser(userId, 'playlists-updated', {
+                timestamp: new Date().toISOString()
+              });
+              console.log(`✅ Completed broadcasting deletion of item ${id}`);
+            } catch (broadcastError) {
+              console.error(`⚠️ Broadcast failed for item ${id}:`, broadcastError);
+            }
+          });
+        }
+
+      } catch (error) {
+        console.error("Error deleting playlist item:", error);
+        res.status(500).json({ message: "Failed to delete playlist item" });
+      }
   });
 
   app.put("/api/playlists/:id/reorder", isAuthenticated, async (req: any, res) => {
@@ -874,29 +865,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete screen
+
   app.delete("/api/screens/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const screenId = parseInt(req.params.id);
 
-      const success = await storage.deleteScreen(screenId, userId);
-      if (!success) {
-        return res.status(404).json({ message: "Screen not found" });
+      if (isNaN(screenId)) {
+          return res.status(400).json({ message: "Invalid screen ID" });
       }
 
-      // Broadcast screen deletion to all connected clients
+      // 1. Primero, verifica si la pantalla existe
+      // (Basado en tu otra ruta, asumo que tienes una función `storage.getScreenById`)
+      const screen = await storage.getScreenById(screenId);
+
+      // 2. Si no existe, es probable que ya haya sido borrada por otra petición.
+      // Esto es un resultado exitoso, no un error.
+      if (!screen) {
+          console.log(`✅ Screen ${screenId} not found, likely already deleted.`);
+          return res.json({ success: true, message: "Screen already deleted" });
+      }
+
+      // 3. Verifica que la pantalla pertenece al usuario antes de borrar
+      if (screen.userId !== userId) {
+          return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      // 4. Ahora sí, realiza el borrado
+      await storage.deleteScreen(screenId, userId);
+
+      console.log(`✅ Successfully processed delete request for screen ${screenId}`);
+
+      // 5. Notifica a los clientes por WebSocket
       const wssInstance = app.get('wss') as WebSocketServer;
       wssInstance.clients.forEach((client: WebSocket) => {
-        const clientWithId = client as any;
-        if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
-          clientWithId.send(JSON.stringify({
-            type: 'screen-deleted',
-            data: { screenId, timestamp: new Date().toISOString() }
-          }));
-        }
+          const clientWithId = client as any;
+          if (clientWithId.readyState === WebSocket.OPEN && clientWithId.userId === userId) {
+              clientWithId.send(JSON.stringify({
+                  type: 'screen-deleted',
+                  data: { screenId, timestamp: new Date().toISOString() }
+              }));
+          }
       });
 
-      res.json({ message: "Screen deleted successfully" });
+      // 6. Responde con éxito
+      res.json({ success: true, message: "Screen deleted successfully" });
     } catch (error) {
       console.error("Error deleting screen:", error);
       res.status(500).json({ message: "Failed to delete screen" });
