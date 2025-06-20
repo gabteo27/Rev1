@@ -325,6 +325,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
 
         <div className="space-y-6">
           {/* File Upload Area */}
+          {selectedFiles.length === 0 && (
           <div>
             <Label className="text-sm font-medium text-slate-700 mb-2 block">
               Archivos
@@ -363,6 +364,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
               />
             </div>
           </div>
+          )}
 
           {/* Selected Files */}
           {selectedFiles.length > 0 && (
@@ -410,6 +412,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
           </div>
 
           {/* URL Input */}
+          {selectedFiles.length === 0 && (
           <div>
             <Label htmlFor="url" className="text-sm font-medium text-slate-700 mb-2 block">
               Agregar página web por URL
@@ -441,6 +444,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
               </p>
             )}
           </div>
+          )}
 
           {/* Content Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

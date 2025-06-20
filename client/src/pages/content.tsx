@@ -267,14 +267,8 @@ export default function Content() {
   });
 
   const handleEdit = (item: any) => {
-    setEditingContent({
-      id: item.id,
-      title: item.title,
-      description: item.description || "",
-      category: item.category || "",
-      tags: Array.isArray(item.tags) ? item.tags.join(", ") : (item.tags || ""),
-    });
-    setEditModalOpen(true);
+    setEditingContent(item);
+    setUploadModalOpen(true);
   };
 
   const handlePreview = (item: any) => {
@@ -966,6 +960,8 @@ export default function Content() {
       <UploadModal 
         open={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
+        editingContent={editingContent}
+        isEditing={!!editingContent}
       />
     </div>
   );
