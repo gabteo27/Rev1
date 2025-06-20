@@ -638,22 +638,19 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }
 
       if (data.type === 'playlist-change') {
-        const newPlaylistId = data.data?.newPlaylistId;
+        const newPlaylistId = data.data?.playlistId; // Corregido: usar playlistId directamente
         const messageScreenId = data.data?.screenId;
         const screenId = localStorage.getItem('screenId');
-        const priority = data.data?.priority;
 
-        if (messageScreenId === screenId || !messageScreenId) {
+        console.log(`🔄 Playlist change in ContentPlayer: ${lastPlaylistId} → ${newPlaylistId}, screenId: ${messageScreenId}`);
+
+        if (messageScreenId && messageScreenId.toString() === screenId) {
           if (newPlaylistId !== lastPlaylistId) {
-            console.log(`🔄 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} (WebSocket, priority: ${priority})`);
+            console.log(`🎵 Playlist changed from ${lastPlaylistId} to ${newPlaylistId} - IMMEDIATE RELOAD`);
             lastPlaylistId = newPlaylistId;
             
-            // Si es prioridad alta, recarga inmediatamente
-            const delay = priority === 'high' ? 100 : 500;
-            setTimeout(() => {
-              console.log(`🔄 Reloading page due to playlist change (WebSocket, delay: ${delay}ms)...`);
-              window.location.reload();
-            }, delay);
+            // Recarga inmediata sin delay
+            window.location.reload();
           }
         }
       }

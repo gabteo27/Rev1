@@ -202,9 +202,11 @@ export default function PlayerPage() {
           const { playlistId: newPlaylistId, screenId: messageScreenId } = data.data;
           const currentScreenId = localStorage.getItem('screenId');
           
+          console.log(`📋 Comparing screenIds: message=${messageScreenId}, current=${currentScreenId}`);
+          
           if (messageScreenId && messageScreenId.toString() === currentScreenId) {
-            console.log(`🎵 Playlist changed to ${newPlaylistId} for this screen`);
-            setCurrentPlaylistId(newPlaylistId);
+            console.log(`🎵 Playlist changed to ${newPlaylistId} for this screen - RELOADING NOW`);
+            // Cambio inmediato sin delay
             window.location.reload();
           }
         }

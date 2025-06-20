@@ -918,20 +918,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             else if (clientWithId.screenId === screenId) {
               targetPlayerFound = true;
               playerClients++;
-              console.log(`🎯 Found target screen ${screenId}! Sending playlist-change...`);
+              console.log(`🎯 MATCH! Target screen ${screenId} found! Sending playlist-change immediately...`);
               
-              clientWithId.send(JSON.stringify({
+              const message = {
                 type: 'playlist-change',
                 data: { 
                   playlistId: playlistId,
                   screenId: screenId,
                   oldPlaylistId: oldPlaylistId,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
+                  immediate: true
                 }
-              }));
+              };
+              
+              console.log(`📤 Sending message:`, JSON.stringify(message));
+              clientWithId.send(JSON.stringify(message));
               
               messageSent = true;
-              console.log(`✅ Successfully sent playlist-change to screen ${screenId}`);
+              console.log(`✅ PLAYLIST CHANGE SENT successfully to screen ${screenId}`);
             } else if (clientWithId.screenId) {
               console.log(`🔍 Different screen found: ${clientWithId.screenId} (looking for ${screenId})`);
             }
