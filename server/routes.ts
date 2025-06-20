@@ -889,7 +889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const clientWithId = client as WebSocketWithId;
           if (clientWithId.readyState === WebSocket.OPEN) {
             // Send to admin clients
-            if (clientWithId.userId === userId) {
+            if (clientWithId.userId === userId && !clientWithId.screenId) {
               clientWithId.send(JSON.stringify({
                 type: 'screen-playlist-updated',
                 data: { 
@@ -903,46 +903,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             // Send immediate playlist change to the specific screen
             else if (clientWithId.screenId === screenId) {
-              // Send multiple events to ensure the player responds
-              const messages = [
-                {
-                  type: 'playlist-change',
-                  data: { 
-                    newPlaylistId: playlistId,
-                    oldPlaylistId: oldPlaylistId,
-                    screenId: screenId,
-                    timestamp: new Date().toISOString(),
-                    action: 'immediate-change',
-                    priority: 'high'
-                  }
-                },
-                {
-                  type: 'screen-playlist-updated',
-                  data: { 
-                    screenId: screenId,
-                    playlistId: playlistId,
-                    timestamp: new Date().toISOString(),
-                    action: 'reload-content'
-                  }
+              clientWithId.send(JSON.stringify({
+                type: 'playlist-change',
+                data: { 
+                  playlistId: playlistId,
+                  screenId: screenId,
+                  timestamp: new Date().toISOString()
                 }
-              ];
-
-              messages.forEach(message => {
-                clientWithId.send(JSON.stringify(message));
-              });
+              }));
               
               messageSent = true;
-              console.log(`✅ Sent immediate playlist change to screen ${screenId}`);
+              console.log(`✅ Sent playlist change to screen ${screenId}`);
             }
           }
         });
-
-        // Also broadcast playlist updates if there's a new playlist
-        if (playlistId) {
-          setTimeout(async () => {
-            await broadcastPlaylistUpdate(userId, playlistId, 'screen-playlist-updated');
-          }, 100);
-        }
 
         if (!messageSent) {
           console.log(`⚠️ No connected screen found for screen ${screenId}`);
@@ -1605,6 +1579,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               data: { message: 'Authentication failed' } 
             }));
           }
+        }
+
+        // Handle screen identification
+        if (parsed.type === 'screen-identify' && parsed.screenId) {
+          (ws as any).screenId = parsed.screenId;
+          console.log(`Screen ${parsed.screenId} identified via WebSocket`);
         }
       } catch (e) {
         console.warn("Invalid WebSocket message received");

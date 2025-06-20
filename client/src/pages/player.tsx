@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ContentPlayer from "@/components/player/ContentPlayer";
@@ -136,7 +135,7 @@ export default function PlayerPage() {
 
     // WebSocket connection for real-time pairing updates
     const ws = new WebSocket(`wss://${window.location.host}/ws`);
-    
+
     ws.onopen = () => {
       console.log('WebSocket connected for pairing');
       // Send device identification
@@ -149,7 +148,7 @@ export default function PlayerPage() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
         if (data.type === 'pairing-completed' && data.deviceId === deviceId) {
           console.log('¡Emparejamiento exitoso via WebSocket!', data);
           localStorage.setItem('authToken', data.authToken);
