@@ -1,11 +1,47 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.xcientv.signage" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+<widget id="com.xcientv.signage" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0" xmlns:android="http://schemas.android.com/apk/res/android" >
     <name>XcienTV</name>
-    <description>Sample Apache Cordova App</description>
+    <description>Aplicacion XcienTV</description>
     <author email="dev@cordova.apache.org" href="https://cordova.apache.org">
         Apache Cordova Team
     </author>
-    <content src="index.html" />
+    <content src="player.html" />
+
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
+    <allow-navigation href="*" />
+    <preference name="Fullscreen" value="true" />
+    <preference name="android-targetSdkVersion" value="35" />
+    <preference name="android-minSdkVersion" value="21" /> <!-- Android 5.0+, compatible con Android TV -->
+    <preference name="android-compileSdkVersion" value="35" />
+    <platform name="android">
+        <allow-intent href="market:*" />
+        <preference name="AndroidLaunchMode" value="singleTop" />
+
+        <icon src="res/icon.png" /> 
+        <icon src="res/banner.png" density="xhdpi" width="320" height="180" />
+
+        <preference name="UIWebViewBounce" value="false" />
+        <preference name="DisallowOverscroll" value="true" />
+        <feature name="android.software.leanback" required="true" />
+        <feature name="android.hardware.touchscreen" required="false" />
+
+        <config-file target="AndroidManifest.xml" parent="/manifest/application/activity[@android:name='MainActivity']">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </config-file>
+        <edit-config file="app/src/main/AndroidManifest.xml" target="/manifest/application" mode="merge">
+            <application android:usesCleartextTraffic="true" />
+        </edit-config>
+        <edit-config file="app/src/main/AndroidManifest.xml" target="/manifest/application/activity[@android:name='MainActivity']" mode="merge">
+            <activity android:exported="true" />
+        </edit-config>
+    </platform>
+    <plugin name="cordova-plugin-whitelist" spec="^1.3.5" />
+    <plugin name="cordova-plugin-statusbar" spec="^2.4.3" />
+    <plugin name="cordova-plugin-splashscreen" spec="^6.0.2" />
+    <plugin name="cordova-plugin-device" spec="^2.0.3" />
 </widget>
