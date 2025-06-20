@@ -953,7 +953,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const screenData = { ...req.body, userId };
 
-      const validatedData = insertScreenSchema.parse(screenData);
+      const validatedData =```python
+insertScreenSchema.parse(screenData);
       console.log("Validated screen data:", validatedData);
 
       const screen = await storage.createScreen(validatedData);
@@ -1108,32 +1109,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
             else if (clientWithId.screenId === screenId) {
               targetPlayerFound = true;
               playerClients++;
-              console.log(
-                `🎯 MATCH! Target screen ${screenId} found! Sending playlist-change immediately...`,
-              );
+              console.log(`🎯 MATCH! Target screen ${screenId} found! Sending playlist-change immediately...`);
 
               const message = {
-                type: "playlist-change",
-                data: {
+                type: 'playlist-change',
+                data: { 
                   playlistId: playlistId,
                   screenId: screenId,
                   oldPlaylistId: oldPlaylistId,
                   timestamp: new Date().toISOString(),
                   immediate: true,
-                },
+                  action: 'reload' // Agregar acción explícita como en la eliminación de items
+                }
               };
 
-              console.log(`📤 Sending message:`, JSON.stringify(message));
-              clientWithId.send(JSON.stringify(message));
+              console.log(`📤 Sending IMMEDIATE playlist-change message to screen ${screenId}:`, JSON.stringify(message));
 
-              messageSent = true;
-              console.log(
-                `✅ PLAYLIST CHANGE SENT successfully to screen ${screenId}`,
-              );
+              try {
+                clientWithId.send(JSON.stringify(message));
+                messageSent = true;
+                console.log(`✅ PLAYLIST CHANGE MESSAGE SENT SUCCESSFULLY to screen ${screenId}`);
+
+                // Enviar mensaje adicional como confirmación
+                setTimeout(() => {
+                  if (clientWithId.readyState === WebSocket.OPEN) {
+                    clientWithId.send(JSON.stringify({
+                      type: 'force-reload',
+                      data: { 
+                        reason: 'playlist-changed',
+                        screenId: screenId,
+                        newPlaylistId: playlistId
+                      }
+                    }));
+                    console.log(`🔄 FORCE RELOAD message sent to screen ${screenId}`);
+                  }
+                }, 100);
+
+              } catch (error) {
+                console.error(`❌ Error sending playlist change to screen ${screenId}:`, error);
+              }
             } else if (clientWithId.screenId) {
-              console.log(
-                `🔍 Different screen found: ${clientWithId.screenId} (looking for ${screenId})`,
-              );
+              console.log(`🔍 Different screen found: ${clientWithId.screenId} (looking for ${screenId})`);
             }
           } else {
             console.log(`❌ Client with closed connection found`);
@@ -1921,7 +1937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        // Handle screen identification
+        // Handle screen identification```python
         if (parsed.type === "screen-identify" && parsed.screenId) {
           const previousScreenId = (ws as any).screenId;
           (ws as any).screenId = parsed.screenId;
@@ -2659,4 +2675,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
-// The code defines several API endpoints and integrates WebSocket for real-time updates, including playlist updates.
+// The code defines several API endpoints and integrates WebSocket for real-time updates, including playlist updates, with enhanced logging and immediate message sending.
