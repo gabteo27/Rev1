@@ -205,15 +205,9 @@ export default function PlayerPage() {
           console.log(`📋 Comparing screenIds: message=${messageScreenId}, current=${currentScreenId}`);
           
           if (messageScreenId && messageScreenId.toString() === currentScreenId) {
-            console.log(`🎵 Playlist changed to ${newPlaylistId} for this screen`);
-            // Actualizar el playlistId en localStorage
-            if (newPlaylistId) {
-              localStorage.setItem('playlistId', newPlaylistId.toString());
-            } else {
-              localStorage.removeItem('playlistId');
-            }
-            // Actualizar el estado para que se refleje el cambio
-            setCurrentPlaylistId(newPlaylistId);
+            console.log(`🎵 Playlist changed to ${newPlaylistId} for this screen - RELOADING NOW`);
+            // Cambio inmediato sin delay
+            window.location.reload();
           }
         }
 
