@@ -1,0 +1,394 @@
+VM1848 eruda.js:2 🎵 Fetching playlist data from: /api/playlists/13
+VM1848 eruda.js:2 🔌 WebSocket connected successfully
+VM1848 eruda.js:2 Playlist changed, updating trackers: [{…}]
+VM1848 eruda.js:2 WebSocket connection to 'wss://localhost:5173/?token=_gaHdqxsrRcZ' failed: 
+t @ VM1848 eruda.js:2
+createConnection @ VM1850 client:815
+connect @ VM1850 client:437
+connect @ VM1850 client:822Understand this error
+VM1848 eruda.js:2 [vite] failed to connect to websocket.
+your current setup:
+  (browser) dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/ <--[HTTP]--> localhost:5173/ (server)
+  (browser) dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev:/ <--[WebSocket (failing)]--> localhost:5173/ (server)
+Check out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr .
+Mt.forEach.n.<computed> @ VM1848 eruda.js:2
+connect @ VM1850 client:830
+await in connect
+connect @ VM1850 client:290
+connect @ VM1850 client:383
+(anonymous) @ VM1850 client:908Understand this error
+content.tsx:62 Content loaded: (8) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+2@radix-ui_react-dialog.js?v=c3b9f91b:343 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ @radix-ui_react-dialog.js?v=c3b9f91b:343
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19469
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this warning
+queryClient.ts:40 
+            
+            
+           DELETE https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/api/alerts/21 404 (Not Found)
+apiRequest @ queryClient.ts:40
+mutationFn @ alerts.tsx:66
+fn @ @tanstack_react-query.js?v=c3b9f91b:1235
+run @ @tanstack_react-query.js?v=c3b9f91b:513
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+execute @ @tanstack_react-query.js?v=c3b9f91b:1271
+await in execute
+mutate @ @tanstack_react-query.js?v=c3b9f91b:2690
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3413
+onClick @ alerts.tsx:420
+callCallback2 @ chunk-PNGJSGSD.js?v=c3b9f91b:3680
+invokeGuardedCallbackDev @ chunk-PNGJSGSD.js?v=c3b9f91b:3705
+invokeGuardedCallback @ chunk-PNGJSGSD.js?v=c3b9f91b:3739
+invokeGuardedCallbackAndCatchFirstError @ chunk-PNGJSGSD.js?v=c3b9f91b:3742
+executeDispatch @ chunk-PNGJSGSD.js?v=c3b9f91b:7046
+processDispatchQueueItemsInOrder @ chunk-PNGJSGSD.js?v=c3b9f91b:7066
+processDispatchQueue @ chunk-PNGJSGSD.js?v=c3b9f91b:7075
+dispatchEventsForPlugins @ chunk-PNGJSGSD.js?v=c3b9f91b:7083
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:7206
+batchedUpdates$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:18966
+batchedUpdates @ chunk-PNGJSGSD.js?v=c3b9f91b:3585
+dispatchEventForPluginEventSystem @ chunk-PNGJSGSD.js?v=c3b9f91b:7205
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-PNGJSGSD.js?v=c3b9f91b:5484
+dispatchEvent @ chunk-PNGJSGSD.js?v=c3b9f91b:5478
+dispatchDiscreteEvent @ chunk-PNGJSGSD.js?v=c3b9f91b:5455Understand this error
+scheduling.tsx:244 [["/api/schedules"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Scheduling @ scheduling.tsx:244
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+mountIndeterminateComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14974
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15962
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+scheduling.tsx:248 [["/api/playlists"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Scheduling @ scheduling.tsx:248
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+mountIndeterminateComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14974
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15962
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+scheduling.tsx:252 [["/api/screens"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Scheduling @ scheduling.tsx:252
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+mountIndeterminateComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14974
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15962
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+scheduling.tsx:244 [["/api/schedules"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Scheduling @ scheduling.tsx:244
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14630
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15972
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+scheduling.tsx:248 [["/api/playlists"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Scheduling @ scheduling.tsx:248
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14630
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15972
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+scheduling.tsx:252 [["/api/screens"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Scheduling @ scheduling.tsx:252
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14630
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15972
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+scheduling.tsx:244 [["/api/schedules"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Scheduling @ scheduling.tsx:244
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14630
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15972
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=c3b9f91b:565
+flush @ @tanstack_react-query.js?v=c3b9f91b:589
+batch @ @tanstack_react-query.js?v=c3b9f91b:607
+dispatch_fn @ @tanstack_react-query.js?v=c3b9f91b:1039
+onError @ @tanstack_react-query.js?v=c3b9f91b:904
+reject @ @tanstack_react-query.js?v=c3b9f91b:484
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:527
+Promise.catch
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:538
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:534
+Promise.catch
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+fetch @ @tanstack_react-query.js?v=c3b9f91b:969
+executeFetch_fn @ @tanstack_react-query.js?v=c3b9f91b:2278
+onSubscribe @ @tanstack_react-query.js?v=c3b9f91b:1982
+subscribe @ @tanstack_react-query.js?v=c3b9f91b:24
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3145
+subscribeToStore @ chunk-PNGJSGSD.js?v=c3b9f91b:12032
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19469
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+scheduling.tsx:248 [["/api/playlists"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Scheduling @ scheduling.tsx:248
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14630
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15972
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=c3b9f91b:565
+flush @ @tanstack_react-query.js?v=c3b9f91b:589
+batch @ @tanstack_react-query.js?v=c3b9f91b:607
+dispatch_fn @ @tanstack_react-query.js?v=c3b9f91b:1039
+onError @ @tanstack_react-query.js?v=c3b9f91b:904
+reject @ @tanstack_react-query.js?v=c3b9f91b:484
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:527
+Promise.catch
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:538
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:534
+Promise.catch
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+fetch @ @tanstack_react-query.js?v=c3b9f91b:969
+executeFetch_fn @ @tanstack_react-query.js?v=c3b9f91b:2278
+onSubscribe @ @tanstack_react-query.js?v=c3b9f91b:1982
+subscribe @ @tanstack_react-query.js?v=c3b9f91b:24
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3145
+subscribeToStore @ chunk-PNGJSGSD.js?v=c3b9f91b:12032
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19469
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+scheduling.tsx:252 [["/api/screens"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Scheduling @ scheduling.tsx:252
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14630
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15972
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=c3b9f91b:565
+flush @ @tanstack_react-query.js?v=c3b9f91b:589
+batch @ @tanstack_react-query.js?v=c3b9f91b:607
+dispatch_fn @ @tanstack_react-query.js?v=c3b9f91b:1039
+onError @ @tanstack_react-query.js?v=c3b9f91b:904
+reject @ @tanstack_react-query.js?v=c3b9f91b:484
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:527
+Promise.catch
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:538
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:534
+Promise.catch
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+fetch @ @tanstack_react-query.js?v=c3b9f91b:969
+executeFetch_fn @ @tanstack_react-query.js?v=c3b9f91b:2278
+onSubscribe @ @tanstack_react-query.js?v=c3b9f91b:1982
+subscribe @ @tanstack_react-query.js?v=c3b9f91b:24
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3145
+subscribeToStore @ chunk-PNGJSGSD.js?v=c3b9f91b:12032
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19469
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+deployment.tsx:54 [["/api/deployments"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Deployment @ deployment.tsx:54
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+mountIndeterminateComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14974
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15962
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+deployment.tsx:54 [["/api/deployments"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Deployment @ deployment.tsx:54
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14630
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15972
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+deployment.tsx:54 [["/api/deployments"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Deployment @ deployment.tsx:54
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+updateFunctionComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14630
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15972
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=c3b9f91b:565
+flush @ @tanstack_react-query.js?v=c3b9f91b:589
+batch @ @tanstack_react-query.js?v=c3b9f91b:607
+dispatch_fn @ @tanstack_react-query.js?v=c3b9f91b:1039
+onError @ @tanstack_react-query.js?v=c3b9f91b:904
+reject @ @tanstack_react-query.js?v=c3b9f91b:484
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:527
+Promise.catch
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:538
+Promise.then
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:534
+Promise.catch
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+fetch @ @tanstack_react-query.js?v=c3b9f91b:969
+executeFetch_fn @ @tanstack_react-query.js?v=c3b9f91b:2278
+onSubscribe @ @tanstack_react-query.js?v=c3b9f91b:1982
+subscribe @ @tanstack_react-query.js?v=c3b9f91b:24
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3145
+subscribeToStore @ chunk-PNGJSGSD.js?v=c3b9f91b:12032
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19469
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+content.tsx:62 Content loaded: (8) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+playlists.tsx:1288 🔌 Setting up WebSocket for playlists page...
+playlists.tsx:1327 WebSocket setup failed for playlists: ReferenceError: wsManager is not defined
+    at setupWebSocket (playlists.tsx:1292:9)
+    at playlists.tsx:1331:21
+    at commitHookEffectListMount (chunk-PNGJSGSD.js?v=c3b9f91b:16963:34)
+    at commitPassiveMountOnFiber (chunk-PNGJSGSD.js?v=c3b9f91b:18206:19)
+    at commitPassiveMountEffects_complete (chunk-PNGJSGSD.js?v=c3b9f91b:18179:17)
+    at commitPassiveMountEffects_begin (chunk-PNGJSGSD.js?v=c3b9f91b:18169:15)
+    at commitPassiveMountEffects (chunk-PNGJSGSD.js?v=c3b9f91b:18159:11)
+    at flushPassiveEffectsImpl (chunk-PNGJSGSD.js?v=c3b9f91b:19543:11)
+    at flushPassiveEffects (chunk-PNGJSGSD.js?v=c3b9f91b:19500:22)
+    at commitRootImpl (chunk-PNGJSGSD.js?v=c3b9f91b:19469:13)
+setupWebSocket @ playlists.tsx:1327
+(anonymous) @ playlists.tsx:1331
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19469
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677
