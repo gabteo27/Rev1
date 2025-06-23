@@ -30,6 +30,10 @@ task = "shell.exec"
 args = "HOST=0.0.0.0 PORT=3000 npm run dev"
 
 [[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
 localPort = 5000
 externalPort = 80
 

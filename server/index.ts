@@ -47,7 +47,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const port = parseInt(process.env.PORT || "3000", 10);
+  const port = parseInt(process.env.PORT || "5000", 10);
 
   try {
     const server = await registerRoutes(app);
