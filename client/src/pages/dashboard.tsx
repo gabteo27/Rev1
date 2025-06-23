@@ -130,6 +130,7 @@ export default function Dashboard() {
         if (!wsManager.isConnected()) {
           try {
             await wsManager.connect();
+            console.log('✅ WebSocket connected for dashboard');
           } catch (error) {
             console.warn('WebSocket connection failed, will retry later:', error);
             setTimeout(setupSubscriptions, 5000);
@@ -176,12 +177,15 @@ export default function Dashboard() {
       const playlistContentHandler = (data) => {
         console.log('Playlist content update received:', data);
         queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/content"] });
         if (data?.playlistId) {
           queryClient.invalidateQueries({ queryKey: ["/api/playlists", data.playlistId.toString()] });
         }
         if (selectedPlaylist && data?.playlistId === parseInt(selectedPlaylist)) {
           queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
         }
+        // Force refetch to get immediate updates
+        queryClient.refetchQueries({ queryKey: ["/api/playlists"] });
       };
       wsManager.on('playlist-content-updated', playlistContentHandler);
       unsubscribeFunctions.push(() => wsManager.off('playlist-content-updated', playlistContentHandler));

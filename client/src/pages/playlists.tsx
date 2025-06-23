@@ -1283,33 +1283,56 @@ export default function Playlists() {
     setSelectedContent(newSelection);
   };
 
-  // Listen for WebSocket updates to refresh playlist counts
+  // WebSocket setup for real-time updates
   useEffect(() => {
-    const handleWebSocketMessage = (event: MessageEvent) => {
+    console.log('🔌 Setting up WebSocket for playlists page...');
+    
+    const setupWebSocket = async () => {
       try {
-        const message = JSON.parse(event.data);
-        
-        if (message.type === 'playlist-item-deleted' || 
-            message.type === 'playlist-item-added' || 
-            message.type === 'playlists-updated') {
-          // Refetch playlists to get updated counts
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+        if (!wsManager.isConnected()) {
+          await wsManager.connect();
+          console.log('✅ WebSocket connected for playlists');
         }
+
+        const handlePlaylistUpdate = (data: any) => {
+          console.log('📋 Playlists update received:', data);
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+          // Force immediate refetch
+          queryClient.refetchQueries({ queryKey: ["/api/playlists"] });
+        };
+
+        const handleContentUpdate = (data: any) => {
+          console.log('📁 Content update received:', data);
+          queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+          queryClient.refetchQueries({ queryKey: ["/api/content"] });
+        };
+
+        // Subscribe to relevant events
+        wsManager.on('playlist-content-updated', handlePlaylistUpdate);
+        wsManager.on('playlists-updated', handlePlaylistUpdate);
+        wsManager.on('content-deleted', handleContentUpdate);
+        wsManager.on('playlist-item-deleted', handlePlaylistUpdate);
+        wsManager.on('playlist-item-added', handlePlaylistUpdate);
+
+        return () => {
+          wsManager.off('playlist-content-updated', handlePlaylistUpdate);
+          wsManager.off('playlists-updated', handlePlaylistUpdate);
+          wsManager.off('content-deleted', handleContentUpdate);
+          wsManager.off('playlist-item-deleted', handlePlaylistUpdate);
+          wsManager.off('playlist-item-added', handlePlaylistUpdate);
+        };
       } catch (error) {
-        console.warn("Error parsing WebSocket message:", error);
+        console.warn('WebSocket setup failed for playlists:', error);
       }
     };
 
-    // Add WebSocket message listener if WebSocket exists
-    const ws = (window as any).websocket;
-    if (ws) {
-      ws.addEventListener('message', handleWebSocketMessage);
-      
-      return () => {
-        ws.removeEventListener('message', handleWebSocketMessage);
-      };
-    }
-  }, []);
+    const cleanup = setupWebSocket();
+    return () => {
+      cleanup?.then(fn => fn?.());
+    };
+  }, [queryClient]);
 
   // --- HELPERS ---
   const getContentIcon = (type: string) => {

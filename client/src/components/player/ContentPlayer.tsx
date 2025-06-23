@@ -288,6 +288,63 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     refetchOnReconnect: false,
   });
 
+  // WebSocket connection and real-time updates
+  useEffect(() => {
+    if (!isPreview && playlistId) {
+      console.log('🔌 Setting up WebSocket for playlist updates...');
+      
+      // Try to connect WebSocket
+      wsManager.connect().then(() => {
+        console.log('✅ WebSocket connected for ContentPlayer');
+        
+        // Authenticate if we have a token
+        const authToken = localStorage.getItem('authToken');
+        if (authToken) {
+          wsManager.authenticate(authToken).catch(console.error);
+        }
+      }).catch(console.error);
+
+      // Handle playlist content updates
+      const handlePlaylistUpdate = (data: any) => {
+        console.log('🔄 Playlist update received:', data);
+        if (data.playlistId === playlistId || data.data?.playlistId === playlistId) {
+          console.log('♻️ Refreshing playlist content...');
+          queryClient.invalidateQueries({ 
+            queryKey: [isPreview ? '/api/playlists' : '/api/player/playlists', playlistId] 
+          });
+        }
+      };
+
+      // Handle playlist changes
+      const handlePlaylistChange = (data: any) => {
+        console.log('🎵 Playlist change received:', data);
+        const newPlaylistId = data.playlistId || data.data?.playlistId;
+        const screenId = localStorage.getItem('screenId');
+        const messageScreenId = data.screenId || data.data?.screenId;
+
+        if (messageScreenId && screenId && messageScreenId.toString() === screenId) {
+          if (newPlaylistId && newPlaylistId !== playlistId) {
+            console.log(`🔄 Reloading due to playlist change: ${playlistId} → ${newPlaylistId}`);
+            window.location.reload();
+          }
+        }
+      };
+
+      // Subscribe to WebSocket events
+      wsManager.on('playlist-content-updated', handlePlaylistUpdate);
+      wsManager.on('playlist-change', handlePlaylistChange);
+      wsManager.on('playlist-item-deleted', handlePlaylistUpdate);
+      wsManager.on('playlist-item-added', handlePlaylistUpdate);
+
+      return () => {
+        wsManager.off('playlist-content-updated', handlePlaylistUpdate);
+        wsManager.off('playlist-change', handlePlaylistChange);
+        wsManager.off('playlist-item-deleted', handlePlaylistUpdate);
+        wsManager.off('playlist-item-added', handlePlaylistUpdate);
+      };
+    }
+  }, [isPreview, playlistId, queryClient]);
+
   // Inicializa o actualiza los trackers cuando la playlist cambia
   useEffect(() => {
     if (playlist?.items && Array.isArray(playlist.items)) {

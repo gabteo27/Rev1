@@ -933,8 +933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Pantalla no encontrada." });
       }
 
-      c.header("Cache-Control", "no-store");
-
+      res.header("Cache-Control", "no-store");
       res.json(screen);
     } catch (error) {
       console.error("Error fetching single screen:", error);

@@ -39,7 +39,7 @@ export default function LivePreview() {
     screens.find((s: any) => s.id.toString() === selectedScreenId), 
     [screens, selectedScreenId]
   );
-  
+
   const playlistId = selectedScreen?.playlistId;
 
   console.log('🖥️ Selected screen:', selectedScreen);

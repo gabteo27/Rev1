@@ -14,8 +14,9 @@ export class WebSocketManager {
     return new Promise((resolve, reject) => {
       try {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-
+        let wsUrl = `${protocol}//${window.location.host}/ws`;
+        
+        // Don't add token parameter to URL, handle auth after connection
         this.ws = new WebSocket(wsUrl);
 
         const timeout = setTimeout(() => {
