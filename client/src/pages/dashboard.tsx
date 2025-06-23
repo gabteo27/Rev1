@@ -105,6 +105,7 @@ export default function Dashboard() {
   const [selectedScreen, setSelectedScreen] = useState("");
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
   const { toast } = useToast();
 
   // Subscribe to WebSocket events
@@ -130,87 +131,87 @@ export default function Dashboard() {
       }
 
       // Subscribe to alerts
-      unsubscribeFunctions.push(
-        wsManager.subscribe('alert', (alertData) => {
-          console.log('Alerta recibida vía WebSocket:', alertData);
-          toast({
-            title: alertData?.title || "Nueva Alerta",
-            description: alertData?.message || "Alerta del sistema",
-            variant: alertData?.type === 'error' ? 'destructive' : 'default',
-          });
-          queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-        })
-      );
+      const alertHandler = (alertData) => {
+        console.log('Alerta recibida vía WebSocket:', alertData);
+        toast({
+          title: alertData?.title || "Nueva Alerta",
+          description: alertData?.message || "Alerta del sistema",
+          variant: alertData?.type === 'error' ? 'destructive' : 'default',
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+      };
+      wsManager.on('alert', alertHandler);
+      unsubscribeFunctions.push(() => wsManager.off('alert', alertHandler));
 
       // Subscribe to screen updates
-      unsubscribeFunctions.push(
-        wsManager.subscribe('screen-update', (screenData) => {
-          console.log('Actualización de pantalla recibida:', screenData);
-          toast({
-            title: "Pantalla Actualizada",
-            description: `${screenData?.name || 'Pantalla'} ha sido actualizada`,
-          });
-          queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
-        })
-      );
+      const screenUpdateHandler = (screenData) => {
+        console.log('Actualización de pantalla recibida:', screenData);
+        toast({
+          title: "Pantalla Actualizada",
+          description: `${screenData?.name || 'Pantalla'} ha sido actualizada`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+      };
+      wsManager.on('screen-update', screenUpdateHandler);
+      unsubscribeFunctions.push(() => wsManager.off('screen-update', screenUpdateHandler));
 
       // Subscribe to playlist updates
-      unsubscribeFunctions.push(
-        wsManager.subscribe('playlists-updated', () => {
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-          if (selectedPlaylist) {
-            queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
-          }
-        })
-      );
+      const playlistUpdateHandler = () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+        if (selectedPlaylist) {
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+        }
+      };
+      wsManager.on('playlists-updated', playlistUpdateHandler);
+      unsubscribeFunctions.push(() => wsManager.off('playlists-updated', playlistUpdateHandler));
 
       // Subscribe to playlist content updates
-      unsubscribeFunctions.push(
-        wsManager.subscribe('playlist-content-updated', (data) => {
-          console.log('Playlist content update received:', data);
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-          if (data?.playlistId) {
-            queryClient.invalidateQueries({ queryKey: ["/api/playlists", data.playlistId.toString()] });
-          }
-          if (selectedPlaylist && data?.playlistId === parseInt(selectedPlaylist)) {
-            queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
-          }
-        })
-      );
+      const playlistContentHandler = (data) => {
+        console.log('Playlist content update received:', data);
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+        if (data?.playlistId) {
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists", data.playlistId.toString()] });
+        }
+        if (selectedPlaylist && data?.playlistId === parseInt(selectedPlaylist)) {
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+        }
+      };
+      wsManager.on('playlist-content-updated', playlistContentHandler);
+      unsubscribeFunctions.push(() => wsManager.off('playlist-content-updated', playlistContentHandler));
 
       // Subscribe to content deletion
-      unsubscribeFunctions.push(
-        wsManager.subscribe('content-deleted', (data) => {
-          console.log('Content deletion received:', data);
-          const { contentTitle, affectedPlaylists } = data;
-          
-          // Show notification
-          if (contentTitle && affectedPlaylists?.length > 0) {
-            toast({
-              title: "Contenido eliminado",
-              description: `"${contentTitle}" ha sido eliminado de ${affectedPlaylists.length} playlist(s)`,
-            });
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ["/api/content"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-          if (selectedPlaylist) {
-            queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
-          }
-        })
-      );
+      const contentDeleteHandler = (data) => {
+        console.log('Content deletion received:', data);
+        const { contentTitle, affectedPlaylists } = data;
+        
+        // Show notification
+        if (contentTitle && affectedPlaylists?.length > 0) {
+          toast({
+            title: "Contenido eliminado",
+            description: `"${contentTitle}" ha sido eliminado de ${affectedPlaylists.length} playlist(s)`,
+          });
+        }
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+        if (selectedPlaylist) {
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+        }
+      };
+      wsManager.on('content-deleted', contentDeleteHandler);
+      unsubscribeFunctions.push(() => wsManager.off('content-deleted', contentDeleteHandler));
 
       // Subscribe to widget updates
-      unsubscribeFunctions.push(
-        wsManager.subscribe('widget-updated', (widgetData) => {
-          console.log('Widget update received via WebSocket:', widgetData);
-          queryClient.invalidateQueries({ queryKey: ["/api/widgets"] });
-          toast({
-            title: "Widget Actualizado",
-            description: `Widget ${widgetData?.action || 'modificado'}`,
-          });
-        })
-      );
+      const widgetUpdateHandler = (widgetData) => {
+        console.log('Widget update received via WebSocket:', widgetData);
+        queryClient.invalidateQueries({ queryKey: ["/api/widgets"] });
+        toast({
+          title: "Widget Actualizado",
+          description: `Widget ${widgetData?.action || 'modificado'}`,
+        });
+      };
+      wsManager.on('widget-updated', widgetUpdateHandler);
+      unsubscribeFunctions.push(() => wsManager.off('widget-updated', widgetUpdateHandler));
     };
 
     setupSubscriptions();
