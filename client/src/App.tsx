@@ -51,6 +51,55 @@ const AdminLayout = ({ children }: PropsWithChildren) => (
 );
 
 // Component interno que maneja la autenticación
+const AppWithAuth = () => {
+  const { isAuthenticated, isLoading, error } = useAuth();
+
+  // Show loading state
+  if (isLoading) {
+    return <Loading />;
+  }
+
+  // If there's an authentication error, redirect to login
+  if (error && !isAuthenticated) {
+    console.error('Authentication error:', error);
+    // Redirect to login
+    window.location.href = '/api/login';
+    return <Loading />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/screen-player" element={<ScreenPlayer />} />
+      {isAuthenticated ? (
+        <Route path="/*" element={
+          <AdminLayout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/content" element={<Content />} />
+              <Route path="/media-library" element={<MediaLibrary />} />
+              <Route path="/playlists" element={<Playlists />} />
+              <Route path="/playlist/:id" element={<PlaylistDetail />} />
+              <Route path="/screens" element={<Screens />} />
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/scheduling" element={<Scheduling />} />
+              <Route path="/widgets" element={<Widgets />} />
+              <Route path="/deployment" element={<Deployment />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AdminLayout>
+        } />
+      ) : (
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/*" element={<Navigate to="/" replace />} />
+        </Routes>
+      )}
+    </Routes>
+  );
+};ón
 const AppContent = () => {
   const { isAuthenticated, isLoading } = useAuth();
 

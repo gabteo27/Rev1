@@ -47,7 +47,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const port = parseInt(process.env.PORT ?? "5000", 10);
+  const port = parseInt(process.env.PORT || "3000", 10);
 
   try {
     const server = await registerRoutes(app);
@@ -68,7 +68,18 @@ app.use((req, res, next) => {
       serveStatic(app);
     }
 
-    // Start the server only once
+    // Kill any existing process on the port
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received, shutting down gracefully');
+      process.exit(0);
+    });
+
+    process.on('SIGINT', () => {
+      console.log('SIGINT received, shutting down gracefully');
+      process.exit(0);
+    });
+
+    // Start server
     server.listen(port, "0.0.0.0", () => {
       const formattedTime = new Date().toLocaleTimeString("en-US", {
         hour12: false,
@@ -76,8 +87,28 @@ app.use((req, res, next) => {
         minute: "2-digit",
         second: "2-digit",
       });
-
       console.log(`${formattedTime} [express] serving on port ${port}`);
+    }).on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        const formattedTime = new Date().toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        console.log(`${formattedTime} Port ${port} is busy, trying port ${port + 1}`);
+        server.listen(port + 1, "0.0.0.0", () => {
+          const formattedTime = new Date().toLocaleTimeString("en-US", {
+            hour12: false,
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+          console.log(`${formattedTime} [express] serving on port ${port + 1}`);
+        });
+      } else {
+        console.error('Server error:', err);
+      }
     });
   } catch (error) {
     console.error("Failed to start server:", error);
