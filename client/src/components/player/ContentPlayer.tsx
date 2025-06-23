@@ -755,17 +755,27 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     case 'pip_bottom_right':
       return (
-        
-          
+        <div style={styles.container}>
+          <div style={{ ...styles.zone, position: 'relative' }}>
             {renderZone('main')}
-          
-          
+          </div>
+          <div style={{ 
+            ...styles.zone, 
+            position: 'absolute', 
+            bottom: '20px', 
+            right: '20px', 
+            width: '30%', 
+            height: '30%',
+            border: '2px solid rgba(255,255,255,0.3)',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }}>
             {renderZone('pip')}
-          
+          </div>
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
-        
+        </div>
       );
 
     case 'custom_layout': {
@@ -796,45 +806,64 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       if (customZones.length === 0) {
         const mainZoneItems = zoneTrackers['main']?.items || [];
         return (
-          
+          <div style={styles.container}>
             {mainZoneItems.length > 0 ? renderZone('main') : (
-              
-                
-                  ⚙️
-                
-                Layout personalizado sin zonas configuradas
-              
+              <div style={{ 
+                ...styles.media, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                color: 'rgba(255,255,255,0.5)',
+                backgroundColor: '#1a1a1a'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '10px' }}>
+                    ⚙️
+                  </div>
+                  <div>Layout personalizado sin zonas configuradas</div>
+                </div>
+              </div>
             )}
             {activeAlerts.map((alert) => (
               <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
             ))}
-          
+          </div>
         );
       }
 
       return (
-        
+        <div style={styles.container}>
           {customZones.map((zone: any) => (
-            
+            <div 
+              key={zone.id}
+              style={{
+                position: 'absolute',
+                left: `${zone.x || 0}%`,
+                top: `${zone.y || 0}%`,
+                width: `${zone.width || 100}%`,
+                height: `${zone.height || 100}%`,
+                ...styles.zone
+              }}
+            >
               {renderZone(zone.id)}
-            
+            </div>
           ))}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
-        
+        </div>
       );
     }
 
     case 'single_zone':
     default:
       return (
-        
+        <div style={styles.container}>
           {renderZone('main')}
           {activeAlerts.map((alert) => (
-            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={()={() => {}}} />
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
-        
+        </div>
       );
   }
 }
