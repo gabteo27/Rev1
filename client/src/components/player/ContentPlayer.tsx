@@ -576,7 +576,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   }
 
   if (isLoading) return (
-    
+
 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '20px', marginBottom: '10px' }}>Cargando Playlist...</div>
@@ -587,7 +587,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   );
 
   if (!playlist) return (
-    
+
 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '20px', marginBottom: '10px' }}>Playlist no encontrada</div>
@@ -794,12 +794,12 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       } catch (e) {
         console.error('Error parsing custom layout config:', e, 'Config:', playlist.customLayoutConfig);
         return (
-          
+          <div style={styles.container}>
             {renderZone('main')}
             {activeAlerts.map((alert) => (
               <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
             ))}
-          
+          </div>
         );
       }
 
