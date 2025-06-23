@@ -81,47 +81,47 @@ export default function Screens() {
       }
 
       // Subscribe to screen deletion
-      unsubscribeFunctions.push(
-        wsManager.subscribe('screen-deleted', (data) => {
-          console.log('Screen deleted via WebSocket:', data);
-          toast({
-            title: "Pantalla Eliminada",
-            description: `La pantalla ha sido eliminada`,
-            variant: "destructive"
-          });
-          queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
-        })
-      );
+      const screenDeletedHandler = (data) => {
+        console.log('Screen deleted via WebSocket:', data);
+        toast({
+          title: "Pantalla Eliminada",
+          description: `La pantalla ha sido eliminada`,
+          variant: "destructive"
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+      };
+      wsManager.on('screen-deleted', screenDeletedHandler);
+      unsubscribeFunctions.push(() => wsManager.off('screen-deleted', screenDeletedHandler));
 
       // Subscribe to screen status changes (heartbeat updates)
-      unsubscribeFunctions.push(
-        wsManager.subscribe('screen-status-changed', (data) => {
-          console.log('Screen status changed:', data);
+      const screenStatusHandler = (data) => {
+        console.log('Screen status changed:', data);
 
-          setScreenStatuses(prev => ({
-            ...prev,
-            [data.screenId]: {
-              isOnline: data.isOnline,
-              lastSeen: data.lastSeen || new Date().toISOString()
-            }
-          }));
+        setScreenStatuses(prev => ({
+          ...prev,
+          [data.screenId]: {
+            isOnline: data.isOnline,
+            lastSeen: data.lastSeen || new Date().toISOString()
+          }
+        }));
 
-          const statusText = data.isOnline ? 'se conectó' : 'se desconectó';
-          toast({
-            title: `Pantalla ${statusText}`,
-            description: `${data.screenName || 'Una pantalla'} ${statusText}`,
-            variant: data.isOnline ? "default" : "destructive"
-          });
-        })
-      );
+        const statusText = data.isOnline ? 'se conectó' : 'se desconectó';
+        toast({
+          title: `Pantalla ${statusText}`,
+          description: `${data.screenName || 'Una pantalla'} ${statusText}`,
+          variant: data.isOnline ? "default" : "destructive"
+        });
+      };
+      wsManager.on('screen-status-changed', screenStatusHandler);
+      unsubscribeFunctions.push(() => wsManager.off('screen-status-changed', screenStatusHandler));
 
       // Subscribe to screen updates
-      unsubscribeFunctions.push(
-        wsManager.subscribe('screen-update', (data) => {
-          console.log('Screen updated via WebSocket:', data);
-          queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
-        })
-      );
+      const screenUpdateHandler = (data) => {
+        console.log('Screen updated via WebSocket:', data);
+        queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+      };
+      wsManager.on('screen-update', screenUpdateHandler);
+      unsubscribeFunctions.push(() => wsManager.off('screen-update', screenUpdateHandler));
     };
 
     setupSubscriptions();
