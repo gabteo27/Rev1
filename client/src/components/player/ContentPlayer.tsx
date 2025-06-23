@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "
 import { useQuery } from "@tanstack/react-query";
 import { WebSocketManager } from "@/lib/websocket";
 import { AlertOverlay } from "@/components/player/AlertOverlay";
+import { apiRequest } from "@/lib/queryClient";
 
 // Memoized components for better performance
 const MemoizedImage = memo(({ src, alt, className }: { src: string; alt: string; className: string }) => (
@@ -57,12 +58,28 @@ const ContentItem = memo(({
       isVisible ? 'opacity-100' : 'opacity-0'
     }`;
 
-    switch (content.type) {
+    // Validate content object
+    if (!content || !content.url || !content.type) {
+      console.warn('Invalid content object:', content);
+      return (
+        <div className={`${baseClassName} flex items-center justify-center bg-gray-800 text-white`}>
+          <p className="text-2xl">Contenido no válido</p>
+        </div>
+      );
+    }
+
+    // Log content type for debugging
+    console.log('Rendering content type:', content.type, 'URL:', content.url);
+
+    const contentType = content.type.toLowerCase().trim();
+
+    switch (contentType) {
       case 'image':
+      case 'imagen':
         return (
           <MemoizedImage
             src={content.url}
-            alt={content.title}
+            alt={content.title || 'Imagen'}
             className={baseClassName}
           />
         );
@@ -74,6 +91,8 @@ const ContentItem = memo(({
           />
         );
       case 'webpage':
+      case 'web':
+      case 'website':
         return (
           <MemoizedWebPage
             url={content.url}
@@ -81,18 +100,24 @@ const ContentItem = memo(({
           />
         );
       case 'pdf':
+      case 'document':
         return (
           <iframe
             src={`${content.url}#toolbar=0&navpanes=0&scrollbar=0`}
             className={baseClassName}
             style={{ width: '100%', height: '100%', border: 'none' }}
-            title={content.title}
+            title={content.title || 'Documento PDF'}
           />
         );
       default:
+        console.warn('Unsupported content type:', contentType);
         return (
-          <div className={`${baseClassName} flex items-center justify-center bg-gray-100`}>
-            <p className="text-2xl text-gray-600">Tipo de contenido no soportado</p>
+          <div className={`${baseClassName} flex items-center justify-center bg-gray-800 text-white`}>
+            <div className="text-center">
+              <p className="text-2xl mb-2">⚠️</p>
+              <p className="text-xl mb-2">Tipo de contenido no soportado</p>
+              <p className="text-sm opacity-70">Tipo: {contentType}</p>
+            </div>
           </div>
         );
     }
@@ -421,15 +446,18 @@ const ContentPlayer = memo(({
   }
 
   // Render empty playlist
-  if (!contentItems.length) {
+  if (!contentItems || contentItems.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white">
+      <div className="w-full h-full flex items-center justify-center bg-black text-white">
         <div className="text-center">
+          <div className="text-6xl mb-4">📺</div>
           <h2 className="text-3xl font-bold mb-4">Playlist Vacía</h2>
-          <p className="text-xl">No hay contenido configurado para mostrar.</p>
-          <p className="text-sm mt-4 opacity-70">
-            Agrega contenido a tu playlist desde el panel de administración.
-          </p>
+          <p className="text-xl mb-2">No hay contenido configurado para mostrar.</p>
+          {isPreview && (
+            <p className="text-sm mt-4 opacity-70">
+              Agrega contenido a tu playlist desde el panel de administración.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -451,8 +479,8 @@ const ContentPlayer = memo(({
         ))}
       </div>
 
-      {/* Widgets */}
-      {!isPreview && (
+      {/* Widgets - Only show in preview mode */}
+      {isPreview && (
         <>
           <ClockWidget />
           <WeatherWidget />

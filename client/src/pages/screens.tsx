@@ -43,20 +43,20 @@ export default function Screens() {
 
   const { toast } = useToast();
 
-  const { data: screens = [], isLoading } = useQuery<Screen[]>({ 
+  const { data: screens = [], isLoading, error } = useQuery({
     queryKey: ["/api/screens"],
     queryFn: () => apiRequest("/api/screens").then(res => res.json()),
-    retry: false,
-    refetchInterval: 120000, // Reduce to every 2 minutes
-    staleTime: 90000, // Consider data fresh for 90 seconds
-    refetchOnWindowFocus: false // Don't refetch on window focus
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 
-  const { data: playlists = [] } = useQuery<Playlist[]>({ 
+  const { data: playlists = [] } = useQuery({
     queryKey: ["/api/playlists"],
     queryFn: () => apiRequest("/api/playlists").then(res => res.json()),
-    retry: false,
-    refetchOnWindowFocus: false
+    staleTime: 60000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   // WebSocket subscriptions for real-time updates
