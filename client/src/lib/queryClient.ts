@@ -1,4 +1,3 @@
-
 import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
@@ -31,11 +30,29 @@ export const queryClient = new QueryClient({
   },
 });
 
+// API request function
+export const apiRequest = async (url: string, options: RequestInit = {}) => {
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    ...options,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Network response was not ok');
+  }
+
+  return response.json();
+};
+
 // Global error boundary for unhandled query errors
 queryClient.getQueryCache().subscribe((event) => {
   if (event?.type === 'error') {
     const error = event.error as any;
-    
+
     // Handle auth errors globally
     if (error?.status === 401) {
       // Clear auth data and redirect to login
@@ -43,7 +60,7 @@ queryClient.getQueryCache().subscribe((event) => {
       localStorage.removeItem('screenName');
       localStorage.removeItem('playlistId');
       localStorage.removeItem('screenId');
-      
+
       // Only redirect if we're not already on the player page
       if (!window.location.pathname.includes('/player')) {
         window.location.href = '/api/login';

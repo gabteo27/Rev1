@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { WebSocketManager } from "@/lib/websocket";
-import AlertOverlay from "./AlertOverlay";
+import { AlertOverlay } from "@/components/player/AlertOverlay";
 
 // Memoized components for better performance
 const MemoizedImage = memo(({ src, alt, className }: { src: string; alt: string; className: string }) => (
