@@ -3,20 +3,22 @@ import { QueryClient } from "@tanstack/react-query";
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (failureCount, error: any) => {
-        console.log(`Query failed (attempt ${failureCount + 1}):`, error);
-        // Don't retry on 401, 403, 404 errors
-        if (error?.status === 401 || error?.status === 403 || error?.status === 404) {
-          return false;
-        }
-        // Retry up to 3 times for other errors
-        return failureCount < 3;
-      },
-      staleTime: 15000, // 15 seconds
-      gcTime: 300000,  // 5 minutes (formerly cacheTime)
+      retry: 1,
       refetchOnWindowFocus: false,
-      refetchOnMount: true,
-      refetchOnReconnect: true,
+      staleTime: 60000, // 1 minute default
+      gcTime: 300000, // 5 minutes default
+      refetchOnReconnect: false,
+      networkMode: 'online',
+    },
+    mutations: {
+      retry: 1,
+      onError: (error: any) => {
+        console.error('Mutation error:', error);
+        // Don't show error toasts for auth errors in silent mode
+        if (error?.status !== 401) {
+          console.error('Operation failed:', error.message || 'Unknown error');
+        }
+      },
     },
   },
 });
