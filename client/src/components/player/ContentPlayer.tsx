@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { WebSocketClient } from '@/lib/websocket';
+import { wsManager } from '@/lib/websocket';
 import { apiFetch } from '@/lib/api';
 
 // Interfaces y tipos
@@ -78,6 +79,10 @@ ImageContent.displayName = 'ImageContent';
 const VideoContent = memo<{ item: PlaylistItem; layout: any; onEnded: () => void }>(({ item, layout, onEnded }) => {
   const videoUrl = item.content?.url;
 
+  const handleEnded = useCallback(() => {
+    onEnded();
+  }, [onEnded]);
+
   if (!videoUrl) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
@@ -93,7 +98,7 @@ const VideoContent = memo<{ item: PlaylistItem; layout: any; onEnded: () => void
         className="w-full h-full object-contain"
         autoPlay
         muted
-        onEnded={onEnded}
+        onEnded={handleEnded}
         style={{
           filter: layout?.videoConfig?.filter || 'none',
           transform: layout?.videoConfig?.transform || 'none'
@@ -280,7 +285,7 @@ const ClockWidget = memo<{ config: any }>(({ config }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const formatTime = (date: Date) => {
+  const formatTime = useMemo(() => (date: Date) => {
     const options: Intl.DateTimeFormatOptions = {
       hour: '2-digit',
       minute: '2-digit',
@@ -289,9 +294,9 @@ const ClockWidget = memo<{ config: any }>(({ config }) => {
       timeZone: config?.timezone || 'America/Mexico_City'
     };
     return date.toLocaleTimeString('es-MX', options);
-  };
+  }, [config?.showSeconds, config?.format12Hour, config?.timezone]);
 
-  const formatDate = (date: Date) => {
+  const formatDate = useMemo(() => (date: Date) => {
     const options: Intl.DateTimeFormatOptions = {
       weekday: 'long',
       year: 'numeric',
@@ -300,7 +305,7 @@ const ClockWidget = memo<{ config: any }>(({ config }) => {
       timeZone: config?.timezone || 'America/Mexico_City'
     };
     return date.toLocaleDateString('es-MX', options);
-  };
+  }, [config?.timezone]);
 
   return (
     <div className="p-4 bg-gradient-to-br from-gray-800 to-gray-900 text-white rounded-lg">
@@ -368,7 +373,7 @@ WidgetRenderer.displayName = 'WidgetRenderer';
 
 // Componente principal optimizado
 const ContentPlayer = memo<Props>(({ playlistId, isPreview = false }) => {
-  // Estados locales
+  // Estados locales memoizados
   const [playbackState, setPlaybackState] = useState<PlaybackState>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -380,7 +385,6 @@ const ContentPlayer = memo<Props>(({ playlistId, isPreview = false }) => {
     queryKey: ['/api/player/playlists', playlistId],
     queryFn: async () => {
       if (!playlistId) return null;
-      console.log(`[apiFetch] Calling: /api/player/playlists/${playlistId}`);
       return apiFetch(`/api/player/playlists/${playlistId}`);
     },
     enabled: !!playlistId,
@@ -388,19 +392,20 @@ const ContentPlayer = memo<Props>(({ playlistId, isPreview = false }) => {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000, // 10 minutos
     retry: 1
   }), [playlistId]);
 
   const widgetsQueryConfig = useMemo(() => ({
     queryKey: ['/api/player/widgets'],
     queryFn: async () => {
-      console.log(`[apiFetch] Calling: /api/player/widgets`);
       return apiFetch('/api/player/widgets');
     },
     refetchInterval: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 10 * 60 * 1000, // 10 minutos
+    gcTime: 20 * 60 * 1000, // 20 minutos
     retry: 1
   }), []);
 
@@ -470,92 +475,65 @@ const ContentPlayer = memo<Props>(({ playlistId, isPreview = false }) => {
 
   // WebSocket para actualizaciones en tiempo real
   useEffect(() => {
-    if (!playlistId) return;
+    if (!playlistId || isPreview) return;
 
-    console.log(`🔌 Iniciando WebSocket para playlist: ${playlistId}`);
+    const handlePlaylistChange = (data: any) => {
+      const { playlistId: newPlaylistId, screenId: messageScreenId } = data;
+      const currentScreenId = localStorage.getItem('screenId');
 
-    let wsClient: WebSocketClient;
+      if (messageScreenId && messageScreenId.toString() === currentScreenId && newPlaylistId !== playlistId) {
+        window.location.reload();
+      }
+    };
 
-    try {
-      wsClient = WebSocketClient.getInstance();
+    const handleContentUpdated = (data: any) => {
+      const { screenId: messageScreenId, playlistId: updatedPlaylistId } = data;
+      const currentScreenId = localStorage.getItem('screenId');
 
-      const handlePlaylistChange = (data: any) => {
-        const { playlistId: newPlaylistId, screenId: messageScreenId } = data;
-        const currentScreenId = localStorage.getItem('screenId');
+      if (messageScreenId === currentScreenId && updatedPlaylistId === playlistId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+      }
+    };
 
-        if (messageScreenId && messageScreenId.toString() === currentScreenId && newPlaylistId !== playlistId) {
-          console.log(`🎵 Playlist changed from ${playlistId} to ${newPlaylistId} - IMMEDIATE RELOAD`);
-          window.location.reload();
-        }
-      };
+    const handleContentDeleted = (data: any) => {
+      const { screenId: messageScreenId, playlistId: deletedFromPlaylistId } = data;
+      const currentScreenId = localStorage.getItem('screenId');
 
-      const handleContentUpdated = (data: any) => {
-        const { screenId: messageScreenId, playlistId: updatedPlaylistId } = data;
-        const currentScreenId = localStorage.getItem('screenId');
+      if (messageScreenId === currentScreenId && deletedFromPlaylistId === playlistId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+        queryClient.refetchQueries({ queryKey: ['/api/player/playlists', playlistId], type: 'active' });
 
-        if (messageScreenId === currentScreenId && updatedPlaylistId === playlistId) {
-          console.log('🔄 Content updated, refreshing playlist data...');
-          queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
-        }
-      };
+        setPlaybackState(prev => ({
+          ...prev,
+          [playlistId]: { ...prev[playlistId], currentIndex: 0 }
+        }));
+      }
+    };
 
-      const handleContentDeleted = (data: any) => {
-        const { screenId: messageScreenId, playlistId: deletedFromPlaylistId } = data;
-        const currentScreenId = localStorage.getItem('screenId');
+    const unsubscribePlaylistChange = wsManager.subscribe('playlist-change', handlePlaylistChange);
+    const unsubscribeContentUpdated = wsManager.subscribe('playlist-content-updated', handleContentUpdated);
+    const unsubscribeContentDeleted = wsManager.subscribe('playlist-item-deleted', handleContentDeleted);
+    const unsubscribeScreenUpdated = wsManager.subscribe('screen-playlist-updated', handlePlaylistChange);
 
-        if (messageScreenId === currentScreenId && deletedFromPlaylistId === playlistId) {
-          console.log('🗑️ Content deleted from current playlist, refreshing...');
-          queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
-          queryClient.refetchQueries({ queryKey: ['/api/player/playlists', playlistId], type: 'active' });
+    // Heartbeat menos frecuente para evitar spam
+    const heartbeatInterval = setInterval(() => {
+      if (wsManager.isConnected()) {
+        wsManager.send({
+          type: 'player-heartbeat',
+          timestamp: new Date().toISOString(),
+          screenId: localStorage.getItem('screenId')
+        });
+      }
+    }, 60000); // 60 segundos en lugar de 30
 
-          setPlaybackState(prev => ({
-            ...prev,
-            [playlistId]: { ...prev[playlistId], currentIndex: 0 }
-          }));
-        }
-      };
-
-      const unsubscribePlaylistChange = wsClient.subscribe('playlist-change', handlePlaylistChange);
-      const unsubscribeContentUpdated = wsClient.subscribe('playlist-content-updated', handleContentUpdated);
-      const unsubscribeContentDeleted = wsClient.subscribe('playlist-item-deleted', handleContentDeleted);
-      const unsubscribeScreenUpdated = wsClient.subscribe('screen-playlist-updated', handlePlaylistChange);
-
-      // Heartbeat para mantener conexión activa
-      const heartbeatInterval = setInterval(() => {
-        if (wsClient.isConnected()) {
-          wsClient.send({
-            type: 'player-heartbeat',
-            timestamp: new Date().toISOString(),
-            screenId: localStorage.getItem('screenId')
-          });
-          console.log('💓 WebSocket heartbeat sent');
-        } else {
-          console.log('💓 Sending HTTP heartbeat (WebSocket not connected)');
-          fetch('/api/player/heartbeat', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-            },
-            body: JSON.stringify({
-              screenId: localStorage.getItem('screenId'),
-              timestamp: new Date().toISOString()
-            })
-          }).catch(error => console.error('HTTP heartbeat failed:', error));
-        }
-      }, 30000); // 30 segundos
-
-      return () => {
-        unsubscribePlaylistChange();
-        unsubscribeContentUpdated();
-        unsubscribeContentDeleted();
-        unsubscribeScreenUpdated();
-        clearInterval(heartbeatInterval);
-      };
-    } catch (error) {
-      console.error('Error setting up WebSocket:', error);
-    }
-  }, [playlistId, queryClient]);
+    return () => {
+      unsubscribePlaylistChange();
+      unsubscribeContentUpdated();
+      unsubscribeContentDeleted();
+      unsubscribeScreenUpdated();
+      clearInterval(heartbeatInterval);
+    };
+  }, [playlistId, queryClient, isPreview]);
 
   // Renderizado condicional memoizado
   const renderContent = useMemo(() => {

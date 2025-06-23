@@ -255,4 +255,16 @@ class WebSocketManager {
   }
 }
 
+// Singleton instance
+let wsInstance: WebSocketManager | null = null;
+
+export class WebSocketClient {
+  static getInstance(): WebSocketManager {
+    if (!wsInstance) {
+      wsInstance = new WebSocketManager();
+    }
+    return wsInstance;
+  }
+}
+
 export const wsManager = new WebSocketManager();

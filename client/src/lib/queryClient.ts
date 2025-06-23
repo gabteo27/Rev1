@@ -32,23 +32,6 @@ export const apiRequest = async (
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: async ({ queryKey }) => {
-        try {
-          const response = await apiRequest(queryKey[0] as string);
-          return response.json();
-        } catch (error) {
-          console.error("Query failed:", error);
-          throw error;
-        }
-      },
-      retry: (failureCount, error: any) => {
-        // Don't retry on 4xx errors
-        if (error?.status >= 400 && error?.status < 500) {
-          return false;
-        }
-        // Reduce retries for better performance on mobile
-        return failureCount < 2;
-      },
       staleTime: 1000 * 60 * 15, // 15 minutes - más agresivo para Android
       refetchOnWindowFocus: false,
       refetchOnReconnect: false, // Evita requests al reconectar
