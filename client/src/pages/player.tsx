@@ -35,7 +35,7 @@ export default function PlayerPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentPlaylistId, setCurrentPlaylistId] = useState<number | undefined>(undefined);
 
-  // Validate token and get screen info - ALWAYS call this hook
+  // Validate token and get screen info - OPTIMIZED for Android
   const { data: screenInfo, isLoading: isValidating, error: validationError } = useQuery({
     queryKey: ['/api/player/validate-token'],
     queryFn: async () => {
@@ -56,18 +56,14 @@ export default function PlayerPage() {
 
       return response.json();
     },
-    retry: (failureCount, error) => {
-      // Don't retry if it's an auth error
-      if (error.message.includes('Token validation failed')) {
-        return false;
-      }
-      return failureCount < 3;
-    },
-    refetchInterval: 60000, // Check token validity every 60 seconds
-    enabled: status === 'paired', // Only run when paired
+    retry: 1, // Reduce retries for mobile
+    refetchInterval: 300000, // Check token validity every 5 minutes instead of 1
+    enabled: status === 'paired',
+    staleTime: 240000, // 4 minutes stale time
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     onError: (error) => {
       console.error('Token validation error:', error);
-      // Clear invalid token and restart pairing process
       localStorage.removeItem('authToken');
       localStorage.removeItem('screenName');
       localStorage.removeItem('playlistId');

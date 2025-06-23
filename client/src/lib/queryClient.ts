@@ -1,3 +1,4 @@
+
 import { QueryClient } from "@tanstack/react-query";
 
 const throwIfResponseNotOk = async (res: Response) => {
@@ -46,12 +47,16 @@ export const queryClient = new QueryClient({
         if (error?.status >= 400 && error?.status < 500) {
           return false;
         }
-        return failureCount < 3;
+        // Reduce retries for better performance on mobile
+        return failureCount < 2;
       },
-      staleTime: 1000 * 60 * 10, // 10 minutes
+      staleTime: 1000 * 60 * 15, // 15 minutes - más agresivo para Android
       refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
+      refetchOnReconnect: false, // Evita requests al reconectar
       refetchInterval: false, // Disable automatic refetching by default
+      // Optimizaciones para Android
+      cacheTime: 1000 * 60 * 30, // 30 minutes cache
+      refetchOnMount: false, // No refetch on component mount
     },
     mutations: {
       retry: (failureCount, error: any) => {
@@ -59,7 +64,7 @@ export const queryClient = new QueryClient({
         if (error?.status >= 400 && error?.status < 500) {
           return false;
         }
-        return failureCount < 2;
+        return failureCount < 1; // Solo 1 retry para mutations
       },
     },
   },
