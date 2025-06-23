@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { wsManager } from "@/lib/websocket";
@@ -26,7 +25,7 @@ const ImagePlayer = ({ src, objectFit = 'contain' }: { src: string, objectFit?: 
 const VideoPlayer = ({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => 
   <video src={src} style={getMediaStyle(objectFit)} autoPlay muted loop playsInline />;
 
-const WebpagePlayer = ({ src }: { src: string }) => {
+const WebpagePlayer = memo(({ src }: { src: string }) => {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -81,7 +80,8 @@ const WebpagePlayer = ({ src }: { src: string }) => {
       />
     </div>
   );
-};
+});
+WebpagePlayer.displayName = 'WebpagePlayer';
 
 const PDFPlayer = ({ src }: { src: string }) => {
   const [error, setError] = useState(false);
@@ -127,7 +127,7 @@ const PDFPlayer = ({ src }: { src: string }) => {
 };
 
 // YouTube Player Component
-const YouTubePlayer = ({ url }: { url: string }) => {
+const YouTubePlayer = memo(({ url }: { url: string }) => {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -239,7 +239,8 @@ const YouTubePlayer = ({ url }: { url: string }) => {
       />
     </div>
   );
-};
+});
+YouTubePlayer.displayName = 'YouTubePlayer';
 
 interface ZoneTracker {
   currentIndex: number;
@@ -250,6 +251,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
   const queryClient = useQueryClient();
+  const [currentPlaylistId, setCurrentPlaylistId] = useState(playlistId); // Estado para almacenar el playlistId actual
 
   const { data: playlist, isLoading } = useQuery<any & { items: any[] }>({
     queryKey: isPreview ? ['/api/playlists', playlistId] : ['/api/player/playlists', playlistId],
@@ -574,25 +576,25 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   }
 
   if (isLoading) return (
-    <div style={styles.container}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '20px', marginBottom: '10px' }}>Cargando Playlist...</div>
-          <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {playlistId}</div>
+    
+<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '20px', marginBottom: '10px' }}>Cargando Playlist...</div>
+            <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {currentPlaylistId}</div>
+          </div>
         </div>
-      </div>
-    </div>
+
   );
 
   if (!playlist) return (
-    <div style={styles.container}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '20px', marginBottom: '10px' }}>Playlist no encontrada</div>
-          <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {playlistId}</div>
+    
+<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '20px', marginBottom: '10px' }}>Playlist no encontrada</div>
+            <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {currentPlaylistId}</div>
+          </div>
         </div>
-      </div>
-    </div>
+
   );
 
   // Renderizado del Layout
@@ -753,28 +755,17 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     case 'pip_bottom_right':
       return (
-        <div style={{...styles.container, position: 'relative' }}>
-          <div style={{...styles.zone}}>
+        
+          
             {renderZone('main')}
-          </div>
-          <div style={{
-            position: 'absolute', 
-            bottom: '20px', 
-            right: '20px', 
-            width: '25%', 
-            height: '25%', 
-            border: '3px solid rgba(255,255,255,0.8)', 
-            borderRadius: '8px',
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-            zIndex: 10
-          }}>
+          
+          
             {renderZone('pip')}
-          </div>
+          
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
-        </div>
+        
       );
 
     case 'custom_layout': {
@@ -793,76 +784,57 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       } catch (e) {
         console.error('Error parsing custom layout config:', e, 'Config:', playlist.customLayoutConfig);
         return (
-          <div style={styles.container}>
+          
             {renderZone('main')}
             {activeAlerts.map((alert) => (
               <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
             ))}
-          </div>
+          
         );
       }
 
       if (customZones.length === 0) {
         const mainZoneItems = zoneTrackers['main']?.items || [];
         return (
-          <div style={styles.container}>
+          
             {mainZoneItems.length > 0 ? renderZone('main') : (
-              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚙️</div>
-                  <div>Layout personalizado sin zonas configuradas</div>
-                </div>
-              </div>
+              
+                
+                  ⚙️
+                
+                Layout personalizado sin zonas configuradas
+              
             )}
             {activeAlerts.map((alert) => (
               <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
             ))}
-          </div>
+          
         );
       }
 
       return (
-        <div style={{ 
-          ...styles.container, 
-          position: 'relative',
-          width: '100vw',
-          height: '100vh',
-          overflow: 'hidden'
-        }}>
+        
           {customZones.map((zone: any) => (
-            <div
-              key={zone.id}
-              style={{
-                position: 'absolute',
-                left: `${zone.x}%`,
-                top: `${zone.y}%`,
-                width: `${zone.width}%`,
-                height: `${zone.height}%`,
-                border: isPreview ? '1px solid rgba(255,255,255,0.1)' : 'none',
-                borderRadius: '4px',
-                overflow: 'hidden',
-                zIndex: 1
-              }}
-            >
+            
               {renderZone(zone.id)}
-            </div>
+            
           ))}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
-        </div>
+        
       );
     }
 
     case 'single_zone':
     default:
       return (
-        <div style={styles.container}>
+        
           {renderZone('main')}
           {activeAlerts.map((alert) => (
-            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={()={() => {}}} />
           ))}
-        </div>
+        
       );
   }
 }

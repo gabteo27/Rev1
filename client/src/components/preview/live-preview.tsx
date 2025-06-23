@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,30 +11,66 @@ export default function LivePreview() {
   const [selectedScreenId, setSelectedScreenId] = useState<string>("");
   const [showModal, setShowModal] = useState(false);
 
-  // Fetch screens
-  const { data: screens = [] } = useQuery({
+  // Fetch screens con mejor manejo de errores
+  const { data: screens = [], isLoading: screensLoading } = useQuery({
     queryKey: ["/api/screens"],
-    queryFn: () => apiRequest("/api/screens").then(res => res.json()),
-    retry: 1,
-    staleTime: 60000,
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("/api/screens");
+        if (!response.ok) {
+          console.warn(`Screens API returned ${response.status}`);
+          return [];
+        }
+        const data = await response.json();
+        console.log('🖥️ Fetched screens for preview:', data);
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Error fetching screens:', error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 30000,
+    refetchInterval: 30000, // Refrescar cada 30 segundos para detectar nuevas pantallas
   });
 
-  // Fetch playlist for selected screen
-  const selectedScreen = screens.find((s: any) => s.id.toString() === selectedScreenId);
+  // Fetch playlist for selected screen con mejor validación
+  const selectedScreen = useMemo(() => 
+    screens.find((s: any) => s.id.toString() === selectedScreenId), 
+    [screens, selectedScreenId]
+  );
+  
   const playlistId = selectedScreen?.playlistId;
 
+  console.log('🖥️ Selected screen:', selectedScreen);
+  console.log('🎵 Playlist ID:', playlistId);
+
   // Obtenemos los detalles de la playlist para la pantalla seleccionada
-  const { data: playlist } = useQuery({
+  const { data: playlist, isLoading: playlistLoading } = useQuery({
     queryKey: ["/api/playlists", playlistId],
     queryFn: async () => {
-      if (!playlistId) return null;
-      const response = await apiRequest(`/api/playlists/${playlistId}`);
-      if (!response.ok) return null;
-      return response.json();
+      if (!playlistId) {
+        console.log('❌ No playlist ID for selected screen');
+        return null;
+      }
+      try {
+        console.log(`🎵 Fetching playlist ${playlistId} for preview`);
+        const response = await apiRequest(`/api/playlists/${playlistId}`);
+        if (!response.ok) {
+          console.warn(`Playlist API returned ${response.status} for ID ${playlistId}`);
+          return null;
+        }
+        const data = await response.json();
+        console.log('🎵 Fetched playlist for preview:', data);
+        return data;
+      } catch (error) {
+        console.error('Error fetching playlist:', error);
+        return null;
+      }
     },
-    enabled: !!playlistId,
+    enabled: !!playlistId && !!selectedScreen,
     retry: 1,
-    staleTime: 60000,
+    staleTime: 30000,
     refetchOnWindowFocus: false,
   });
 
@@ -73,20 +109,27 @@ export default function LivePreview() {
               <label className="text-sm font-medium">Seleccionar Pantalla:</label>
               <Select value={selectedScreenId} onValueChange={setSelectedScreenId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar pantalla..." />
+                  <SelectValue placeholder={screensLoading ? "Cargando pantallas..." : "Seleccionar pantalla..."} />
                 </SelectTrigger>
                 <SelectContent>
-                  {screens.length > 0 ? (
+                  {screensLoading ? (
+                    <SelectItem value="loading" disabled>Cargando pantallas...</SelectItem>
+                  ) : screens.length > 0 ? (
                     screens.map((screen: any) => (
                       <SelectItem key={screen.id} value={screen.id.toString()}>
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${screen.isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
                           <span>{screen.name}</span>
+                          {screen.playlistId && (
+                            <span className="text-xs text-muted-foreground ml-1">
+                              (Playlist: {screen.playlistId})
+                            </span>
+                          )}
                         </div>
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="none" disabled>No hay pantallas disponibles</SelectItem>
+                    <SelectItem value="none" disabled>No hay pantallas emparejadas</SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -129,11 +172,23 @@ export default function LivePreview() {
               <div className="text-white text-center p-4">
                 <Tv className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p className="text-sm opacity-75">
-                  {!selectedScreenId 
-                    ? 'Selecciona una pantalla para ver la vista previa' 
-                    : 'Esta pantalla no tiene una playlist asignada'
+                  {screensLoading || playlistLoading 
+                    ? 'Cargando...'
+                    : !selectedScreenId 
+                      ? 'Selecciona una pantalla para ver la vista previa' 
+                      : !playlistId
+                        ? 'Esta pantalla no tiene una playlist asignada'
+                        : !playlist?.items?.length
+                          ? 'La playlist está vacía'
+                          : 'Cargando contenido...'
                   }
                 </p>
+                {selectedScreen && (
+                  <div className="text-xs opacity-60 mt-2">
+                    Pantalla: {selectedScreen.name} | Estado: {selectedScreen.isOnline ? 'En línea' : 'Desconectada'}
+                    {playlistId && <div>Playlist ID: {playlistId}</div>}
+                  </div>
+                )}
               </div>
             )}
           </div>
