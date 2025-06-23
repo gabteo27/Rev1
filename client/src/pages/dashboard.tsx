@@ -244,6 +244,7 @@ export default function Dashboard() {
   // Fetch data with proper error handling and caching
   const { data: screens = [] } = useQuery({
     queryKey: ["/api/screens"],
+    queryFn: () => apiRequest("/api/screens").then(res => res.json()),
     retry: 1,
     staleTime: 60000, // 1 minute
     gcTime: 300000, // 5 minutes
@@ -252,6 +253,7 @@ export default function Dashboard() {
 
   const { data: playlists = [] } = useQuery({
     queryKey: ["/api/playlists"],
+    queryFn: () => apiRequest("/api/playlists").then(res => res.json()),
     retry: 1,
     staleTime: 60000, // 1 minute
     gcTime: 300000, // 5 minutes
@@ -281,6 +283,7 @@ export default function Dashboard() {
 
   const { data: alerts = [] } = useQuery({
     queryKey: ["/api/alerts"],
+    queryFn: () => apiRequest("/api/alerts").then(res => res.json()),
     retry: 1,
     staleTime: 60000,
     refetchOnWindowFocus: false,
@@ -468,10 +471,14 @@ const formatDuration = (seconds: number) => {
     queryKey: ["/api/playlists", selectedPlaylist],
     queryFn: async () => {
       const response = await apiRequest(`/api/playlists/${selectedPlaylist}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch playlist details: ${response.status}`);
+      }
       return response.json();
     },
     enabled: !!selectedPlaylist,
     retry: 1,
+    staleTime: 60000,
   });
 
 return (

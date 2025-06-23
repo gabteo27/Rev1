@@ -44,7 +44,8 @@ export default function Screens() {
   const { toast } = useToast();
 
   const { data: screens = [], isLoading } = useQuery<Screen[]>({ 
-    queryKey: ["/api/screens"], 
+    queryKey: ["/api/screens"],
+    queryFn: () => apiRequest("/api/screens").then(res => res.json()),
     retry: false,
     refetchInterval: 120000, // Reduce to every 2 minutes
     staleTime: 90000, // Consider data fresh for 90 seconds
@@ -52,7 +53,8 @@ export default function Screens() {
   });
 
   const { data: playlists = [] } = useQuery<Playlist[]>({ 
-    queryKey: ["/api/playlists"], 
+    queryKey: ["/api/playlists"],
+    queryFn: () => apiRequest("/api/playlists").then(res => res.json()),
     retry: false,
     refetchOnWindowFocus: false
   });

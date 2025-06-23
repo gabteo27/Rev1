@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,17 +9,19 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function LivePreview() {
   const [selectedScreenId, setSelectedScreenId] = useState<string>("");
-  const [showModal, setShowModal] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Obtenemos la lista de pantallas para el selector
+  // Fetch screens
   const { data: screens = [] } = useQuery({
     queryKey: ["/api/screens"],
+    queryFn: () => apiRequest("/api/screens").then(res => res.json()),
     retry: 1,
+    staleTime: 60000,
   });
 
-  // Buscamos los datos de la pantalla seleccionada
-  const selectedScreenData = screens.find((s: any) => s.id.toString() === selectedScreenId);
-  const playlistId = selectedScreenData?.playlistId;
+  // Fetch playlist for selected screen
+  const selectedScreen = screens.find((s: any) => s.id.toString() === selectedScreenId);
+  const playlistId = selectedScreen?.playlistId;
 
   // Obtenemos los detalles de la playlist para la pantalla seleccionada
   const { data: playlist } = useQuery({

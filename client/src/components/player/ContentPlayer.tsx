@@ -174,20 +174,57 @@ const ContentPlayer = memo(({
   const authToken = localStorage.getItem('authToken');
   const wsManager = useMemo(() => new WebSocketManager(), []);
 
-  // Memoized query options
+  // Query configuration with conditional fetching
   const queryOptions = useMemo(() => ({
-    queryKey: ["/api/playlists", playlistId],
+    queryKey: [isPreview ? "/api/playlists" : "/api/player/playlists", playlistId],
     queryFn: async () => {
-      if (!playlistId) throw new Error('No playlist ID provided');
-      const response = await fetch(`/api/playlists/${playlistId}`);
-      if (!response.ok) throw new Error('Failed to fetch playlist content');
-      return response.json();
+      if (!playlistId) return null;
+
+      try {
+        let endpoint;
+        let headers: Record<string, string> = {};
+
+        if (isPreview) {
+          endpoint = `/api/playlists/${playlistId}`;
+          const response = await apiRequest(endpoint);
+          if (!response.ok) {
+            if (response.status === 404) {
+              console.warn(`Playlist ${playlistId} not found`);
+              return null;
+            }
+            throw new Error(`Failed to fetch playlist: ${response.status}`);
+          }
+          return response.json();
+        } else {
+          endpoint = `/api/player/playlists/${playlistId}`;
+          const authToken = localStorage.getItem('authToken');
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+
+          const response = await fetch(endpoint, { headers });
+
+          if (!response.ok) {
+            if (response.status === 404) {
+              console.warn(`Playlist ${playlistId} not found`);
+              return null;
+            }
+            throw new Error(`Failed to fetch playlist: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log('Playlist data loaded:', data);
+          return data;
+        }
+      } catch (error) {
+        console.error('Error loading playlist:', error);
+        throw error;
+      }
     },
     enabled: !!playlistId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
-    refetchInterval: isPreview ? false : 30000, // Only auto-refresh in production
     retry: 1,
+    staleTime: isPreview ? 60000 : 300000, // 1 min for preview, 5 min for player
+    refetchInterval: isPreview ? false : 30000, // Only auto-refresh in production
   }), [playlistId, isPreview]);
 
   const { data: playlistData, isLoading, error, refetch } = useQuery(queryOptions);
@@ -221,132 +258,128 @@ const ContentPlayer = memo(({
     }
   }, [contentItems, currentIndex, goToNext, isPlaying]);
 
-  // WebSocket setup
+  // Real-time update system using WebSocket with heartbeat
   useEffect(() => {
-    const cleanupFunctions: (() => void)[] = [];
+    if (isPreview) return;
+
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) return;
+
+    let lastPlaylistId = playlistId;
+
+    // Connect to WebSocket with player authentication
+    console.log('🔌 Connecting player WebSocket...');
 
     const setupWebSocket = async () => {
       try {
-        // Connect WebSocket with retry logic
-        let connected = false;
-        let attempts = 0;
-        const maxAttempts = 3;
+        await wsManager.connect();
 
-        while (!connected && attempts < maxAttempts) {
-          try {
-            if (!wsManager.isConnected()) {
-              await wsManager.connect();
-            }
-            connected = true;
-          } catch (error) {
-            attempts++;
-            console.warn(`WebSocket connection attempt ${attempts} failed:`, error);
-            if (attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 2000 * attempts));
-            }
-          }
+        // Authenticate with the server
+        wsManager.send({
+          type: 'player-auth',
+          token: authToken
+        });
+
+        // Identify as screen
+        const screenId = localStorage.getItem('screenId');
+        if (screenId) {
+          wsManager.send({
+            type: 'screen-identify',
+            screenId: parseInt(screenId)
+          });
         }
-
-        if (!connected) {
-          console.error('Failed to establish WebSocket connection after multiple attempts');
-          return;
-        }
-
-        // Authenticate if we have a token
-        if (authToken) {
-          try {
-            await wsManager.authenticate(authToken);
-          } catch (error) {
-            console.error('WebSocket authentication failed:', error);
-          }
-        }
-
-        // Subscribe to playlist changes
-        const handlePlaylistChange = (data: any) => {
-          console.log('🔄 Playlist change received:', data);
-          const { playlistId: newPlaylistId, screenId: messageScreenId } = data;
-          const currentScreenId = localStorage.getItem('screenId');
-
-          console.log(`📋 Comparing screenIds: message=${messageScreenId}, current=${currentScreenId}`);
-
-          if (messageScreenId && messageScreenId.toString() === currentScreenId) {
-            console.log(`🎵 Playlist changed to ${newPlaylistId} for this screen - RELOADING NOW`);
-            window.location.reload();
-          }
-        };
-        wsManager.on('playlist-change', handlePlaylistChange);
-        cleanupFunctions.push(() => wsManager.off('playlist-change', handlePlaylistChange));
-
-        // Subscribe to playlist content updates
-        const handlePlaylistContent = (data: any) => {
-          console.log('📋 Playlist content update received:', data);
-          if (data?.playlistId === parseInt(playlistId)) {
-            refetch();
-          }
-        };
-        wsManager.on('playlist-content-updated', handlePlaylistContent);
-        cleanupFunctions.push(() => wsManager.off('playlist-content-updated', handlePlaylistContent));
-
-        // Subscribe to playlist item deletion
-        const handlePlaylistItemDeleted = (data: any) => {
-          console.log('🗑️ Playlist item deleted:', data);
-          if (data?.playlistId === parseInt(playlistId)) {
-            refetch();
-          }
-        };
-        wsManager.on('playlist-item-deleted', handlePlaylistItemDeleted);
-        cleanupFunctions.push(() => wsManager.off('playlist-item-deleted', handlePlaylistItemDeleted));
-
-        // Subscribe to playback controls
-        const handlePlaybackControl = (data: any) => {
-          console.log('🎮 Playback control received:', data);
-          if (data?.screenId === localStorage.getItem('screenId')) {
-            if (data.action === 'play') {
-              setIsPlaying(true);
-            } else if (data.action === 'pause') {
-              setIsPlaying(false);
-            } else if (data.action === 'stop') {
-              setIsPlaying(false);
-              setCurrentIndex(0);
-            }
-          }
-        };
-        wsManager.on('playback-control', handlePlaybackControl);
-        cleanupFunctions.push(() => wsManager.off('playback-control', handlePlaybackControl));
-
-        // Subscribe to screen playlist updates
-        const handleScreenPlaylistUpdate = (data: any) => {
-          console.log('📺 Screen playlist update received:', data);
-          const screenId = localStorage.getItem('screenId');
-          if (data?.screenId === screenId) {
-            const newPlaylistId = data.playlistId?.toString();
-            if (newPlaylistId !== playlistId) {
-              localStorage.setItem('playlistId', newPlaylistId);
-              window.location.reload();
-            }
-          }
-        };
-        wsManager.on('screen-playlist-updated', handleScreenPlaylistUpdate);
-        cleanupFunctions.push(() => wsManager.off('screen-playlist-updated', handleScreenPlaylistUpdate));
-
       } catch (error) {
-        console.error('Error setting up WebSocket:', error);
+        console.error('WebSocket connection failed:', error);
       }
     };
 
     setupWebSocket();
 
-    return () => {
-      // Cleanup all subscriptions
-      cleanupFunctions.forEach(cleanup => {
-        try {
-          cleanup();
-        } catch (error) {
-          console.error('Error during cleanup:', error);
-        }
-      });
+    // Handle WebSocket messages
+    const handlePlaylistChange = (data: any) => {
+      const newPlaylistId = data.playlistId;
+      const targetScreenId = data.screenId;
+      const currentScreenId = localStorage.getItem('screenId');
+
+      console.log(`🔄 Playlist change: ${playlistId} → ${newPlaylistId}, screenId: ${targetScreenId}`);
+
+      if (targetScreenId && targetScreenId.toString() === currentScreenId && newPlaylistId !== playlistId) {
+        console.log(`🎵 Playlist changed - RELOADING`);
+        window.location.reload();
+      }
     };
-  }, [authToken, playlistId, refetch]);
+
+    const handlePlaylistUpdate = (data: any) => {
+      if (data.playlistId === playlistId) {
+        console.log('🔄 Playlist content updated, refreshing...');
+        refetch();
+      }
+    };
+
+    const handleContentDelete = (data: any) => {
+      const targetScreenId = data.screenId;
+      const currentScreenId = localStorage.getItem('screenId');
+      const deletedPlaylistId = data.playlistId;
+
+      if (targetScreenId === currentScreenId && deletedPlaylistId === playlistId) {
+        console.log('🗑️ Content deleted from current playlist, refreshing...');
+        refetch();
+        setCurrentIndices(prev => {
+          const newIndices = { ...prev };
+          Object.keys(newIndices).forEach(zoneId => {
+            newIndices[zoneId] = { ...newIndices[zoneId], currentIndex: 0 };
+          });
+          return newIndices;
+        });
+      }
+    };
+
+    const handleScreenUpdate = (data: any) => {
+      const targetScreenId = data.screenId;
+      const currentScreenId = localStorage.getItem('screenId');
+
+      if (targetScreenId === currentScreenId) {
+        console.log('🔄 Screen updated - reloading...');
+        setTimeout(() => window.location.reload(), 500);
+      }
+    };
+
+    // Subscribe to events
+    wsManager.on('playlist-change', handlePlaylistChange);
+    wsManager.on('playlist-content-updated', handlePlaylistUpdate);
+    wsManager.on('content-deleted-from-playlist', handleContentDelete);
+    wsManager.on('screen-playlist-updated', handleScreenUpdate);
+
+    // Heartbeat system
+    const heartbeat = () => {
+      if (wsManager.isConnected()) {
+        wsManager.send({
+          type: 'player-heartbeat',
+          timestamp: new Date().toISOString(),
+          screenId: localStorage.getItem('screenId')
+        });
+      }
+    };
+
+    const heartbeatInterval = setInterval(heartbeat, 30000);
+
+    // Connection check
+    const connectionCheck = setInterval(() => {
+      if (!wsManager.isConnected()) {
+        console.log('🔄 Reconnecting WebSocket...');
+        setupWebSocket();
+      }
+    }, 10000);
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      clearInterval(connectionCheck);
+      wsManager.off('playlist-change', handlePlaylistChange);
+      wsManager.off('playlist-content-updated', handlePlaylistUpdate);
+      wsManager.off('content-deleted-from-playlist', handleContentDelete);
+      wsManager.off('screen-playlist-updated', handleScreenUpdate);
+    };
+  }, [playlistId, refetch, isPreview]);
 
   // Content rotation logic
   useEffect(() => {
