@@ -189,7 +189,7 @@ const ContentPlayer = memo(({
     refetchInterval: isPreview ? false : 30000, // Only auto-refresh in production
   }), [playlistId, isPreview]);
 
-  const { data: playlistData, isLoading, error } = useQuery(queryOptions);
+  const { data: playlistData, isLoading, error, refetch } = useQuery(queryOptions);
 
   const contentItems = useMemo(() => 
     playlistData?.items || [], 
