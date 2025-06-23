@@ -105,7 +105,7 @@ export default function Dashboard() {
   const [selectedScreen, setSelectedScreen] = useState("");
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
-  const [activeAlertsCount , setActiveAlerts] = useState<any[]>([]);
+  const [alertsList, setAlertsList] = useState<any[]>([]);
   const { toast } = useToast();
 
   // Subscribe to WebSocket events
@@ -406,7 +406,7 @@ export default function Dashboard() {
   const totalFiles = Array.isArray(content) ? content.length : 0;
   const totalDuration = Array.isArray(playlists) ? 
     playlists.reduce((sum: number, playlist: any) => sum + (playlist.totalDuration || 0), 0) : 0;
-  const activeAlerts = Array.isArray(alerts) ? alerts.filter((a: any) => a.isActive).length : 0;
+  const activeAlertsCount = Array.isArray(alerts) ? alerts.filter((a: any) => a.isActive).length : 0;
 
 
 const formatDuration = (seconds: number) => {
@@ -425,15 +425,17 @@ const formatDuration = (seconds: number) => {
       });
 
       if (response.ok) {
-        setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+        setAlertsList(prev => prev.filter(alert => alert.id !== alertId));
+        // Also invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
       } else if (response.status === 404) {
         // Alert already deleted, just remove from local state
-        setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+        setAlertsList(prev => prev.filter(alert => alert.id !== alertId));
       }
     } catch (error) {
       console.error('Error dismissing alert:', error);
       // Remove from local state anyway to prevent UI issues
-      setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+      setAlertsList(prev => prev.filter(alert => alert.id !== alertId));
     }
   };
 
@@ -675,11 +677,11 @@ return (
                   <p className="text-xs text-muted-foreground">Todas las pantallas sincronizadas</p>
                 </div>
               </div>
-              {activeAlerts > 0 && (
+              {activeAlertsCount > 0 && (
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-orange-500 rounded-full mt-2" />
                   <div>
-                    <p className="text-sm">{activeAlertsCount} alerta{activeAlerts > 1 ? 's' : ''} activa{activeAlerts > 1 ? 's' : ''}</p>
+                    <p className="text-sm">{activeAlertsCount} alerta{activeAlertsCount > 1 ? 's' : ''} activa{activeAlertsCount > 1 ? 's' : ''}</p>
                     <p className="text-xs text-muted-foreground">Requieren atención</p>
                   </div>
                 </div>
