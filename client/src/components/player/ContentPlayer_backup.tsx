@@ -1,3 +1,8 @@
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { AlertOverlay } from "./AlertOverlay";
+import type { Playlist, PlaylistItem, Widget, Alert } from "@shared/schema";
+import { wsManager } from "@/lib/websocket";
 import { API_BASE_URL, apiFetch } from "@/lib/api"; // 1. Importa API_BASE_URL
 
 
