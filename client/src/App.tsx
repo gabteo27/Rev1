@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route } from "wouter";
 import { lazy, Suspense, useEffect, type PropsWithChildren } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -68,38 +68,39 @@ const AppWithAuth = () => {
   }
 
   return (
-    <Routes>
-      <Route path="/screen-player" element={<ScreenPlayer />} />
+    <Switch>
+      <Route path="/screen-player" component={ScreenPlayer} />
       {isAuthenticated ? (
-        <Route path="/*" element={
-          <AdminLayout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/content" element={<Content />} />
-              <Route path="/media-library" element={<MediaLibrary />} />
-              <Route path="/playlists" element={<Playlists />} />
-              <Route path="/playlist/:id" element={<PlaylistDetail />} />
-              <Route path="/screens" element={<Screens />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/scheduling" element={<Scheduling />} />
-              <Route path="/widgets" element={<Widgets />} />
-              <Route path="/deployment" element={<Deployment />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AdminLayout>
-        } />
+        <AdminLayout>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/content" component={Content} />
+            <Route path="/media-library" component={MediaLibrary} />
+            <Route path="/playlists" component={Playlists} />
+            <Route path="/playlist/:id" component={PlaylistDetail} />
+            <Route path="/screens" component={Screens} />
+            <Route path="/alerts" component={Alerts} />
+            <Route path="/scheduling" component={Scheduling} />
+            <Route path="/widgets" component={Widgets} />
+            <Route path="/deployment" component={Deployment} />
+            <Route path="/settings" component={Settings} />
+            <Route path="/analytics" component={Analytics} />
+            <Route component={NotFound} />
+          </Switch>
+        </AdminLayout>
       ) : (
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Switch>
+          <Route path="/" component={Landing} />
+          <Route path="/:rest*">
+            {() => { window.location.href = "/"; return null; }}
+          </Route>
+        </Switch>
       )}
-    </Routes>
+    </Switch>
   );
-};ón
+};
+
 const AppContent = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
