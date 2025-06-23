@@ -28,13 +28,13 @@ export const queryClient = new QueryClient({
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (!response.ok) {
           const error = new Error(`HTTP ${response.status}: ${response.statusText}`) as any;
           error.status = response.status;
           throw error;
         }
-        
+
         return response.json();
       },
     },
@@ -52,21 +52,35 @@ export const queryClient = new QueryClient({
 });
 
 // API request function
-export const apiRequest = async (url: string, options: RequestInit = {}) => {
-  const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    ...options,
-  });
+export const apiRequest = async (url: string, options?: RequestInit): Promise<Response> => {
+  try {
+    const token = localStorage.getItem('authToken');
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Network response was not ok');
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...options?.headers,
+      },
+    };
+
+    const response = await fetch(url, config);
+
+    if (!response.ok && response.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+      throw new Error('Authentication failed');
+    }
+
+    return response;
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Cannot connect to server');
+    }
+    throw error;
   }
-
-  return response.json();
 };
 
 // Global error boundary for unhandled query errors

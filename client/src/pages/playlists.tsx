@@ -640,12 +640,13 @@ export default function Playlists() {
       try {
         const response = await apiRequest("/api/playlists");
         if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
+          const errorText = await response.text();
+          throw new Error(`Error ${response.status}: ${errorText || response.statusText}`);
         }
         const data = await response.json();
         
         // Process playlists to calculate correct item counts for current layout
-        const processedPlaylists = data.map((playlist: any) => {
+        const processedPlaylists = Array.isArray(data) ? data.map((playlist: any) => {
           const layout = playlist.layout || 'single_zone';
           let validZones = ['main'];
           
@@ -696,15 +697,20 @@ export default function Playlists() {
               (playlist.items || []).filter((item: any) => validZones.includes(item.zone || 'main')).length :
               (playlist.items || []).length
           };
-        });
+        }) : [];
         
-        return Array.isArray(processedPlaylists) ? processedPlaylists : [];
+        return processedPlaylists;
       } catch (error) {
         console.error('Error fetching playlists:', error);
-        return [];
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las playlists. Verifica tu conexión.",
+          variant: "destructive",
+        });
+        throw error;
       }
     },
-    retry: 1,
+    retry: 2,
     refetchOnWindowFocus: false
   });
 
@@ -714,16 +720,22 @@ export default function Playlists() {
       try {
         const response = await apiRequest("/api/content");
         if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
+          const errorText = await response.text();
+          throw new Error(`Error ${response.status}: ${errorText || response.statusText}`);
         }
         const data = await response.json();
         return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error('Error fetching content:', error);
-        return [];
+        toast({
+          title: "Error",
+          description: "No se pudo cargar el contenido. Verifica tu conexión.",
+          variant: "destructive",
+        });
+        throw error;
       }
     },
-    retry: 1,
+    retry: 2,
     refetchOnWindowFocus: false
   });
 
@@ -735,15 +747,21 @@ export default function Playlists() {
       try {
         const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}`);
         if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
+          const errorText = await response.text();
+          throw new Error(`Error ${response.status}: ${errorText || response.statusText}`);
         }
         return await response.json();
       } catch (error) {
-        console.error('Error fetching playlist:', error);
+        console.error('Error fetching playlist details:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los detalles de la playlist.",
+          variant: "destructive",
+        });
         throw error;
       }
     },
-    retry: 1,
+    retry: 2,
     refetchOnWindowFocus: false
   });
 
