@@ -1,0 +1,48 @@
+screens.tsx:46 [["/api/screens"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+useBaseQuery @ @tanstack_react-query.js?v=c3b9f91b:3124
+useQuery @ @tanstack_react-query.js?v=c3b9f91b:3192
+Screens @ screens.tsx:46
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+mountIndeterminateComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14974
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15962
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19806
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=c3b9f91b:565
+flush @ @tanstack_react-query.js?v=c3b9f91b:589
+batch @ @tanstack_react-query.js?v=c3b9f91b:607
+dispatch_fn @ @tanstack_react-query.js?v=c3b9f91b:1039
+setData @ @tanstack_react-query.js?v=c3b9f91b:718
+onSuccess @ @tanstack_react-query.js?v=c3b9f91b:940
+resolve @ @tanstack_react-query.js?v=c3b9f91b:475
+Promise.then
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+fetch @ @tanstack_react-query.js?v=c3b9f91b:969
+executeFetch_fn @ @tanstack_react-query.js?v=c3b9f91b:2278
+onSubscribe @ @tanstack_react-query.js?v=c3b9f91b:1982
+subscribe @ @tanstack_react-query.js?v=c3b9f91b:24
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3145
+subscribeToStore @ chunk-PNGJSGSD.js?v=c3b9f91b:12032
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18921
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19485
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+finishConcurrentRender @ chunk-PNGJSGSD.js?v=c3b9f91b:18858
+performConcurrentWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18768
+workLoop @ chunk-PNGJSGSD.js?v=c3b9f91b:197
+flushWork @ chunk-PNGJSGSD.js?v=c3b9f91b:176
+performWorkUntilDeadline @ chunk-PNGJSGSD.js?v=c3b9f91b:384Understand this error
+screens.tsx:54 [["/api/playlists"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/
