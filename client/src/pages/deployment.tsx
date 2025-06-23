@@ -53,6 +53,8 @@ export default function Deployment() {
 
   const { data: deployments = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/deployments"],
+    queryFn: () => apiRequest("/api/deployments").then(res => res.json()),
+    retry: 1,
   });
 
   useEffect(() => {

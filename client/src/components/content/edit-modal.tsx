@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -133,10 +139,10 @@ export default function EditModal({ open, onClose, content }: EditModalProps) {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <Edit className="w-5 h-5 mr-2" />
-            Editar Contenido
-          </DialogTitle>
+          <DialogTitle>Editar Contenido</DialogTitle>
+          <DialogDescription>
+            Modifica los detalles del contenido seleccionado
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">

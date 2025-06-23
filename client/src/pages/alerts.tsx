@@ -62,17 +62,16 @@ export default function Alerts() {
   });
 
   const deleteAlertMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await apiRequest(`/api/alerts/${id}`, { method: "DELETE" });
+    mutationFn: async (alertId: number) => {
+      const response = await apiRequest(`/api/alerts/${alertId}`, {
+        method: 'DELETE'
+      });
       if (!response.ok) {
         if (response.status === 404) {
-          // Alert already deleted, just refresh the list
-          queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/alerts/fixed"] });
-          return { success: true, alreadyDeleted: true };
+          // Alert not found, consider it already deleted
+          return { message: 'Alert already deleted' };
         }
-        const error = await response.json().catch(() => ({ message: "Failed to delete alert" }));
-        throw new Error(error.message || "Failed to delete alert");
+        throw new Error(`Failed to delete alert: ${response.status}`);
       }
       return response.json();
     },

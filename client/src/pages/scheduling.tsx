@@ -1,5 +1,7 @@
-
-import { useState } from "react";
+The code has been updated to include missing queryFn in useQuery hooks and add missing imports for apiRequest.
+```
+```replit_final_file
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Calendar, Clock, Monitor, PlayCircle, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -153,7 +155,7 @@ const ScheduleCalendar = ({ schedules, playlists, screens }: {
                   {weekDays.map((day, dayIndex) => {
                     const dayOfWeek = day.getDay();
                     const schedulesInSlot = getSchedulesForSlot(dayOfWeek, timeSlot);
-                    
+
                     return (
                       <div 
                         key={dayIndex} 
@@ -241,16 +243,22 @@ export default function Scheduling() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   const { toast } = useToast();
 
-  const { data: schedules = [], isLoading } = useQuery<Schedule[]>({
+  const { data: schedules = [] } = useQuery({
     queryKey: ["/api/schedules"],
+    queryFn: () => apiRequest("/api/schedules").then(res => res.json()),
+    retry: 1,
   });
 
-  const { data: playlists = [] } = useQuery<Playlist[]>({
+  const { data: playlists = [] } = useQuery({
     queryKey: ["/api/playlists"],
+    queryFn: () => apiRequest("/api/playlists").then(res => res.json()),
+    retry: 1,
   });
 
-  const { data: screens = [] } = useQuery<Screen[]>({
+  const { data: screens = [] } = useQuery({
     queryKey: ["/api/screens"],
+    queryFn: () => apiRequest("/api/screens").then(res => res.json()),
+    retry: 1,
   });
 
   const form = useForm<ScheduleFormData>({
@@ -470,31 +478,31 @@ export default function Scheduling() {
                   <PlayCircle className="w-4 h-4 text-blue-500" />
                   <span className="text-sm">{getPlaylistName(schedule.playlistId!)}</span>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <Monitor className="w-4 h-4 text-green-500" />
                   <span className="text-sm">{getScreenNames(schedule.screenIds)}</span>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <Clock className="w-4 h-4 text-purple-500" />
                   <span className="text-sm">
                     {schedule.startTime} - {schedule.endTime}
                   </span>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <Calendar className="w-4 h-4 text-orange-500" />
                   <span className="text-sm">{formatDays(schedule.daysOfWeek)}</span>
                 </div>
-                
+
                 <div className="pt-2 border-t">
                   <div className="text-xs text-slate-500">
                     {new Date(schedule.startDate).toLocaleDateString()} 
                     {schedule.endDate && ` - ${new Date(schedule.endDate).toLocaleDateString()}`}
                   </div>
                 </div>
-                
+
                 <div className="flex justify-end">
                   <Button
                     variant="outline"

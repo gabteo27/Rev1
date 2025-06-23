@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -644,12 +644,12 @@ export default function Playlists() {
           throw new Error(`Error ${response.status}: ${errorText || response.statusText}`);
         }
         const data = await response.json();
-        
+
         // Process playlists to calculate correct item counts for current layout
         const processedPlaylists = Array.isArray(data) ? data.map((playlist: any) => {
           const layout = playlist.layout || 'single_zone';
           let validZones = ['main'];
-          
+
           switch (layout) {
             case 'split_vertical':
               validZones = ['left', 'right'];
@@ -690,7 +690,7 @@ export default function Playlists() {
               validZones = ['main'];
               break;
           }
-          
+
           return {
             ...playlist,
             currentLayoutItemCount: validZones ? 
@@ -698,7 +698,7 @@ export default function Playlists() {
               (playlist.items || []).length
           };
         }) : [];
-        
+
         return processedPlaylists;
       } catch (error) {
         console.error('Error fetching playlists:', error);
@@ -1044,23 +1044,23 @@ export default function Playlists() {
     const deletionPromise = (async () => {
       try {
         const result = await removeItemMutation.mutateAsync(itemId);
-        
+
         toast({
           title: "Elemento eliminado",
           description: "El elemento se ha eliminado de la playlist.",
         });
-        
+
         // Force immediate UI refresh
         queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
         if (selectedPlaylistForLayout?.id) {
           queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
         }
-        
+
         return result;
-        
+
       } catch (error: any) {
         console.error(`❌ Failed to delete item ${itemId}:`, error);
-        
+
         // If item not found, refresh the playlist to sync state
         if (error.message?.includes('not found')) {
           console.log(`🔄 Item ${itemId} not found, refreshing playlist state`);
@@ -1068,7 +1068,7 @@ export default function Playlists() {
           if (selectedPlaylistForLayout?.id) {
             queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistForLayout.id] });
           }
-          
+
           toast({
             title: "Elemento eliminado",
             description: "El elemento ya había sido eliminado.",
@@ -1080,7 +1080,7 @@ export default function Playlists() {
             variant: "destructive",
           });
         }
-        
+
         throw error;
       } finally {
         // Clean up tracking state
@@ -1089,7 +1089,7 @@ export default function Playlists() {
           newSet.delete(itemId);
           return newSet;
         });
-        
+
         setDeletionPromises(prev => {
           const newMap = new Map(prev);
           newMap.delete(itemId);
@@ -1286,51 +1286,53 @@ export default function Playlists() {
   // WebSocket setup for real-time updates
   useEffect(() => {
     console.log('🔌 Setting up WebSocket for playlists page...');
-    
+
     const setupWebSocket = async () => {
       try {
-        if (!wsManager.isConnected()) {
-          await wsManager.connect();
-          console.log('✅ WebSocket connected for playlists');
+        // Check if wsManager is available
+        if (typeof wsManager === 'undefined') {
+          console.warn('wsManager not available, skipping WebSocket setup');
+          return;
         }
 
-        const handlePlaylistUpdate = (data: any) => {
-          console.log('📋 Playlists update received:', data);
+        // Connect if not already connected
+        if (!wsManager.isConnected()) {
+          await wsManager.connect();
+        }
+
+        // Set up event listeners
+        const playlistUpdateHandler = () => {
+          console.log('Received playlist update via WebSocket');
           queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/content"] });
-          // Force immediate refetch
-          queryClient.refetchQueries({ queryKey: ["/api/playlists"] });
         };
 
-        const handleContentUpdate = (data: any) => {
-          console.log('📁 Content update received:', data);
+        const contentUpdateHandler = (data: any) => {
+          console.log('Received content update via WebSocket:', data);
           queryClient.invalidateQueries({ queryKey: ["/api/content"] });
           queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-          queryClient.refetchQueries({ queryKey: ["/api/content"] });
         };
 
-        // Subscribe to relevant events
-        wsManager.on('playlist-content-updated', handlePlaylistUpdate);
-        wsManager.on('playlists-updated', handlePlaylistUpdate);
-        wsManager.on('content-deleted', handleContentUpdate);
-        wsManager.on('playlist-item-deleted', handlePlaylistUpdate);
-        wsManager.on('playlist-item-added', handlePlaylistUpdate);
+        wsManager.on('playlists-updated', playlistUpdateHandler);
+        wsManager.on('playlist-content-updated', contentUpdateHandler);
 
-        return () => {
-          wsManager.off('playlist-content-updated', handlePlaylistUpdate);
-          wsManager.off('playlists-updated', handlePlaylistUpdate);
-          wsManager.off('content-deleted', handleContentUpdate);
-          wsManager.off('playlist-item-deleted', handlePlaylistUpdate);
-          wsManager.off('playlist-item-added', handlePlaylistUpdate);
-        };
+        // Store cleanup functions
+        cleanupFunctions.push(() => {
+          wsManager.off('playlists-updated', playlistUpdateHandler);
+          wsManager.off('playlist-content-updated', contentUpdateHandler);
+        });
+
+        console.log('✅ WebSocket setup complete for playlists');
       } catch (error) {
-        console.warn('WebSocket setup failed for playlists:', error);
+        console.error('WebSocket setup failed for playlists:', error);
       }
     };
 
-    const cleanup = setupWebSocket();
+    const cleanupFunctions: (() => void)[] = [];
+
+    setupWebSocket();
+
     return () => {
-      cleanup?.then(fn => fn?.());
+      cleanupFunctions.forEach(cleanup => cleanup());
     };
   }, [queryClient]);
 
