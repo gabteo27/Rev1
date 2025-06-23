@@ -1,0 +1,308 @@
+chunk-PNGJSGSD.js?v=c3b9f91b:21609 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+websocket.ts:18 🔌 WebSocket connected successfully
+chunk-PNGJSGSD.js?v=c3b9f91b:16718 Uncaught TypeError: wsManager.isConnected is not a function
+    at setupSubscriptions (dashboard.tsx:126:22)
+    at dashboard.tsx:215:5
+    at commitHookEffectListMount (chunk-PNGJSGSD.js?v=c3b9f91b:16963:34)
+    at commitPassiveMountOnFiber (chunk-PNGJSGSD.js?v=c3b9f91b:18206:19)
+    at commitPassiveMountEffects_complete (chunk-PNGJSGSD.js?v=c3b9f91b:18179:17)
+    at commitPassiveMountEffects_begin (chunk-PNGJSGSD.js?v=c3b9f91b:18169:15)
+    at commitPassiveMountEffects (chunk-PNGJSGSD.js?v=c3b9f91b:18159:11)
+    at flushPassiveEffectsImpl (chunk-PNGJSGSD.js?v=c3b9f91b:19543:11)
+    at flushPassiveEffects (chunk-PNGJSGSD.js?v=c3b9f91b:19500:22)
+    at commitRootImpl (chunk-PNGJSGSD.js?v=c3b9f91b:19469:13)
+setupSubscriptions @ dashboard.tsx:126
+(anonymous) @ dashboard.tsx:215
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19469
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=c3b9f91b:565
+flush @ @tanstack_react-query.js?v=c3b9f91b:589
+batch @ @tanstack_react-query.js?v=c3b9f91b:607
+dispatch_fn @ @tanstack_react-query.js?v=c3b9f91b:1039
+setData @ @tanstack_react-query.js?v=c3b9f91b:718
+onSuccess @ @tanstack_react-query.js?v=c3b9f91b:940
+resolve @ @tanstack_react-query.js?v=c3b9f91b:475
+Promise.then
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+fetch @ @tanstack_react-query.js?v=c3b9f91b:969
+executeFetch_fn @ @tanstack_react-query.js?v=c3b9f91b:2278
+onSubscribe @ @tanstack_react-query.js?v=c3b9f91b:1982
+subscribe @ @tanstack_react-query.js?v=c3b9f91b:24
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3145
+subscribeToStore @ chunk-PNGJSGSD.js?v=c3b9f91b:12032
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18921
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19485
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+finishConcurrentRender @ chunk-PNGJSGSD.js?v=c3b9f91b:18858
+performConcurrentWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18768
+workLoop @ chunk-PNGJSGSD.js?v=c3b9f91b:197
+flushWork @ chunk-PNGJSGSD.js?v=c3b9f91b:176
+performWorkUntilDeadline @ chunk-PNGJSGSD.js?v=c3b9f91b:384Understand this error
+chunk-PNGJSGSD.js?v=c3b9f91b:14080 The above error occurred in the <Dashboard> component:
+
+    at Dashboard (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/dashboard.tsx:149:47)
+    at Route (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=c3b9f91b:280:16)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=c3b9f91b:336:17)
+    at Suspense
+    at div
+    at div
+    at div
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=c3b9f91b:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=c3b9f91b:64:5)
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/sidebar.tsx:60:7
+    at AdminLayout (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx?t=1750697781252:66:24)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=c3b9f91b:336:17)
+    at AppContent (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx?t=1750697781252:230:42)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=c3b9f91b:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=c3b9f91b:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=c3b9f91b:2932:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-PNGJSGSD.js?v=c3b9f91b:14080
+update.callback @ chunk-PNGJSGSD.js?v=c3b9f91b:14100
+callCallback @ chunk-PNGJSGSD.js?v=c3b9f91b:11296
+commitUpdateQueue @ chunk-PNGJSGSD.js?v=c3b9f91b:11313
+commitLayoutEffectOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:17141
+commitLayoutMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18030
+commitLayoutEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18019
+commitLayoutEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:17970
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19406
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=c3b9f91b:565
+flush @ @tanstack_react-query.js?v=c3b9f91b:589
+batch @ @tanstack_react-query.js?v=c3b9f91b:607
+dispatch_fn @ @tanstack_react-query.js?v=c3b9f91b:1039
+setData @ @tanstack_react-query.js?v=c3b9f91b:718
+onSuccess @ @tanstack_react-query.js?v=c3b9f91b:940
+resolve @ @tanstack_react-query.js?v=c3b9f91b:475
+Promise.then
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+fetch @ @tanstack_react-query.js?v=c3b9f91b:969
+executeFetch_fn @ @tanstack_react-query.js?v=c3b9f91b:2278
+onSubscribe @ @tanstack_react-query.js?v=c3b9f91b:1982
+subscribe @ @tanstack_react-query.js?v=c3b9f91b:24
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3145
+subscribeToStore @ chunk-PNGJSGSD.js?v=c3b9f91b:12032
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18921
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19485
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+finishConcurrentRender @ chunk-PNGJSGSD.js?v=c3b9f91b:18858
+performConcurrentWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18768
+workLoop @ chunk-PNGJSGSD.js?v=c3b9f91b:197
+flushWork @ chunk-PNGJSGSD.js?v=c3b9f91b:176
+performWorkUntilDeadline @ chunk-PNGJSGSD.js?v=c3b9f91b:384Understand this error
+chunk-PNGJSGSD.js?v=c3b9f91b:9176 Uncaught TypeError: wsManager.isConnected is not a function
+    at setupSubscriptions (dashboard.tsx:126:22)
+    at dashboard.tsx:215:5
+    at commitHookEffectListMount (chunk-PNGJSGSD.js?v=c3b9f91b:16963:34)
+    at commitPassiveMountOnFiber (chunk-PNGJSGSD.js?v=c3b9f91b:18206:19)
+    at commitPassiveMountEffects_complete (chunk-PNGJSGSD.js?v=c3b9f91b:18179:17)
+    at commitPassiveMountEffects_begin (chunk-PNGJSGSD.js?v=c3b9f91b:18169:15)
+    at commitPassiveMountEffects (chunk-PNGJSGSD.js?v=c3b9f91b:18159:11)
+    at flushPassiveEffectsImpl (chunk-PNGJSGSD.js?v=c3b9f91b:19543:11)
+    at flushPassiveEffects (chunk-PNGJSGSD.js?v=c3b9f91b:19500:22)
+    at commitRootImpl (chunk-PNGJSGSD.js?v=c3b9f91b:19469:13)
+setupSubscriptions @ dashboard.tsx:126
+(anonymous) @ dashboard.tsx:215
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19469
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=c3b9f91b:565
+flush @ @tanstack_react-query.js?v=c3b9f91b:589
+batch @ @tanstack_react-query.js?v=c3b9f91b:607
+dispatch_fn @ @tanstack_react-query.js?v=c3b9f91b:1039
+setData @ @tanstack_react-query.js?v=c3b9f91b:718
+onSuccess @ @tanstack_react-query.js?v=c3b9f91b:940
+resolve @ @tanstack_react-query.js?v=c3b9f91b:475
+Promise.then
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+fetch @ @tanstack_react-query.js?v=c3b9f91b:969
+executeFetch_fn @ @tanstack_react-query.js?v=c3b9f91b:2278
+onSubscribe @ @tanstack_react-query.js?v=c3b9f91b:1982
+subscribe @ @tanstack_react-query.js?v=c3b9f91b:24
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3145
+subscribeToStore @ chunk-PNGJSGSD.js?v=c3b9f91b:12032
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18921
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19485
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+finishConcurrentRender @ chunk-PNGJSGSD.js?v=c3b9f91b:18858
+performConcurrentWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18768
+workLoop @ chunk-PNGJSGSD.js?v=c3b9f91b:197
+flushWork @ chunk-PNGJSGSD.js?v=c3b9f91b:176
+performWorkUntilDeadline @ chunk-PNGJSGSD.js?v=c3b9f91b:384Understand this error
+websocket.ts:33 🔌 WebSocket disconnected
+websocket.ts:99 🔄 Attempting reconnect 1/5 in 1000ms
+websocket.ts:18 🔌 WebSocket connected successfully
+client:815 WebSocket connection to 'wss://localhost:5173/?token=40TiRHKA1RPE' failed: 
+createConnection @ client:815
+connect @ client:437
+connect @ client:822Understand this error
+client:830 [vite] failed to connect to websocket.
+your current setup:
+  (browser) dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/ <--[HTTP]--> localhost:5173/ (server)
+  (browser) dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev:/ <--[WebSocket (failing)]--> localhost:5173/ (server)
+Check out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr .
+connect @ client:830
+await in connect
+connect @ client:290
+connect @ client:383
+(anonymous) @ client:908Understand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+error @ client:882
+(anonymous) @ client:137
+Promise.catch
+send @ client:136
+send @ client:100
+sendError @ (index):16
+(anonymous) @ (index):20
+invokeGuardedCallbackDev @ chunk-PNGJSGSD.js?v=c3b9f91b:3705
+invokeGuardedCallback @ chunk-PNGJSGSD.js?v=c3b9f91b:3739
+reportUncaughtErrorInDEV @ chunk-PNGJSGSD.js?v=c3b9f91b:16717
+captureCommitPhaseError @ chunk-PNGJSGSD.js?v=c3b9f91b:19611
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18181
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19469
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=c3b9f91b:565
+flush @ @tanstack_react-query.js?v=c3b9f91b:589
+batch @ @tanstack_react-query.js?v=c3b9f91b:607
+dispatch_fn @ @tanstack_react-query.js?v=c3b9f91b:1039
+setData @ @tanstack_react-query.js?v=c3b9f91b:718
+onSuccess @ @tanstack_react-query.js?v=c3b9f91b:940
+resolve @ @tanstack_react-query.js?v=c3b9f91b:475
+Promise.then
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+fetch @ @tanstack_react-query.js?v=c3b9f91b:969
+executeFetch_fn @ @tanstack_react-query.js?v=c3b9f91b:2278
+onSubscribe @ @tanstack_react-query.js?v=c3b9f91b:1982
+subscribe @ @tanstack_react-query.js?v=c3b9f91b:24
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3145
+subscribeToStore @ chunk-PNGJSGSD.js?v=c3b9f91b:12032
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18921
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19485
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+finishConcurrentRender @ chunk-PNGJSGSD.js?v=c3b9f91b:18858
+performConcurrentWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18768
+workLoop @ chunk-PNGJSGSD.js?v=c3b9f91b:197
+flushWork @ chunk-PNGJSGSD.js?v=c3b9f91b:176
+performWorkUntilDeadline @ chunk-PNGJSGSD.js?v=c3b9f91b:384Understand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+error @ client:882
+(anonymous) @ client:137
+Promise.catch
+send @ client:136
+send @ client:100
+sendError @ (index):16
+(anonymous) @ (index):20
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=c3b9f91b:565
+flush @ @tanstack_react-query.js?v=c3b9f91b:589
+batch @ @tanstack_react-query.js?v=c3b9f91b:607
+dispatch_fn @ @tanstack_react-query.js?v=c3b9f91b:1039
+setData @ @tanstack_react-query.js?v=c3b9f91b:718
+onSuccess @ @tanstack_react-query.js?v=c3b9f91b:940
+resolve @ @tanstack_react-query.js?v=c3b9f91b:475
+Promise.then
+run @ @tanstack_react-query.js?v=c3b9f91b:517
+start @ @tanstack_react-query.js?v=c3b9f91b:555
+fetch @ @tanstack_react-query.js?v=c3b9f91b:969
+executeFetch_fn @ @tanstack_react-query.js?v=c3b9f91b:2278
+onSubscribe @ @tanstack_react-query.js?v=c3b9f91b:1982
+subscribe @ @tanstack_react-query.js?v=c3b9f91b:24
+(anonymous) @ @tanstack_react-query.js?v=c3b9f91b:3145
+subscribeToStore @ chunk-PNGJSGSD.js?v=c3b9f91b:12032
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18921
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19485
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+finishConcurrentRender @ chunk-PNGJSGSD.js?v=c3b9f91b:18858
+performConcurrentWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18768
+workLoop @ chunk-PNGJSGSD.js?v=c3b9f91b:197
+flushWork @ chunk-PNGJSGSD.js?v=c3b9f91b:176
+performWorkUntilDeadline @ chunk-PNGJSGSD.js?v=c3b9f91b:384Understand this error
