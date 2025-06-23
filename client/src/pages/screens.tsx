@@ -53,7 +53,8 @@ export default function Screens() {
 
   const { data: playlists = [] } = useQuery<Playlist[]>({ 
     queryKey: ["/api/playlists"], 
-    retry: false 
+    retry: false,
+    refetchOnWindowFocus: false
   });
 
   // WebSocket subscriptions for real-time updates

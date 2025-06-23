@@ -705,6 +705,7 @@ export default function Playlists() {
       }
     },
     retry: 1,
+    refetchOnWindowFocus: false
   });
 
   const { data: allContent = [] } = useQuery({
@@ -723,6 +724,7 @@ export default function Playlists() {
       }
     },
     retry: 1,
+    refetchOnWindowFocus: false
   });
 
   const { data: playlistData, refetch: refetchPlaylist } = useQuery({
@@ -742,6 +744,7 @@ export default function Playlists() {
       }
     },
     retry: 1,
+    refetchOnWindowFocus: false
   });
 
   // --- MUTATIONS ---

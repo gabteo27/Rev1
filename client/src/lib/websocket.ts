@@ -26,37 +26,49 @@ class WebSocketManager {
   }
 
   connect(userId?: string, authToken?: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log('WebSocket already connected');
-      return;
-    }
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          console.log('WebSocket already connected');
+          return;
+      }
+      if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+          console.log('WebSocket connection already in progress');
+          return;
+      }
 
-    // If currently connecting, don't start another connection
-    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
-      console.log('WebSocket connection already in progress');
-      return;
-    }
+      this.userId = userId;
+      this.authToken = authToken;
 
-    this.userId = userId;
-    this.authToken = authToken;
+      if (this.reconnectTimeoutId) {
+          clearTimeout(this.reconnectTimeoutId);
+          this.reconnectTimeoutId = null;
+      }
 
-    // Clear any existing reconnection timeout
-    if (this.reconnectTimeoutId) {
-      clearTimeout(this.reconnectTimeoutId);
-      this.reconnectTimeoutId = null;
-    }
+      try {
+          // --- INICIA LA LÓGICA CORREGIDA ---
+          const productionApiUrl = import.meta.env.VITE_API_BASE_URL;
+          let wsUrl: string;
 
-    try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
-      console.log('🔌 Connecting to WebSocket:', wsUrl);
+          if (productionApiUrl) {
+            // MODO PRODUCCIÓN (cuando haces 'npm run build'): Construye la URL absoluta
+            const wsBase = productionApiUrl.replace('https://', 'wss://');
+            wsUrl = `${wsBase}/ws`;
+          } else {
+            // MODO DESARROLLO (preview de Replit): Construye la URL relativa
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            wsUrl = `<span class="math-inline">\{protocol\}//</span>{host}/ws`;
+          }
+          // --- FIN DE LA LÓGICA CORREGIDA ---
 
-      this.ws = new WebSocket(wsUrl);
-      this.setupEventListeners();
-    } catch (error) {
-      console.error('❌ Failed to create WebSocket connection:', error);
-      this.reconnectWithBackoff();
-    }
+          console.log('🔌 Connecting to WebSocket:', wsUrl);
+
+          this.ws = new WebSocket(wsUrl);
+          this.setupEventListeners();
+
+      } catch (error) {
+          console.error('❌ Failed to create WebSocket connection:', error);
+          this.reconnectWithBackoff();
+      }
   }
 
   private setupEventListeners() {
