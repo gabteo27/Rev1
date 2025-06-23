@@ -137,8 +137,8 @@ export default function Dashboard() {
           }
         }
 
-      // Subscribe to alerts
-      const alertHandler = (alertData) => {
+        // Subscribe to alerts
+        const alertHandler = (alertData) => {
         console.log('Alerta recibida vía WebSocket:', alertData);
         toast({
           title: alertData?.title || "Nueva Alerta",
@@ -219,6 +219,12 @@ export default function Dashboard() {
       };
       wsManager.on('widget-updated', widgetUpdateHandler);
       unsubscribeFunctions.push(() => wsManager.off('widget-updated', widgetUpdateHandler));
+      
+      } catch (error) {
+        console.error('Error setting up subscriptions:', error);
+        // Retry setup after a delay
+        setTimeout(setupSubscriptions, 5000);
+      }
     };
 
     setupSubscriptions();
