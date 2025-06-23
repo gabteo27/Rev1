@@ -18,7 +18,15 @@ export class WebSocketManager {
 
         this.ws = new WebSocket(wsUrl);
 
+        const timeout = setTimeout(() => {
+          if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+            this.ws.close();
+            reject(new Error('WebSocket connection timeout'));
+          }
+        }, 10000);
+
         this.ws.onopen = () => {
+          clearTimeout(timeout);
           console.log('🔌 WebSocket connected successfully');
           this.reconnectAttempts = 0;
           resolve();
@@ -33,15 +41,19 @@ export class WebSocketManager {
           }
         };
 
-        this.ws.onclose = () => {
-          console.log('🔌 WebSocket disconnected');
+        this.ws.onclose = (event) => {
+          clearTimeout(timeout);
+          console.log('🔌 WebSocket disconnected', event.code, event.reason);
           this.isAuthenticated = false;
-          this.attemptReconnect();
+          if (event.code !== 1000) { // Not a normal closure
+            this.attemptReconnect();
+          }
         };
 
         this.ws.onerror = (error) => {
+          clearTimeout(timeout);
           console.error('WebSocket error:', error);
-          reject(error);
+          // Don't reject immediately, let onclose handle reconnection
         };
 
       } catch (error) {
@@ -95,17 +107,26 @@ export class WebSocketManager {
   private attemptReconnect(): void {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+      const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
 
       console.log(`🔄 Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
 
-      setTimeout(() => {
-        this.connect().catch(error => {
+      setTimeout(async () => {
+        try {
+          await this.connect();
+          console.log('✅ Reconnection successful');
+        } catch (error) {
           console.error('Reconnection failed:', error);
-        });
+          // Continue attempting if we haven't reached max attempts
+        }
       }, delay);
     } else {
       console.error('❌ Max reconnection attempts reached');
+      // Reset attempts after a longer delay to allow future reconnection attempts
+      setTimeout(() => {
+        this.reconnectAttempts = 0;
+        console.log('🔄 Reset reconnection attempts, will try again if needed');
+      }, 60000);
     }
   }
 

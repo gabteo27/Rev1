@@ -50,6 +50,11 @@ export default defineConfig({
     hmr: {
       port: 5173,
       clientPort: 443,
+      timeout: 60000,
+    },
+    watch: {
+      usePolling: true,
+      interval: 1000,
     },
   },
 });

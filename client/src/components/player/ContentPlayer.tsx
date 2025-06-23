@@ -170,6 +170,9 @@ const ContentPlayer = memo(({
   const [alerts, setAlerts] = useState<any[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const wsManagerRef = useRef<WebSocketManager | null>(null);
+  const [isPlaying, setIsPlaying] = useState(true); // Control playback state
+  const authToken = localStorage.getItem('authToken');
+  const wsManager = useMemo(() => new WebSocketManager(), []);
 
   // Memoized query options
   const queryOptions = useMemo(() => ({
@@ -195,62 +198,154 @@ const ContentPlayer = memo(({
 
   // Memoized callbacks
   const goToNext = useCallback(() => {
-    if (contentItems.length <= 1) return;
+    if (contentItems.length <= 1 || !isPlaying) return;
 
     setIsTransitioning(true);
     setTimeout(() => {
       setCurrentIndex(prev => (prev + 1) % contentItems.length);
       setIsTransitioning(false);
     }, 500);
-  }, [contentItems.length]);
+  }, [contentItems.length, isPlaying]);
 
   const resetInterval = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
 
-    if (contentItems.length > 1) {
+    if (contentItems.length > 1 && isPlaying) {
       const currentItem = contentItems[currentIndex];
       const duration = (currentItem?.duration || 10) * 1000;
 
       intervalRef.current = setInterval(goToNext, duration);
     }
-  }, [contentItems, currentIndex, goToNext]);
+  }, [contentItems, currentIndex, goToNext, isPlaying]);
 
   // WebSocket setup
   useEffect(() => {
-    if (isPreview) return;
+    const cleanupFunctions: (() => void)[] = [];
 
-    const initWebSocket = async () => {
+    const setupWebSocket = async () => {
       try {
-        const authToken = localStorage.getItem('authToken');
-        if (!authToken) return;
+        // Connect WebSocket with retry logic
+        let connected = false;
+        let attempts = 0;
+        const maxAttempts = 3;
 
-        if (!wsManagerRef.current) {
-          wsManagerRef.current = new WebSocketManager();
+        while (!connected && attempts < maxAttempts) {
+          try {
+            if (!wsManager.isConnected()) {
+              await wsManager.connect();
+            }
+            connected = true;
+          } catch (error) {
+            attempts++;
+            console.warn(`WebSocket connection attempt ${attempts} failed:`, error);
+            if (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 2000 * attempts));
+            }
+          }
         }
 
-        await wsManagerRef.current.connect();
-        await wsManagerRef.current.authenticate(authToken);
+        if (!connected) {
+          console.error('Failed to establish WebSocket connection after multiple attempts');
+          return;
+        }
 
-        wsManagerRef.current.on('alert-broadcast', (alert) => {
-          setAlerts(prev => [...prev, alert]);
-        });
+        // Authenticate if we have a token
+        if (authToken) {
+          try {
+            await wsManager.authenticate(authToken);
+          } catch (error) {
+            console.error('WebSocket authentication failed:', error);
+          }
+        }
+
+        // Subscribe to playlist changes
+        const handlePlaylistChange = (data: any) => {
+          console.log('🔄 Playlist change received:', data);
+          const { playlistId: newPlaylistId, screenId: messageScreenId } = data;
+          const currentScreenId = localStorage.getItem('screenId');
+
+          console.log(`📋 Comparing screenIds: message=${messageScreenId}, current=${currentScreenId}`);
+
+          if (messageScreenId && messageScreenId.toString() === currentScreenId) {
+            console.log(`🎵 Playlist changed to ${newPlaylistId} for this screen - RELOADING NOW`);
+            window.location.reload();
+          }
+        };
+        wsManager.on('playlist-change', handlePlaylistChange);
+        cleanupFunctions.push(() => wsManager.off('playlist-change', handlePlaylistChange));
+
+        // Subscribe to playlist content updates
+        const handlePlaylistContent = (data: any) => {
+          console.log('📋 Playlist content update received:', data);
+          if (data?.playlistId === parseInt(playlistId)) {
+            refetch();
+          }
+        };
+        wsManager.on('playlist-content-updated', handlePlaylistContent);
+        cleanupFunctions.push(() => wsManager.off('playlist-content-updated', handlePlaylistContent));
+
+        // Subscribe to playlist item deletion
+        const handlePlaylistItemDeleted = (data: any) => {
+          console.log('🗑️ Playlist item deleted:', data);
+          if (data?.playlistId === parseInt(playlistId)) {
+            refetch();
+          }
+        };
+        wsManager.on('playlist-item-deleted', handlePlaylistItemDeleted);
+        cleanupFunctions.push(() => wsManager.off('playlist-item-deleted', handlePlaylistItemDeleted));
+
+        // Subscribe to playback controls
+        const handlePlaybackControl = (data: any) => {
+          console.log('🎮 Playback control received:', data);
+          if (data?.screenId === localStorage.getItem('screenId')) {
+            if (data.action === 'play') {
+              setIsPlaying(true);
+            } else if (data.action === 'pause') {
+              setIsPlaying(false);
+            } else if (data.action === 'stop') {
+              setIsPlaying(false);
+              setCurrentIndex(0);
+            }
+          }
+        };
+        wsManager.on('playback-control', handlePlaybackControl);
+        cleanupFunctions.push(() => wsManager.off('playback-control', handlePlaybackControl));
+
+        // Subscribe to screen playlist updates
+        const handleScreenPlaylistUpdate = (data: any) => {
+          console.log('📺 Screen playlist update received:', data);
+          const screenId = localStorage.getItem('screenId');
+          if (data?.screenId === screenId) {
+            const newPlaylistId = data.playlistId?.toString();
+            if (newPlaylistId !== playlistId) {
+              localStorage.setItem('playlistId', newPlaylistId);
+              window.location.reload();
+            }
+          }
+        };
+        wsManager.on('screen-playlist-updated', handleScreenPlaylistUpdate);
+        cleanupFunctions.push(() => wsManager.off('screen-playlist-updated', handleScreenPlaylistUpdate));
 
       } catch (error) {
-        console.error('WebSocket setup failed:', error);
+        console.error('Error setting up WebSocket:', error);
       }
     };
 
-    initWebSocket();
+    setupWebSocket();
 
     return () => {
-      if (wsManagerRef.current) {
-        wsManagerRef.current.disconnect();
-        wsManagerRef.current = null;
-      }
+      // Cleanup all subscriptions
+      cleanupFunctions.forEach(cleanup => {
+        try {
+          cleanup();
+        } catch (error) {
+          console.error('Error during cleanup:', error);
+        }
+      });
     };
-  }, [isPreview]);
+  }, [authToken, playlistId, refetch]);
 
   // Content rotation logic
   useEffect(() => {

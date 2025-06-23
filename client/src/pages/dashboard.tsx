@@ -113,22 +113,29 @@ export default function Dashboard() {
     const unsubscribeFunctions: (() => void)[] = [];
 
     // Wait for WebSocket to be connected before subscribing
-    const setupSubscriptions = () => {
-      // Set up polling as fallback with reduced frequency
-      const pollingInterval = setInterval(() => {
-        // Poll for updates every 30 seconds as fallback, only when WebSocket is disconnected
+    const setupSubscriptions = async () => {
+      try {
+        // Set up polling as fallback with reduced frequency
+        const pollingInterval = setInterval(() => {
+          // Poll for updates every 30 seconds as fallback, only when WebSocket is disconnected
+          if (!wsManager.isConnected()) {
+            queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+          }
+        }, 30000);
+
+        unsubscribeFunctions.push(() => clearInterval(pollingInterval));
+
+        // Try to connect WebSocket if not connected
         if (!wsManager.isConnected()) {
-          queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+          try {
+            await wsManager.connect();
+          } catch (error) {
+            console.warn('WebSocket connection failed, will retry later:', error);
+            setTimeout(setupSubscriptions, 5000);
+            return;
+          }
         }
-      }, 30000);
-
-      unsubscribeFunctions.push(() => clearInterval(pollingInterval));
-
-      if (!wsManager.isConnected()) {
-        setTimeout(setupSubscriptions, 1000);
-        return;
-      }
 
       // Subscribe to alerts
       const alertHandler = (alertData) => {
