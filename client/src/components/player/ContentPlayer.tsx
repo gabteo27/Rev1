@@ -176,10 +176,10 @@ const ContentPlayer = memo(({
 
   // Memoized query options
   const queryOptions = useMemo(() => ({
-    queryKey: [`/api/playlists/${playlistId}/content`],
+    queryKey: ["/api/playlists", playlistId],
     queryFn: async () => {
       if (!playlistId) throw new Error('No playlist ID provided');
-      const response = await fetch(`/api/playlists/${playlistId}/content`);
+      const response = await fetch(`/api/playlists/${playlistId}`);
       if (!response.ok) throw new Error('Failed to fetch playlist content');
       return response.json();
     },
@@ -187,6 +187,7 @@ const ContentPlayer = memo(({
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchInterval: isPreview ? false : 30000, // Only auto-refresh in production
+    retry: 1,
   }), [playlistId, isPreview]);
 
   const { data: playlistData, isLoading, error, refetch } = useQuery(queryOptions);

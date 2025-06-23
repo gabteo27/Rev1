@@ -11,11 +11,28 @@ export default function ScreenPlayerPage() {
   const playlistIdParam = urlParams.get('playlistId');
   const isPreview = urlParams.get('preview') === 'true';
 
-  const { data: screen, isLoading, error } = useQuery({
-    queryKey: [`/api/screens/${screenId}`],
+  const { data: screen, isLoading: screenLoading, error: screenError } = useQuery({
+    queryKey: ['/api/screens', screenId],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/screens/${screenId}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.warn(`Screen ${screenId} not found`);
+            return null;
+          }
+          throw new Error(`Screen error: ${response.status}`);
+        }
+        return response.json();
+      } catch (error) {
+        console.warn('Screen loading failed:', error);
+        return null;
+      }
+    },
     enabled: !!screenId,
     retry: 1,
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Use playlist from URL params if provided, otherwise use screen's playlist

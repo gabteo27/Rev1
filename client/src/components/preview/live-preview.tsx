@@ -25,8 +25,16 @@ export default function LivePreview() {
   // Obtenemos los detalles de la playlist para la pantalla seleccionada
   const { data: playlist } = useQuery({
     queryKey: ["/api/playlists", playlistId],
-    queryFn: () => apiRequest(`/api/playlists/${playlistId}`).then(res => res.json()),
+    queryFn: async () => {
+      if (!playlistId) return null;
+      const response = await apiRequest(`/api/playlists/${playlistId}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
     enabled: !!playlistId,
+    retry: 1,
+    staleTime: 60000,
+    refetchOnWindowFocus: false,
   });
 
   const openPlayerInNewWindow = () => {

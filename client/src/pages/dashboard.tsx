@@ -117,12 +117,12 @@ export default function Dashboard() {
       try {
         // Set up polling as fallback with reduced frequency
         const pollingInterval = setInterval(() => {
-          // Poll for updates every 30 seconds as fallback, only when WebSocket is disconnected
+          // Poll for updates every 2 minutes as fallback, only when WebSocket is disconnected
           if (!wsManager.isConnected()) {
             queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
             queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
           }
-        }, 30000);
+        }, 120000);
 
         unsubscribeFunctions.push(() => clearInterval(pollingInterval));
 
@@ -247,6 +247,7 @@ export default function Dashboard() {
     retry: 1,
     staleTime: 60000, // 1 minute
     gcTime: 300000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
 
   const { data: playlists = [] } = useQuery({
@@ -254,25 +255,35 @@ export default function Dashboard() {
     retry: 1,
     staleTime: 60000, // 1 minute
     gcTime: 300000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
 
   const { data: content = [], isLoading: isLoadingContent, error: contentError } = useQuery<any[]>({
     queryKey: ["/api/content"],
     queryFn: async () => {
-      const response = await apiRequest("/api/content");
-      if (!response.ok) {
-        throw new Error(`Error loading content: ${response.status}`);
+      try {
+        const response = await apiRequest("/api/content");
+        if (!response.ok) {
+          console.warn(`Content API returned ${response.status}`);
+          return [];
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.warn('Content loading failed:', error);
+        return [];
       }
-      const data = await response.json();
-      console.log('Content loaded:', data);
-      return data;
     },
-    retry: false,
+    retry: 1,
+    staleTime: 120000, // 2 minutes
+    refetchOnWindowFocus: false,
   });
 
   const { data: alerts = [] } = useQuery({
     queryKey: ["/api/alerts"],
     retry: 1,
+    staleTime: 60000,
+    refetchOnWindowFocus: false,
   });
 
   // Control playback mutation
