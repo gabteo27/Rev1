@@ -105,7 +105,7 @@ export default function Dashboard() {
   const [selectedScreen, setSelectedScreen] = useState("");
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
-  const [activeAlertsCount , setActiveAlerts] = useState<any[]>([]);
+  const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
   const { toast } = useToast();
 
   // Subscribe to WebSocket events
@@ -679,7 +679,7 @@ return (
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-orange-500 rounded-full mt-2" />
                   <div>
-                    <p className="text-sm">{activeAlertsCount} alerta{activeAlerts > 1 ? 's' : ''} activa{activeAlerts > 1 ? 's' : ''}</p>
+                    <p className="text-sm">{activeAlerts} alerta{activeAlerts > 1 ? 's' : ''} activa{activeAlerts > 1 ? 's' : ''}</p>
                     <p className="text-xs text-muted-foreground">Requieren atención</p>
                   </div>
                 </div>
