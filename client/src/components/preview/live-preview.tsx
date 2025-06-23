@@ -1,21 +1,25 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Monitor, ExternalLink, Tv, Eye } from "lucide-react";
+import { Monitor, ExternalLink, Tv, Eye, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function LivePreview() {
   const [selectedScreenId, setSelectedScreenId] = useState<string>("");
   const [showModal, setShowModal] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   // Obtenemos la lista de pantallas para el selector
-  const { data: screens = [] } = useQuery({
+  const { data: screens = [], isLoading: screensLoading, error: screensError } = useQuery({
     queryKey: ["/api/screens"],
-    retry: 1,
+    retry: 2,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+    refetchInterval: 60000,
   });
 
   // Buscamos los datos de la pantalla seleccionada
@@ -23,13 +27,20 @@ export default function LivePreview() {
   const playlistId = selectedScreenData?.playlistId;
 
   // Obtenemos los detalles de la playlist para la pantalla seleccionada
-  const { data: playlist } = useQuery({
+  const { data: playlist, isLoading: playlistLoading } = useQuery({
     queryKey: ["/api/playlists", playlistId],
     queryFn: async () => {
       if (!playlistId) return null;
-      const response = await apiRequest(`/api/playlists/${playlistId}`);
-      if (!response.ok) return null;
-      return response.json();
+      try {
+        const response = await apiRequest(`/api/playlists/${playlistId}`);
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+      } catch (error) {
+        console.error('Error fetching playlist:', error);
+        return null;
+      }
     },
     enabled: !!playlistId,
     retry: 1,
@@ -46,8 +57,55 @@ export default function LivePreview() {
   const openLiveModal = () => {
     if (selectedScreenId) {
       setShowModal(true);
+      setPreviewError(null);
     }
   };
+
+  const handleIframeError = () => {
+    setPreviewError('Error al cargar la vista previa. Verifique que la pantalla esté conectada y tenga contenido asignado.');
+  };
+
+  useEffect(() => {
+    if (selectedScreenId && !selectedScreenData?.playlistId) {
+      setPreviewError('La pantalla seleccionada no tiene una playlist asignada.');
+    } else {
+      setPreviewError(null);
+    }
+  }, [selectedScreenId, selectedScreenData]);
+
+  if (screensLoading) {
+    return (
+      <Card className="border-slate-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <RefreshCw className="w-5 h-5 animate-spin" />
+            Cargando Vista Previa...
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-slate-100 dark:bg-slate-800 rounded-lg aspect-video flex items-center justify-center min-h-[200px]">
+            <RefreshCw className="w-8 h-8 animate-spin text-slate-400" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (screensError) {
+    return (
+      <Card className="border-red-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg text-red-600">Error al Cargar Pantallas</CardTitle>
+          <CardDescription>No se pudieron cargar las pantallas disponibles.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-red-50 dark:bg-red-900/20 rounded-lg aspect-video flex items-center justify-center min-h-[200px]">
+            <p className="text-red-600 dark:text-red-400">Error de conexión</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -79,6 +137,7 @@ export default function LivePreview() {
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${screen.isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
                           <span>{screen.name}</span>
+                          {screen.location && <span className="text-xs text-muted-foreground">({screen.location})</span>}
                         </div>
                       </SelectItem>
                     ))
@@ -112,28 +171,51 @@ export default function LivePreview() {
 
           {/* Vista previa en miniatura */}
           <div className="bg-slate-900 rounded-lg aspect-video flex items-center justify-center relative overflow-hidden min-h-[200px]">
-            {selectedScreenId && playlistId && playlist?.items?.length > 0 ? (
+            {previewError ? (
+              <div className="text-white text-center p-4">
+                <Tv className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm opacity-75">{previewError}</p>
+              </div>
+            ) : selectedScreenId && playlistId && playlist?.items?.length > 0 ? (
               <iframe 
                 src={`/screen-player?screenId=${selectedScreenId}&preview=true`} 
                 className="w-full h-full border-0" 
                 title="Vista previa de la pantalla"
                 style={{ minHeight: '200px' }}
-                onError={() => {
-                  console.error('Error loading preview iframe');
-                }}
+                onError={handleIframeError}
+                onLoad={() => setPreviewError(null)}
               />
+            ) : playlistLoading ? (
+              <div className="text-white text-center p-4">
+                <RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin opacity-50" />
+                <p className="text-sm opacity-75">Cargando contenido...</p>
+              </div>
             ) : (
               <div className="text-white text-center p-4">
                 <Tv className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p className="text-sm opacity-75">
                   {!selectedScreenId 
                     ? 'Selecciona una pantalla para ver la vista previa' 
-                    : 'Esta pantalla no tiene una playlist asignada'
+                    : !playlistId
+                    ? 'Esta pantalla no tiene una playlist asignada'
+                    : 'Esta playlist no tiene contenido'
                   }
                 </p>
               </div>
             )}
           </div>
+
+          {/* Información de la pantalla seleccionada */}
+          {selectedScreenData && (
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p><strong>Pantalla:</strong> {selectedScreenData.name}</p>
+              {selectedScreenData.location && <p><strong>Ubicación:</strong> {selectedScreenData.location}</p>}
+              <p><strong>Estado:</strong> {selectedScreenData.isOnline ? 'En línea' : 'Desconectada'}</p>
+              {playlist && (
+                <p><strong>Playlist:</strong> {playlist.name} ({playlist.items?.length || 0} elementos)</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
