@@ -1,7 +1,7 @@
 modules = ["nodejs-20", "postgresql-16"]
 
 [workflows]
-runButton = "Development Server"
+runButton = "Start Server"
 
 [[workflows.workflow]]
 name = "Development Server"
@@ -11,6 +11,23 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "HOST=0.0.0.0 npm run dev"
+
+[[workflows.workflow]]
+name = "Start Server"
+author = 38813652
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"tsx server/index.ts\" || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 2"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "HOST=0.0.0.0 PORT=5000 npm run dev"
 
 [[ports]]
 localPort = 5000

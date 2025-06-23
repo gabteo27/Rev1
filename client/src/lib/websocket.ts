@@ -1,270 +1,126 @@
-import { queryClient } from './queryClient';
-
-interface WebSocketMessage {
-  type: string;
-  data?: any;
-  userId?: string;
-  userType?: string;
-}
-
-class WebSocketManager {
+export class WebSocketManager {
   private ws: WebSocket | null = null;
+  private listeners: Map<string, Function[]> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectInterval = 1000;
-  private subscribers = new Map<string, Array<(data: any) => void>>();
-  private isReconnecting = false;
-  private userId: string | null = null;
-  private authToken: string | null = null;
-  private heartbeatInterval: NodeJS.Timeout | null = null;
-  private reconnectTimeoutId: NodeJS.Timeout | null = null;
+  private reconnectDelay = 1000;
+  private isAuthenticated = false;
 
-  constructor() {
-    this.connect = this.connect.bind(this);
-    this.disconnect = this.disconnect.bind(this);
-    this.handleMessage = this.handleMessage.bind(this);
-  }
-
-  connect(userId?: string, authToken?: string) {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          console.log('WebSocket already connected');
-          return;
-      }
-      if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
-          console.log('WebSocket connection already in progress');
-          return;
-      }
-
-      this.userId = userId;
-      this.authToken = authToken;
-
-      if (this.reconnectTimeoutId) {
-          clearTimeout(this.reconnectTimeoutId);
-          this.reconnectTimeoutId = null;
-      }
-
+  async connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
       try {
-          // --- INICIA LA LÓGICA CORREGIDA ---
-          const productionApiUrl = import.meta.env.VITE_API_BASE_URL;
-          let wsUrl: string;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
 
-          if (productionApiUrl) {
-            // MODO PRODUCCIÓN (cuando haces 'npm run build'): Construye la URL absoluta
-            const wsBase = productionApiUrl.replace('https://', 'wss://');
-            wsUrl = `${wsBase}/ws`;
-          } else {
-            // MODO DESARROLLO (preview de Replit): Construye la URL relativa
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.host;
-            wsUrl = `${protocol}//${host}/ws`;
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+          console.log('🔌 WebSocket connected successfully');
+          this.reconnectAttempts = 0;
+          resolve();
+        };
+
+        this.ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            this.handleMessage(data);
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
           }
-          // --- FIN DE LA LÓGICA CORREGIDA ---
+        };
 
-          console.log('🔌 Connecting to WebSocket:', wsUrl);
+        this.ws.onclose = () => {
+          console.log('🔌 WebSocket disconnected');
+          this.isAuthenticated = false;
+          this.attemptReconnect();
+        };
 
-          this.ws = new WebSocket(wsUrl);
-          this.setupEventListeners();
+        this.ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          reject(error);
+        };
 
       } catch (error) {
-          console.error('❌ Failed to create WebSocket connection:', error);
-          this.reconnectWithBackoff();
+        reject(error);
       }
+    });
   }
 
-  private setupEventListeners() {
-    if (!this.ws) return;
-
-    this.ws.onopen = () => {
-      console.log('WebSocket connected successfully');
-      this.reconnectAttempts = 0;
-      this.isReconnecting = false;
-
-      // Authenticate after connection
-      if (this.userId) {
-        console.log('Authenticating WebSocket connection (admin)...');
-        this.send({ type: 'auth', userId: this.userId });
-      } else if (this.authToken) {
-        console.log('Authenticating player WebSocket connection with token:', this.authToken?.substring(0, 8) + '...');
-        this.send({ type: 'player-auth', token: this.authToken });
-      }
-
-      // Start heartbeat
-      this.startHeartbeat();
-    };
-
-    this.ws.onmessage = this.handleMessage;
-
-    this.ws.onclose = (event) => {
-      console.log('WebSocket disconnected:', event.code, event.reason);
-      this.ws = null;
-      this.stopHeartbeat();
-
-      if (!this.isReconnecting && this.reconnectAttempts < this.maxReconnectAttempts) {
-        this.scheduleReconnect();
-      }
-    };
-
-    this.ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-  }
-
-  private handleMessage(event: MessageEvent) {
-    try {
-      const message = JSON.parse(event.data);
-
-      if (message.type === 'auth_success') {
-        console.log('WebSocket authentication successful');
-        return;
-      }
-
-      if (message.type === 'pong') {
-        return;
-      }
-
-      if (message.type === 'heartbeat-ack') {
-        return;
-      }
-
-      if (message.type === 'connection_established') {
-        console.log('WebSocket connection established');
-        return;
-      }
-
-      if (message.type === 'screen-disconnected') {
-        console.log('Screen disconnected by server:', message.data);
-        // Reload page if this screen was disconnected
-        if (message.data?.reason === 'Screen deleted') {
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
-        }
-        return;
-      }
-
-      // Log received messages for debugging (excluding frequent messages)
-      if (!['ping', 'pong', 'heartbeat-ack'].includes(message.type)) {
-        console.log('WebSocket message received:', message.type, message.data);
-      }
-
-      // Notify subscribers with the entire message object
-      const callbacks = this.subscribers.get(message.type);
-      if (callbacks) {
-        callbacks.forEach(callback => {
-          try {
-            callback({ type: message.type, data: message.data });
-          } catch (error) {
-            console.error('Error in WebSocket callback:', error);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error parsing WebSocket message:', error);
+  async authenticate(token: string): Promise<void> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error('WebSocket not connected');
     }
+
+    this.send({
+      type: 'player-auth',
+      token
+    });
+
+    this.isAuthenticated = true;
   }
 
-  private scheduleReconnect() {
-    if (this.isReconnecting) return;
-
-    this.isReconnecting = true;
-    this.reconnectAttempts++;
-
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000);
-
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-
-    setTimeout(() => {
-      this.connect(this.userId, this.authToken);
-    }, delay);
-  }
-
-  subscribe(eventType: string, callback: (data: any) => void) {
-    if (!this.subscribers.has(eventType)) {
-      this.subscribers.set(eventType, []);
-    }
-    this.subscribers.get(eventType)?.push(callback);
-
-    // Return unsubscribe function
-    return () => {
-      const callbacks = this.subscribers.get(eventType);
-      if (callbacks) {
-        const index = callbacks.indexOf(callback);
-        if (index > -1) {
-          callbacks.splice(index, 1);
-        }
-      }
-    };
-  }
-
-  send(message: any) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+  send(data: any): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(data));
     } else {
-      console.warn('WebSocket not connected, cannot send message:', message);
+      console.warn('Cannot send message: WebSocket not connected');
     }
   }
 
-  disconnect() {
-    this.isReconnecting = false;
-    this.reconnectAttempts = this.maxReconnectAttempts; // Prevent auto-reconnect
-    this.stopHeartbeat();
+  on(eventType: string, callback: Function): void {
+    if (!this.listeners.has(eventType)) {
+      this.listeners.set(eventType, []);
+    }
+    this.listeners.get(eventType)!.push(callback);
+  }
 
+  off(eventType: string, callback: Function): void {
+    const callbacks = this.listeners.get(eventType);
+    if (callbacks) {
+      const index = callbacks.indexOf(callback);
+      if (index !== -1) {
+        callbacks.splice(index, 1);
+      }
+    }
+  }
+
+  private handleMessage(data: any): void {
+    const callbacks = this.listeners.get(data.type);
+    if (callbacks) {
+      callbacks.forEach(callback => callback(data.data || data));
+    }
+  }
+
+  private attemptReconnect(): void {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+
+      console.log(`🔄 Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
+
+      setTimeout(() => {
+        this.connect().catch(error => {
+          console.error('Reconnection failed:', error);
+        });
+      }, delay);
+    } else {
+      console.error('❌ Max reconnection attempts reached');
+    }
+  }
+
+  disconnect(): void {
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
-  }
-
-  isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN;
-  }
-
-  private startHeartbeat() {
-    this.stopHeartbeat();
-    this.heartbeatInterval = setInterval(() => {
-      if (this.isConnected()) {
-        this.send({ type: 'ping' });
-      }
-    }, 30000); // Ping every 30 seconds
-  }
-
-  private stopHeartbeat() {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
-  }
-
-  private reconnectWithBackoff() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('❌ Max reconnection attempts reached, giving up');
-      return;
-    }
-
-    // Use exponential backoff with jitter
-    const baseDelay = 1000 * Math.pow(2, this.reconnectAttempts);
-    const jitter = Math.random() * 1000; // Add random jitter to prevent thundering herd
-    const delay = Math.min(baseDelay + jitter, 30000);
-
-    console.log(`🔄 Attempting to reconnect in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
-
-    this.reconnectTimeoutId = setTimeout(() => {
-      this.reconnectAttempts++;
-      this.connect(this.userId, this.authToken);
-    }, delay);
+    this.listeners.clear();
+    this.isAuthenticated = false;
+    this.reconnectAttempts = 0;
   }
 }
 
-// Singleton instance
-let wsInstance: WebSocketManager | null = null;
-
-export class WebSocketClient {
-  static getInstance(): WebSocketManager {
-    if (!wsInstance) {
-      wsInstance = new WebSocketManager();
-    }
-    return wsInstance;
-  }
-}
-
+// Create a singleton instance for global use
 export const wsManager = new WebSocketManager();
+
+// Export default for compatibility
+export default WebSocketManager;

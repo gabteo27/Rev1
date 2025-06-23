@@ -44,31 +44,37 @@ export default function PlayerPage() {
         throw new Error('No auth token found');
       }
 
-      const response = await fetch('/api/player/validate-token', {
-        headers: {
-          'Authorization': `Bearer ${authToken}`
+      try {
+        const response = await fetch('/api/player/validate-token', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            // Clear invalid token
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('screenName');
+            localStorage.removeItem('playlistId');
+            localStorage.removeItem('screenId');
+            setStatus('initializing');
+          }
+          throw new Error(`Token validation failed: ${response.status}`);
         }
-      });
 
-      if (!response.ok) {
-        throw new Error('Token validation failed');
+        return response.json();
+      } catch (error) {
+        console.error('Validation request failed:', error);
+        throw error;
       }
-
-      return response.json();
     },
-    retry: 1,
-    refetchInterval: false, // Disable automatic refetching
+    retry: false, // Don't retry failed validations
+    refetchInterval: false,
     enabled: status === 'paired',
-    staleTime: 10 * 60 * 1000, // 10 minutes stale time
+    staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    onError: (error) => {
-      console.error('Token validation error:', error);
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('screenName');
-      localStorage.removeItem('playlistId');
-      setStatus('initializing');
-    }
   });
 
   useEffect(() => {

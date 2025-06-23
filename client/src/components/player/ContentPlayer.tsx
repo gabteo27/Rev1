@@ -1,645 +1,371 @@
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { WebSocketManager } from "@/lib/websocket";
+import AlertOverlay from "./AlertOverlay";
 
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { wsManager } from '@/lib/websocket';
-import { apiFetch } from '@/lib/api';
+// Memoized components for better performance
+const MemoizedImage = memo(({ src, alt, className }: { src: string; alt: string; className: string }) => (
+  <img 
+    src={src} 
+    alt={alt} 
+    className={className}
+    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+    loading="lazy"
+  />
+));
+MemoizedImage.displayName = "MemoizedImage";
 
-// Interfaces y tipos
-interface PlaylistItem {
-  id: number;
-  type: 'image' | 'video' | 'widget' | 'url';
-  title: string;
-  content: any;
-  duration: number;
-  config?: any;
-}
+const MemoizedVideo = memo(({ src, className }: { src: string; className: string }) => (
+  <video
+    className={className}
+    autoPlay
+    muted
+    loop
+    playsInline
+    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+  >
+    <source src={src} type="video/mp4" />
+  </video>
+));
+MemoizedVideo.displayName = "MemoizedVideo";
 
-interface Playlist {
-  id: number;
-  name: string;
-  items: PlaylistItem[];
-}
+const MemoizedWebPage = memo(({ url, className }: { url: string; className: string }) => (
+  <iframe
+    src={url}
+    className={className}
+    style={{ width: '100%', height: '100%', border: 'none' }}
+    title="Contenido Web"
+    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+  />
+));
+MemoizedWebPage.displayName = "MemoizedWebPage";
 
-interface Widget {
-  id: number;
-  type: string;
-  title: string;
-  config: any;
-  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
-  zIndex: number;
-}
+// Optimized content item component
+const ContentItem = memo(({ 
+  content, 
+  isVisible, 
+  onLoadComplete 
+}: { 
+  content: any; 
+  isVisible: boolean; 
+  onLoadComplete: () => void;
+}) => {
+  const itemRef = useRef<HTMLDivElement>(null);
 
-interface PlaybackState {
-  [playlistId: number]: {
-    currentIndex: number;
-    isPlaying: boolean;
-    startTime: number;
-  };
-}
+  const contentElement = useMemo(() => {
+    const baseClassName = `absolute inset-0 transition-opacity duration-1000 ${
+      isVisible ? 'opacity-100' : 'opacity-0'
+    }`;
 
-interface Props {
-  playlistId?: number;
-  isPreview?: boolean;
-}
-
-// Componente memoizado para mostrar contenido de imagen
-const ImageContent = memo<{ item: PlaylistItem; layout: any }>(({ item, layout }) => {
-  const imageUrl = item.content?.url;
-
-  if (!imageUrl) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
-        <p className="text-2xl">Imagen no disponible</p>
-      </div>
-    );
-  }
-
-  return (
-    <div 
-      className="w-full h-full flex items-center justify-center bg-black overflow-hidden"
-      style={{ objectFit: layout?.imageConfig?.fit || 'contain' }}
-    >
-      <img
-        src={imageUrl}
-        alt={item.title || 'Imagen del contenido'}
-        className="max-w-full max-h-full object-contain"
-        style={{
-          filter: layout?.imageConfig?.filter || 'none',
-          transform: layout?.imageConfig?.transform || 'none'
-        }}
-        loading="lazy"
-      />
-    </div>
-  );
-});
-
-ImageContent.displayName = 'ImageContent';
-
-// Componente memoizado para mostrar contenido de video
-const VideoContent = memo<{ item: PlaylistItem; layout: any; onEnded: () => void }>(({ item, layout, onEnded }) => {
-  const videoUrl = item.content?.url;
-
-  const handleEnded = useCallback(() => {
-    onEnded();
-  }, [onEnded]);
-
-  if (!videoUrl) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
-        <p className="text-2xl">Video no disponible</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full h-full bg-black">
-      <video
-        src={videoUrl}
-        className="w-full h-full object-contain"
-        autoPlay
-        muted
-        onEnded={handleEnded}
-        style={{
-          filter: layout?.videoConfig?.filter || 'none',
-          transform: layout?.videoConfig?.transform || 'none'
-        }}
-        playsInline
-        preload="metadata"
-      />
-    </div>
-  );
-});
-
-VideoContent.displayName = 'VideoContent';
-
-// Componente memoizado para mostrar contenido URL
-const URLContent = memo<{ item: PlaylistItem; layout: any }>(({ item, layout }) => {
-  const url = item.content?.url;
-
-  if (!url) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
-        <p className="text-2xl">URL no disponible</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full h-full">
-      <iframe
-        src={url}
-        className="w-full h-full border-0"
-        title={item.title || 'Contenido web'}
-        style={{
-          filter: layout?.urlConfig?.filter || 'none',
-          transform: layout?.urlConfig?.transform || 'none'
-        }}
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-        loading="lazy"
-      />
-    </div>
-  );
-});
-
-URLContent.displayName = 'URLContent';
-
-// Componente memoizado para widgets del clima
-const WeatherWidget = memo<{ config: any }>(({ config }) => {
-  const [weatherData, setWeatherData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchWeather = async () => {
-      if (!config?.apiKey || !config?.city) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `https://api.weatherapi.com/v1/current.json?key=${config.apiKey}&q=${config.city}&aqi=no`
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          setWeatherData(data);
-        }
-      } catch (error) {
-        console.error('Error fetching weather:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWeather();
-    const interval = setInterval(fetchWeather, 10 * 60 * 1000); // 10 minutos
-
-    return () => clearInterval(interval);
-  }, [config?.apiKey, config?.city]);
-
-  if (loading) {
-    return (
-      <div className="p-4 bg-blue-100 rounded-lg">
-        <p className="text-blue-800">Cargando clima...</p>
-      </div>
-    );
-  }
-
-  if (!weatherData) {
-    return (
-      <div className="p-4 bg-blue-100 rounded-lg">
-        <p className="text-blue-800">Configure API key y ciudad</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 bg-gradient-to-br from-blue-400 to-blue-600 text-white rounded-lg">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-bold">{weatherData.location?.name}</h3>
-          <p className="text-3xl font-bold">{weatherData.current?.temp_c}°C</p>
-          <p className="text-sm opacity-90">{weatherData.current?.condition?.text}</p>
-        </div>
-        {weatherData.current?.condition?.icon && (
-          <img 
-            src={`https:${weatherData.current.condition.icon}`}
-            alt="Weather icon"
-            className="w-16 h-16"
+    switch (content.type) {
+      case 'image':
+        return (
+          <MemoizedImage
+            src={content.url}
+            alt={content.title}
+            className={baseClassName}
           />
-        )}
-      </div>
-    </div>
-  );
-});
-
-WeatherWidget.displayName = 'WeatherWidget';
-
-// Componente memoizado para widgets de noticias
-const NewsWidget = memo<{ config: any }>(({ config }) => {
-  const [news, setNews] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+        );
+      case 'video':
+        return (
+          <MemoizedVideo
+            src={content.url}
+            className={baseClassName}
+          />
+        );
+      case 'webpage':
+        return (
+          <MemoizedWebPage
+            url={content.url}
+            className={baseClassName}
+          />
+        );
+      case 'pdf':
+        return (
+          <iframe
+            src={`${content.url}#toolbar=0&navpanes=0&scrollbar=0`}
+            className={baseClassName}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+            title={content.title}
+          />
+        );
+      default:
+        return (
+          <div className={`${baseClassName} flex items-center justify-center bg-gray-100`}>
+            <p className="text-2xl text-gray-600">Tipo de contenido no soportado</p>
+          </div>
+        );
+    }
+  }, [content, isVisible]);
 
   useEffect(() => {
-    const fetchNews = async () => {
-      try {
-        const rssUrl = config?.rssUrl || 'https://feeds.bbci.co.uk/mundo/rss.xml';
-        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
-
-        const response = await fetch(apiUrl);
-        if (response.ok) {
-          const data = await response.json();
-          setNews(data.items?.slice(0, config?.maxItems || 3) || []);
-        }
-      } catch (error) {
-        console.error('Error fetching news:', error);
-        setNews([{
-          title: 'Noticias en tiempo real',
-          description: 'Configure la URL RSS para mostrar noticias actualizadas'
-        }]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNews();
-    const interval = setInterval(fetchNews, 15 * 60 * 1000); // 15 minutos
-
-    return () => clearInterval(interval);
-  }, [config?.rssUrl, config?.maxItems]);
-
-  if (loading) {
-    return (
-      <div className="p-3 bg-orange-100 rounded-lg">
-        <p className="text-orange-800">Cargando noticias...</p>
-      </div>
-    );
-  }
+    if (isVisible) {
+      const timer = setTimeout(onLoadComplete, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, onLoadComplete]);
 
   return (
-    <div className="p-3 bg-gradient-to-r from-orange-100 to-orange-200 rounded-lg">
-      <h3 className="text-lg font-bold text-orange-800 mb-2">📰 Últimas Noticias</h3>
-      <div className="space-y-2">
-        {news.slice(0, 2).map((item, index) => (
-          <div key={index} className="text-sm">
-            <h4 className="font-semibold text-orange-900 line-clamp-2">{item.title}</h4>
-            <p className="text-orange-700 text-xs line-clamp-1">{item.description}</p>
-          </div>
-        ))}
-      </div>
+    <div ref={itemRef} className="absolute inset-0">
+      {contentElement}
     </div>
   );
 });
+ContentItem.displayName = "ContentItem";
 
-NewsWidget.displayName = 'NewsWidget';
-
-// Componente memoizado para widgets de reloj
-const ClockWidget = memo<{ config: any }>(({ config }) => {
+// Optimized widget components
+const ClockWidget = memo(() => {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(interval);
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  const formatTime = useMemo(() => (date: Date) => {
-    const options: Intl.DateTimeFormatOptions = {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: config?.showSeconds ? '2-digit' : undefined,
-      hour12: config?.format12Hour || false,
-      timeZone: config?.timezone || 'America/Mexico_City'
-    };
-    return date.toLocaleTimeString('es-MX', options);
-  }, [config?.showSeconds, config?.format12Hour, config?.timezone]);
-
-  const formatDate = useMemo(() => (date: Date) => {
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: config?.timezone || 'America/Mexico_City'
-    };
-    return date.toLocaleDateString('es-MX', options);
-  }, [config?.timezone]);
-
   return (
-    <div className="p-4 bg-gradient-to-br from-gray-800 to-gray-900 text-white rounded-lg">
-      <div className="text-center">
-        <div className="text-4xl font-bold font-mono">
-          {formatTime(time)}
-        </div>
-        {config?.showDate && (
-          <div className="text-sm mt-2 capitalize opacity-90">
-            {formatDate(time)}
-          </div>
-        )}
+    <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg">
+      <div className="text-2xl font-bold">
+        {time.toLocaleTimeString('es-ES', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        })}
+      </div>
+      <div className="text-sm opacity-80">
+        {time.toLocaleDateString('es-ES', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        })}
       </div>
     </div>
   );
 });
+ClockWidget.displayName = "ClockWidget";
 
-ClockWidget.displayName = 'ClockWidget';
-
-// Componente memoizado para renderizar widgets
-const WidgetRenderer = memo<{ widget: Widget }>(({ widget }) => {
-  const widgetContent = useMemo(() => {
-    switch (widget.type) {
-      case 'weather':
-        return <WeatherWidget config={widget.config} />;
-      case 'news':
-        return <NewsWidget config={widget.config} />;
-      case 'clock':
-        return <ClockWidget config={widget.config} />;
-      default:
-        return (
-          <div className="p-4 bg-gray-200 rounded-lg">
-            <p className="text-gray-600">Widget desconocido: {widget.type}</p>
-          </div>
-        );
-    }
-  }, [widget.type, widget.config]);
-
-  const positionStyles = useMemo(() => {
-    const positions = {
-      'top-left': { top: '20px', left: '20px' },
-      'top-right': { top: '20px', right: '20px' },
-      'bottom-left': { bottom: '20px', left: '20px' },
-      'bottom-right': { bottom: '20px', right: '20px' },
-      'center': { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
-    };
-    return positions[widget.position] || positions['top-left'];
-  }, [widget.position]);
-
-  return (
-    <div
-      className="absolute"
-      style={{
-        ...positionStyles,
-        zIndex: widget.zIndex || 1000,
-        maxWidth: '300px'
-      }}
-    >
-      {widgetContent}
+const WeatherWidget = memo(() => (
+  <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg">
+    <div className="flex items-center space-x-2">
+      <span className="text-lg">☀️</span>
+      <div>
+        <div className="font-bold">25°C</div>
+        <div className="text-sm opacity-80">Soleado</div>
+      </div>
     </div>
-  );
-});
+  </div>
+));
+WeatherWidget.displayName = "WeatherWidget";
 
-WidgetRenderer.displayName = 'WidgetRenderer';
-
-// Componente principal optimizado
-const ContentPlayer = memo<Props>(({ playlistId, isPreview = false }) => {
-  // Estados locales memoizados
-  const [playbackState, setPlaybackState] = useState<PlaybackState>({});
+// Main component with optimizations
+const ContentPlayer = memo(({ 
+  playlistId, 
+  isPreview = false 
+}: { 
+  playlistId?: number; 
+  isPreview?: boolean;
+}) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const wsManagerRef = useRef<WebSocketManager | null>(null);
 
-  // Query client para optimizar requests
-  const queryClient = useQueryClient();
-
-  // Memoizar configuración de queries para evitar re-renders
-  const playlistQueryConfig = useMemo(() => ({
-    queryKey: ['/api/player/playlists', playlistId],
+  // Memoized query options
+  const queryOptions = useMemo(() => ({
+    queryKey: [`/api/playlists/${playlistId}/content`],
     queryFn: async () => {
-      if (!playlistId) return null;
-      return apiFetch(`/api/player/playlists/${playlistId}`);
+      if (!playlistId) throw new Error('No playlist ID provided');
+      const response = await fetch(`/api/playlists/${playlistId}/content`);
+      if (!response.ok) throw new Error('Failed to fetch playlist content');
+      return response.json();
     },
     enabled: !!playlistId,
-    refetchInterval: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
-    retry: 1
-  }), [playlistId]);
+    refetchInterval: isPreview ? false : 30000, // Only auto-refresh in production
+  }), [playlistId, isPreview]);
 
-  const widgetsQueryConfig = useMemo(() => ({
-    queryKey: ['/api/player/widgets'],
-    queryFn: async () => {
-      return apiFetch('/api/player/widgets');
-    },
-    refetchInterval: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    staleTime: 10 * 60 * 1000, // 10 minutos
-    gcTime: 20 * 60 * 1000, // 20 minutos
-    retry: 1
-  }), []);
+  const { data: playlistData, isLoading, error } = useQuery(queryOptions);
 
-  // Queries optimizadas
-  const { data: playlist, isLoading: playlistLoading, error: playlistError } = useQuery(playlistQueryConfig);
-  const { data: widgets = [], isLoading: widgetsLoading } = useQuery(widgetsQueryConfig);
+  const contentItems = useMemo(() => 
+    playlistData?.items || [], 
+    [playlistData?.items]
+  );
 
-  // Memoizar estado actual del playback
-  const currentState = useMemo(() => {
-    if (!playlistId || !playbackState[playlistId]) {
-      return { currentIndex: 0, isPlaying: true, startTime: Date.now() };
-    }
-    return playbackState[playlistId];
-  }, [playlistId, playbackState]);
-
-  // Memoizar item actual
-  const currentItem = useMemo(() => {
-    if (!playlist?.items || playlist.items.length === 0) return null;
-    return playlist.items[currentState.currentIndex] || playlist.items[0];
-  }, [playlist?.items, currentState.currentIndex]);
-
-  // Callback memoizado para avanzar al siguiente item
-  const nextItem = useCallback(() => {
-    if (!playlistId || !playlist?.items || playlist.items.length === 0) return;
+  // Memoized callbacks
+  const goToNext = useCallback(() => {
+    if (contentItems.length <= 1) return;
 
     setIsTransitioning(true);
-
     setTimeout(() => {
-      setPlaybackState(prev => {
-        const current = prev[playlistId] || { currentIndex: 0, isPlaying: true, startTime: Date.now() };
-        const nextIndex = (current.currentIndex + 1) % playlist.items.length;
-
-        return {
-          ...prev,
-          [playlistId]: {
-            ...current,
-            currentIndex: nextIndex,
-            startTime: Date.now()
-          }
-        };
-      });
+      setCurrentIndex(prev => (prev + 1) % contentItems.length);
       setIsTransitioning(false);
-    }, 300);
-  }, [playlistId, playlist?.items]);
+    }, 500);
+  }, [contentItems.length]);
 
-  // Callback memoizado para manejar fin de video
-  const handleVideoEnded = useCallback(() => {
-    nextItem();
-  }, [nextItem]);
-
-  // Efecto para el timer de duración
-  useEffect(() => {
-    if (!currentItem || currentItem.type === 'video' || !currentState.isPlaying) return;
-
-    const duration = (currentItem.duration || 10) * 1000;
-    const elapsed = Date.now() - currentState.startTime;
-    const remaining = Math.max(0, duration - elapsed);
-
-    if (remaining === 0) {
-      nextItem();
-      return;
+  const resetInterval = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
 
-    const timer = setTimeout(nextItem, remaining);
-    return () => clearTimeout(timer);
-  }, [currentItem, currentState, nextItem]);
+    if (contentItems.length > 1) {
+      const currentItem = contentItems[currentIndex];
+      const duration = (currentItem?.duration || 10) * 1000;
 
-  // WebSocket para actualizaciones en tiempo real
+      intervalRef.current = setInterval(goToNext, duration);
+    }
+  }, [contentItems, currentIndex, goToNext]);
+
+  // WebSocket setup
   useEffect(() => {
-    if (!playlistId || isPreview) return;
+    if (isPreview) return;
 
-    const handlePlaylistChange = (data: any) => {
-      const { playlistId: newPlaylistId, screenId: messageScreenId } = data;
-      const currentScreenId = localStorage.getItem('screenId');
+    const initWebSocket = async () => {
+      try {
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) return;
 
-      if (messageScreenId && messageScreenId.toString() === currentScreenId && newPlaylistId !== playlistId) {
-        window.location.reload();
-      }
-    };
+        if (!wsManagerRef.current) {
+          wsManagerRef.current = new WebSocketManager();
+        }
 
-    const handleContentUpdated = (data: any) => {
-      const { screenId: messageScreenId, playlistId: updatedPlaylistId } = data;
-      const currentScreenId = localStorage.getItem('screenId');
+        await wsManagerRef.current.connect();
+        await wsManagerRef.current.authenticate(authToken);
 
-      if (messageScreenId === currentScreenId && updatedPlaylistId === playlistId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
-      }
-    };
-
-    const handleContentDeleted = (data: any) => {
-      const { screenId: messageScreenId, playlistId: deletedFromPlaylistId } = data;
-      const currentScreenId = localStorage.getItem('screenId');
-
-      if (messageScreenId === currentScreenId && deletedFromPlaylistId === playlistId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
-        queryClient.refetchQueries({ queryKey: ['/api/player/playlists', playlistId], type: 'active' });
-
-        setPlaybackState(prev => ({
-          ...prev,
-          [playlistId]: { ...prev[playlistId], currentIndex: 0 }
-        }));
-      }
-    };
-
-    const unsubscribePlaylistChange = wsManager.subscribe('playlist-change', handlePlaylistChange);
-    const unsubscribeContentUpdated = wsManager.subscribe('playlist-content-updated', handleContentUpdated);
-    const unsubscribeContentDeleted = wsManager.subscribe('playlist-item-deleted', handleContentDeleted);
-    const unsubscribeScreenUpdated = wsManager.subscribe('screen-playlist-updated', handlePlaylistChange);
-
-    // Heartbeat menos frecuente para evitar spam
-    const heartbeatInterval = setInterval(() => {
-      if (wsManager.isConnected()) {
-        wsManager.send({
-          type: 'player-heartbeat',
-          timestamp: new Date().toISOString(),
-          screenId: localStorage.getItem('screenId')
+        wsManagerRef.current.on('alert-broadcast', (alert) => {
+          setAlerts(prev => [...prev, alert]);
         });
+
+      } catch (error) {
+        console.error('WebSocket setup failed:', error);
       }
-    }, 60000); // 60 segundos en lugar de 30
+    };
+
+    initWebSocket();
 
     return () => {
-      unsubscribePlaylistChange();
-      unsubscribeContentUpdated();
-      unsubscribeContentDeleted();
-      unsubscribeScreenUpdated();
-      clearInterval(heartbeatInterval);
-    };
-  }, [playlistId, queryClient, isPreview]);
-
-  // Renderizado condicional memoizado
-  const renderContent = useMemo(() => {
-    if (playlistLoading) {
-      return (
-        <div className="w-full h-screen flex items-center justify-center bg-black text-white">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-            <p className="text-2xl">Cargando contenido...</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (playlistError) {
-      return (
-        <div className="w-full h-screen flex items-center justify-center bg-red-900 text-white">
-          <div className="text-center">
-            <p className="text-3xl mb-4">❌ Error al cargar playlist</p>
-            <p className="text-lg opacity-75">Verifique la conexión y la configuración</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (!playlist?.items || playlist.items.length === 0) {
-      return (
-        <div className="w-full h-screen flex items-center justify-center bg-gray-900 text-white">
-          <div className="text-center">
-            <p className="text-3xl mb-4">📋 Playlist vacía</p>
-            <p className="text-lg opacity-75">Agregue contenido a esta playlist para comenzar</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (!currentItem) {
-      return (
-        <div className="w-full h-screen flex items-center justify-center bg-gray-900 text-white">
-          <div className="text-center">
-            <p className="text-3xl mb-4">⚠️ Contenido no disponible</p>
-            <p className="text-lg opacity-75">No se pudo cargar el elemento actual</p>
-          </div>
-        </div>
-      );
-    }
-
-    // Layout por defecto
-    const layout = currentItem.config?.layout || {};
-
-    const contentComponent = (() => {
-      switch (currentItem.type) {
-        case 'image':
-          return <ImageContent item={currentItem} layout={layout} />;
-        case 'video':
-          return <VideoContent item={currentItem} layout={layout} onEnded={handleVideoEnded} />;
-        case 'url':
-          return <URLContent item={currentItem} layout={layout} />;
-        default:
-          return (
-            <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
-              <p className="text-2xl">Tipo de contenido no soportado: {currentItem.type}</p>
-            </div>
-          );
+      if (wsManagerRef.current) {
+        wsManagerRef.current.disconnect();
+        wsManagerRef.current = null;
       }
-    })();
+    };
+  }, [isPreview]);
 
+  // Content rotation logic
+  useEffect(() => {
+    resetInterval();
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [resetInterval]);
+
+  // Alert cleanup
+  const removeAlert = useCallback((alertId: string) => {
+    setAlerts(prev => prev.filter(alert => alert.id !== alertId));
+  }, []);
+
+  // Render loading state
+  if (isLoading) {
     return (
-      <div 
-        className={`w-full h-screen relative transition-opacity duration-300 ${
-          isTransitioning ? 'opacity-0' : 'opacity-100'
-        }`}
-      >
-        {contentComponent}
-
-        {/* Widgets overlay */}
-        {widgets.map((widget: Widget) => (
-          <WidgetRenderer key={widget.id} widget={widget} />
-        ))}
-
-        {/* Debug info (solo en preview) */}
-        {isPreview && (
-          <div className="absolute top-4 left-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs">
-            <p>Playlist: {playlist.name}</p>
-            <p>Item: {currentState.currentIndex + 1}/{playlist.items.length}</p>
-            <p>Tipo: {currentItem.type}</p>
-            <p>Duración: {currentItem.duration}s</p>
-          </div>
-        )}
+      <div className="w-full h-full flex items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-xl">Cargando contenido...</p>
+        </div>
       </div>
     );
-  }, [
-    playlistLoading,
-    playlistError,
-    playlist,
-    currentItem,
-    currentState,
-    isTransitioning,
-    widgets,
-    isPreview,
-    handleVideoEnded
-  ]);
+  }
 
-  return renderContent;
+  // Render error state
+  if (error) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-red-500 text-white">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Error al cargar contenido</h2>
+          <p className="text-lg">Por favor, verifica la configuración de la playlist.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render empty playlist
+  if (!contentItems.length) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold mb-4">Playlist Vacía</h2>
+          <p className="text-xl">No hay contenido configurado para mostrar.</p>
+          <p className="text-sm mt-4 opacity-70">
+            Agrega contenido a tu playlist desde el panel de administración.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentItem = contentItems[currentIndex];
+
+  return (
+    <div className="relative w-full h-full bg-black overflow-hidden">
+      {/* Content Area */}
+      <div className="relative w-full h-full">
+        {contentItems.map((item, index) => (
+          <ContentItem
+            key={`${item.id}-${index}`}
+            content={item}
+            isVisible={index === currentIndex && !isTransitioning}
+            onLoadComplete={() => {}}
+          />
+        ))}
+      </div>
+
+      {/* Widgets */}
+      {!isPreview && (
+        <>
+          <ClockWidget />
+          <WeatherWidget />
+        </>
+      )}
+
+      {/* Content Info Overlay */}
+      {currentItem && (
+        <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded-lg">
+          <div className="text-sm font-medium">{currentItem.title}</div>
+          {contentItems.length > 1 && (
+            <div className="text-xs opacity-70">
+              {currentIndex + 1} de {contentItems.length}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Progress Bar */}
+      {contentItems.length > 1 && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
+          <div 
+            className="h-full bg-blue-500 transition-all duration-1000 ease-linear"
+            style={{ 
+              width: `${((currentIndex + 1) / contentItems.length) * 100}%` 
+            }}
+          />
+        </div>
+      )}
+
+      {/* Alert Overlays */}
+      {alerts.map(alert => (
+        <AlertOverlay
+          key={alert.id}
+          alert={alert}
+          onClose={() => removeAlert(alert.id)}
+        />
+      ))}
+    </div>
+  );
 });
 
-ContentPlayer.displayName = 'ContentPlayer';
+ContentPlayer.displayName = "ContentPlayer";
 
 export default ContentPlayer;
