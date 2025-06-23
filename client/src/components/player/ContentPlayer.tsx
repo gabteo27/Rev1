@@ -1,1290 +1,667 @@
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { WebSocketClient } from '@/lib/websocket';
+import { apiFetch } from '@/lib/api';
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { AlertOverlay } from "./AlertOverlay";
-import type { Playlist, PlaylistItem, Widget, Alert } from "@shared/schema";
-import { wsManager } from "@/lib/websocket";
-import { API_BASE_URL, apiFetch } from "@/lib/api";
+// Interfaces y tipos
+interface PlaylistItem {
+  id: number;
+  type: 'image' | 'video' | 'widget' | 'url';
+  title: string;
+  content: any;
+  duration: number;
+  config?: any;
+}
 
-// ===================================================================================
-// ESTILOS Y CONSTANTES
-// ===================================================================================
+interface Playlist {
+  id: number;
+  name: string;
+  items: PlaylistItem[];
+}
 
-const styles = {
-  container: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100vw",
-    height: "100vh",
-    backgroundColor: "#000",
-    color: "white",
-    overflow: "hidden",
-  } as React.CSSProperties,
-  media: {
-    width: "100%",
-    height: "100%",
-    objectFit: "contain",
-  } as React.CSSProperties,
-  zone: {
-    position: "relative",
-    width: "100%",
-    height: "100%",
-    overflow: "hidden",
-  } as React.CSSProperties,
-  debugInfo: {
-    position: "absolute",
-    top: "10px",
-    left: "10px",
-    color: "white",
-    fontSize: "12px",
-    opacity: 0.7,
-    zIndex: 1000,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    padding: "5px",
-    borderRadius: "3px",
-  } as React.CSSProperties,
-  emptyState: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#1a1a1a",
-    color: "rgba(255,255,255,0.5)",
-    fontSize: "18px",
-    textAlign: "center" as const,
-    padding: "20px",
-  } as React.CSSProperties,
-  errorState: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "rgba(255,255,255,0.7)",
-    fontSize: "18px",
-    backgroundColor: "#1a1a1a",
-    textAlign: "center" as const,
-    padding: "20px",
-  } as React.CSSProperties,
-  loadingState: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#1a1a1a",
-    color: "white",
-    zIndex: 1,
-  } as React.CSSProperties,
-};
+interface Widget {
+  id: number;
+  type: string;
+  title: string;
+  config: any;
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+  zIndex: number;
+}
 
-const getMediaStyle = (objectFit: string = "contain"): React.CSSProperties => ({
-  width: "100%",
-  height: "100%",
-  objectFit: objectFit as any,
-});
+interface PlaybackState {
+  [playlistId: number]: {
+    currentIndex: number;
+    isPlaying: boolean;
+    startTime: number;
+  };
+}
 
-// ===================================================================================
-// COMPONENTES DE CONTENIDO MEMOIZADOS
-// ===================================================================================
+interface Props {
+  playlistId?: number;
+  isPreview?: boolean;
+}
 
-const ImagePlayer = React.memo(({ src, objectFit }: { src: string; objectFit?: string }) => (
-  <img
-    src={src}
-    style={getMediaStyle(objectFit)}
-    alt="Contenido de imagen"
-    loading="eager"
-    onError={(e) => {
-      console.warn("Error cargando imagen:", src);
-      e.currentTarget.style.display = "none";
-    }}
-  />
-));
-ImagePlayer.displayName = 'ImagePlayer';
+// Componente memoizado para mostrar contenido de imagen
+const ImageContent = memo<{ item: PlaylistItem; layout: any }>(({ item, layout }) => {
+  const imageUrl = item.content?.url;
 
-const VideoPlayer = React.memo(({
-  src,
-  objectFit,
-  onEnded,
-}: {
-  src: string;
-  objectFit?: string;
-  onEnded: () => void;
-}) => (
-  <video
-    src={src}
-    style={getMediaStyle(objectFit)}
-    autoPlay
-    muted
-    onEnded={onEnded}
-    playsInline
-    onError={(e) => {
-      console.warn("Error reproduciendo video:", src);
-    }}
-  />
-));
-VideoPlayer.displayName = 'VideoPlayer';
-
-const WebpagePlayer = React.memo(({ src }: { src: string }) => {
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const handleLoad = useCallback(() => {
-    setLoading(false);
-  }, []);
-
-  const handleError = useCallback(() => {
-    setError(true);
-    setLoading(false);
-  }, []);
-
-  if (error) {
+  if (!imageUrl) {
     return (
-      <div style={{ ...styles.media, ...styles.errorState }}>
-        <div>
-          <div style={{ fontSize: '24px', marginBottom: '10px' }}>🌐</div>
-          <div>Error al cargar página web</div>
-          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{src}</div>
-        </div>
+      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
+        <p className="text-2xl">Imagen no disponible</p>
       </div>
     );
   }
 
   return (
-    <div style={{ ...styles.media, position: 'relative' }}>
-      {loading && (
-        <div style={styles.loadingState}>
-          <div>Cargando contenido web...</div>
-        </div>
-      )}
-      <iframe 
-        src={src} 
-        style={{ ...styles.media, border: 'none' }} 
-        title="Contenido web"
-        sandbox="allow-scripts allow-same-origin"
-        onLoad={handleLoad}
-        onError={handleError}
+    <div 
+      className="w-full h-full flex items-center justify-center bg-black overflow-hidden"
+      style={{ objectFit: layout?.imageConfig?.fit || 'contain' }}
+    >
+      <img
+        src={imageUrl}
+        alt={item.title || 'Imagen del contenido'}
+        className="max-w-full max-h-full object-contain"
+        style={{
+          filter: layout?.imageConfig?.filter || 'none',
+          transform: layout?.imageConfig?.transform || 'none'
+        }}
+        loading="lazy"
       />
     </div>
   );
 });
-WebpagePlayer.displayName = 'WebpagePlayer';
 
-const PDFPlayer = React.memo(({ src }: { src: string }) => {
-  const [error, setError] = useState(false);
-  
-  const pdfViewerUrl = useMemo(() => {
-    return src.startsWith('http') 
-      ? `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
-      : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + src)}&embedded=true`;
-  }, [src]);
+ImageContent.displayName = 'ImageContent';
 
-  const handleError = useCallback(() => {
-    setError(true);
-  }, []);
+// Componente memoizado para mostrar contenido de video
+const VideoContent = memo<{ item: PlaylistItem; layout: any; onEnded: () => void }>(({ item, layout, onEnded }) => {
+  const videoUrl = item.content?.url;
 
-  if (error) {
+  if (!videoUrl) {
     return (
-      <div style={{ ...styles.media, ...styles.errorState }}>
-        <div>
-          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📄</div>
-          <div>Error al cargar documento PDF</div>
-          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{src}</div>
-        </div>
+      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
+        <p className="text-2xl">Video no disponible</p>
       </div>
     );
   }
 
   return (
-    <iframe
-      src={pdfViewerUrl}
-      style={{ ...styles.media, border: "none", background: "#f5f5f5" }}
-      title="Documento PDF"
-      loading="eager"
-      sandbox="allow-scripts allow-same-origin"
-      onError={handleError}
-    />
+    <div className="w-full h-full bg-black">
+      <video
+        src={videoUrl}
+        className="w-full h-full object-contain"
+        autoPlay
+        muted
+        onEnded={onEnded}
+        style={{
+          filter: layout?.videoConfig?.filter || 'none',
+          transform: layout?.videoConfig?.transform || 'none'
+        }}
+        playsInline
+        preload="metadata"
+      />
+    </div>
   );
 });
-PDFPlayer.displayName = 'PDFPlayer';
 
-const YouTubePlayer = React.memo(({ url }: { url: string }) => {
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
+VideoContent.displayName = 'VideoContent';
 
-  const getYouTubeID = useCallback((ytUrl: string): string | null => {
-    if (!ytUrl || typeof ytUrl !== "string") return null;
-    const cleanUrl = ytUrl.trim();
-    const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-      /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
-      /youtu\.be\/([a-zA-Z0-9_-]{11})/,
-      /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-      /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
-    ];
-    
-    for (const pattern of patterns) {
-      try {
-        const match = cleanUrl.match(pattern);
-        if (match && match[1] && match[1].length === 11) {
-          return match[1];
-        }
-      } catch (e) {
-        console.error("Error detectando ID de YouTube:", e);
-      }
-    }
-    return null;
-  }, []);
+// Componente memoizado para mostrar contenido URL
+const URLContent = memo<{ item: PlaylistItem; layout: any }>(({ item, layout }) => {
+  const url = item.content?.url;
 
-  const videoId = useMemo(() => getYouTubeID(url), [url, getYouTubeID]);
-
-  const embedUrl = useMemo(() => {
-    if (!videoId) return null;
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&iv_load_policy=3&modestbranding=1&rel=0`;
-  }, [videoId]);
-
-  const handleLoad = useCallback(() => {
-    setLoading(false);
-  }, []);
-
-  const handleError = useCallback(() => {
-    setError(true);
-  }, []);
-
-  if (error || !videoId || !embedUrl) {
+  if (!url) {
     return (
-      <div style={{ ...styles.media, ...styles.errorState }}>
-        <div>
-          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📺</div>
-          <div>URL de YouTube no válida</div>
-          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{url}</div>
-        </div>
+      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
+        <p className="text-2xl">URL no disponible</p>
       </div>
     );
   }
 
   return (
-    <div style={{ ...styles.media, position: 'relative' }}>
-      {loading && (
-        <div style={styles.loadingState}>
-          <div>Cargando video de YouTube...</div>
-        </div>
-      )}
+    <div className="w-full h-full">
       <iframe
-        key={videoId}
-        src={embedUrl}
-        style={{ ...styles.media, border: "none" }}
-        title="Reproductor de YouTube"
-        allow="autoplay; encrypted-media; picture-in-picture"
-        onLoad={handleLoad}
-        onError={handleError}
+        src={url}
+        className="w-full h-full border-0"
+        title={item.title || 'Contenido web'}
+        style={{
+          filter: layout?.urlConfig?.filter || 'none',
+          transform: layout?.urlConfig?.transform || 'none'
+        }}
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        loading="lazy"
       />
     </div>
   );
 });
-YouTubePlayer.displayName = 'YouTubePlayer';
 
-// ===================================================================================
-// COMPONENTES DE WIDGETS MEMOIZADOS
-// ===================================================================================
+URLContent.displayName = 'URLContent';
 
-const getPositionStyles = (position: string) => {
-  switch (position) {
-    case "top-left":
-      return { top: "20px", left: "20px" };
-    case "top-right":
-      return { top: "20px", right: "20px" };
-    case "bottom-left":
-      return { bottom: "20px", left: "20px" };
-    case "bottom-right":
-      return { bottom: "20px", right: "20px" };
-    case "center":
-      return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
-    default:
-      return { bottom: "20px", right: "20px" };
+// Componente memoizado para widgets del clima
+const WeatherWidget = memo<{ config: any }>(({ config }) => {
+  const [weatherData, setWeatherData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      if (!config?.apiKey || !config?.city) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `https://api.weatherapi.com/v1/current.json?key=${config.apiKey}&q=${config.city}&aqi=no`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setWeatherData(data);
+        }
+      } catch (error) {
+        console.error('Error fetching weather:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWeather();
+    const interval = setInterval(fetchWeather, 10 * 60 * 1000); // 10 minutos
+
+    return () => clearInterval(interval);
+  }, [config?.apiKey, config?.city]);
+
+  if (loading) {
+    return (
+      <div className="p-4 bg-blue-100 rounded-lg">
+        <p className="text-blue-800">Cargando clima...</p>
+      </div>
+    );
   }
-};
 
-const ClockWidget = React.memo(({ config, position }: { config: any; position: string }) => {
+  if (!weatherData) {
+    return (
+      <div className="p-4 bg-blue-100 rounded-lg">
+        <p className="text-blue-800">Configure API key y ciudad</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 bg-gradient-to-br from-blue-400 to-blue-600 text-white rounded-lg">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold">{weatherData.location?.name}</h3>
+          <p className="text-3xl font-bold">{weatherData.current?.temp_c}°C</p>
+          <p className="text-sm opacity-90">{weatherData.current?.condition?.text}</p>
+        </div>
+        {weatherData.current?.condition?.icon && (
+          <img 
+            src={`https:${weatherData.current.condition.icon}`}
+            alt="Weather icon"
+            className="w-16 h-16"
+          />
+        )}
+      </div>
+    </div>
+  );
+});
+
+WeatherWidget.displayName = 'WeatherWidget';
+
+// Componente memoizado para widgets de noticias
+const NewsWidget = memo<{ config: any }>(({ config }) => {
+  const [news, setNews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        const rssUrl = config?.rssUrl || 'https://feeds.bbci.co.uk/mundo/rss.xml';
+        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+
+        const response = await fetch(apiUrl);
+        if (response.ok) {
+          const data = await response.json();
+          setNews(data.items?.slice(0, config?.maxItems || 3) || []);
+        }
+      } catch (error) {
+        console.error('Error fetching news:', error);
+        setNews([{
+          title: 'Noticias en tiempo real',
+          description: 'Configure la URL RSS para mostrar noticias actualizadas'
+        }]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNews();
+    const interval = setInterval(fetchNews, 15 * 60 * 1000); // 15 minutos
+
+    return () => clearInterval(interval);
+  }, [config?.rssUrl, config?.maxItems]);
+
+  if (loading) {
+    return (
+      <div className="p-3 bg-orange-100 rounded-lg">
+        <p className="text-orange-800">Cargando noticias...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 bg-gradient-to-r from-orange-100 to-orange-200 rounded-lg">
+      <h3 className="text-lg font-bold text-orange-800 mb-2">📰 Últimas Noticias</h3>
+      <div className="space-y-2">
+        {news.slice(0, 2).map((item, index) => (
+          <div key={index} className="text-sm">
+            <h4 className="font-semibold text-orange-900 line-clamp-2">{item.title}</h4>
+            <p className="text-orange-700 text-xs line-clamp-1">{item.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+NewsWidget.displayName = 'NewsWidget';
+
+// Componente memoizado para widgets de reloj
+const ClockWidget = memo<{ config: any }>(({ config }) => {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    const interval = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const formatTime = useCallback((date: Date) =>
-    new Intl.DateTimeFormat("es-ES", {
-      timeZone: config?.timezone || 'America/Mexico_City',
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: config?.format === "12h",
-    }).format(date), [config]);
+  const formatTime = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: config?.showSeconds ? '2-digit' : undefined,
+      hour12: config?.format12Hour || false,
+      timeZone: config?.timezone || 'America/Mexico_City'
+    };
+    return date.toLocaleTimeString('es-MX', options);
+  };
 
-  const formatDate = useCallback((date: Date) =>
-    new Intl.DateTimeFormat("es-ES", {
-      timeZone: config?.timezone || 'America/Mexico_City',
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    }).format(date), [config]);
-
-  const timeString = useMemo(() => formatTime(time), [time, formatTime]);
-  const dateString = useMemo(() => formatDate(time), [time, formatDate]);
+  const formatDate = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: config?.timezone || 'America/Mexico_City'
+    };
+    return date.toLocaleDateString('es-MX', options);
+  };
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        ...getPositionStyles(position),
-        backgroundColor: "rgba(0,0,0,0.7)",
-        padding: "10px 15px",
-        borderRadius: "8px",
-        zIndex: 1000,
-        fontFamily: "sans-serif",
-        color: "white",
-      }}
-    >
-      <div style={{ fontSize: "2em", fontWeight: "bold" }}>
-        {timeString}
-      </div>
-      <div style={{ fontSize: "0.8em", opacity: 0.8 }}>
-        {dateString}
-      </div>
-    </div>
-  );
-});
-ClockWidget.displayName = 'ClockWidget';
-
-const WidgetRenderer = React.memo(({ widget }: { widget: Widget }) => {
-  if (!widget.isEnabled) return null;
-
-  const config = useMemo(() => {
-    try {
-      return JSON.parse(widget.settings || "{}");
-    } catch (e) {
-      console.warn("Error procesando configuración del widget:", e);
-      return {};
-    }
-  }, [widget.settings]);
-
-  switch (widget.type) {
-    case "clock":
-      return (
-        <ClockWidget
-          config={config}
-          position={widget.position || "bottom-right"}
-        />
-      );
-    default:
-      return null;
-  }
-});
-WidgetRenderer.displayName = 'WidgetRenderer';
-
-// ===================================================================================
-// RENDERIZADO DE CONTENIDO MEMOIZADO
-// ===================================================================================
-
-const ContentItemRenderer = React.memo(({
-  item,
-  onVideoEnded,
-  playlist,
-  zoneId,
-}: {
-  item: PlaylistItem;
-  onVideoEnded: () => void;
-  playlist: Playlist;
-  zoneId?: string;
-}) => {
-  const contentItem = item?.contentItem;
-
-  if (!contentItem) {
-    return (
-      <div style={{ ...styles.media, ...styles.emptyState }}>
-        <div>
-          <div style={{ fontSize: "24px", marginBottom: "10px" }}>📂</div>
-          <div>Sin contenido disponible</div>
+    <div className="p-4 bg-gradient-to-br from-gray-800 to-gray-900 text-white rounded-lg">
+      <div className="text-center">
+        <div className="text-4xl font-bold font-mono">
+          {formatTime(time)}
         </div>
-      </div>
-    );
-  }
-
-  const { type, url } = contentItem;
-  const absoluteUrl = useMemo(() => 
-    url && url.startsWith("/") ? `${API_BASE_URL}${url}` : url,
-    [url]
-  );
-  
-  const objectFit = useMemo(() => 
-    playlist.zoneSettings?.[zoneId || "main"]?.objectFit || "contain",
-    [playlist.zoneSettings, zoneId]
-  );
-
-  switch (type) {
-    case "image":
-      return <ImagePlayer src={absoluteUrl} objectFit={objectFit} />;
-    case "video":
-      return (
-        <VideoPlayer
-          src={absoluteUrl}
-          objectFit={objectFit}
-          onEnded={onVideoEnded}
-        />
-      );
-    case "webpage":
-      return <WebpagePlayer src={absoluteUrl} />;
-    case "pdf":
-      return <PDFPlayer src={absoluteUrl} />;
-    case "youtube":
-      return <YouTubePlayer url={absoluteUrl} />;
-    default:
-      return (
-        <div style={{ ...styles.media, ...styles.errorState }}>
-          <div>
-            <div style={{ fontSize: "24px", marginBottom: "10px" }}>❓</div>
-            <div>Tipo de contenido no compatible: {type}</div>
-          </div>
-        </div>
-      );
-  }
-});
-ContentItemRenderer.displayName = 'ContentItemRenderer';
-
-// ===================================================================================
-// INTERFAZ PARA ZONE TRACKER
-// ===================================================================================
-
-interface ZoneTracker {
-  items: PlaylistItem[];
-  currentIndex: number;
-}
-
-// ===================================================================================
-// COMPONENTE DE ZONA MEMOIZADO
-// ===================================================================================
-
-const ZonePlayer = React.memo(({
-  items,
-  zoneId,
-  playlist,
-  zoneTracker,
-  onAdvance,
-  showDebug = false,
-}: {
-  items: PlaylistItem[];
-  zoneId: string;
-  playlist: Playlist;
-  zoneTracker: ZoneTracker;
-  onAdvance: (zoneId: string) => void;
-  showDebug?: boolean;
-}) => {
-  const advanceToNextItem = useCallback(() => {
-    onAdvance(zoneId);
-  }, [onAdvance, zoneId]);
-
-  const currentItem = useMemo(() => 
-    items[zoneTracker.currentIndex],
-    [items, zoneTracker.currentIndex]
-  );
-
-  useEffect(() => {
-    if (items.length === 0 || !currentItem?.contentItem || currentItem.contentItem.type === "video") {
-      return;
-    }
-
-    const duration = (currentItem.customDuration || currentItem.contentItem.duration || 10) * 1000;
-    const timer = setTimeout(advanceToNextItem, duration);
-    return () => clearTimeout(timer);
-  }, [zoneTracker.currentIndex, items, advanceToNextItem, currentItem]);
-
-  if (items.length === 0) {
-    return (
-      <div style={styles.zone}>
-        {showDebug && (
-          <div style={styles.debugInfo}>
-            Zona {zoneId}: Sin contenido
+        {config?.showDate && (
+          <div className="text-sm mt-2 capitalize opacity-90">
+            {formatDate(time)}
           </div>
         )}
-        <div style={{ ...styles.media, ...styles.emptyState }}>
-          Sin contenido asignado
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={styles.zone}>
-      {showDebug && (
-        <div style={styles.debugInfo}>
-          Zona {zoneId}: {zoneTracker.currentIndex + 1}/{items.length}
-        </div>
-      )}
-      <ContentItemRenderer
-        item={currentItem}
-        onVideoEnded={advanceToNextItem}
-        playlist={playlist}
-        zoneId={zoneId}
-      />
-    </div>
-  );
-});
-ZonePlayer.displayName = 'ZonePlayer';
-
-// ===================================================================================
-// COMPONENTES DE LAYOUT MEMOIZADOS
-// ===================================================================================
-
-const SingleZoneLayout = React.memo(({
-  playlist,
-  zoneTrackers,
-  advanceZone,
-}: {
-  playlist: Playlist;
-  zoneTrackers: Record<string, ZoneTracker>;
-  advanceZone: (zoneId: string) => void;
-}) => (
-  <div style={styles.container}>
-    <div style={styles.debugInfo}>
-      Reproductor: {playlist.name} ({(zoneTrackers.main?.items.length) || 0} elementos)
-    </div>
-    <ZonePlayer
-      items={zoneTrackers.main?.items || []}
-      zoneId="main"
-      playlist={playlist}
-      zoneTracker={zoneTrackers.main || { items: [], currentIndex: 0 }}
-      onAdvance={advanceZone}
-    />
-  </div>
-));
-SingleZoneLayout.displayName = 'SingleZoneLayout';
-
-const SplitVerticalLayout = React.memo(({
-  playlist,
-  zoneTrackers,
-  advanceZone,
-}: {
-  playlist: Playlist;
-  zoneTrackers: Record<string, ZoneTracker>;
-  advanceZone: (zoneId: string) => void;
-}) => (
-  <div style={{ ...styles.container, display: "flex" }}>
-    <div style={{ ...styles.zone, width: "50%", borderRight: "2px solid rgba(255,255,255,0.1)" }}>
-      <div style={styles.debugInfo}>
-        Zona Izquierda ({(zoneTrackers.left?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.left?.items || []}
-        zoneId="left"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.left || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-    <div style={{ ...styles.zone, width: "50%" }}>
-      <div style={styles.debugInfo}>
-        Zona Derecha ({(zoneTrackers.right?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.right?.items || []}
-        zoneId="right"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.right || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-  </div>
-));
-SplitVerticalLayout.displayName = 'SplitVerticalLayout';
-
-const SplitHorizontalLayout = React.memo(({
-  playlist,
-  zoneTrackers,
-  advanceZone,
-}: {
-  playlist: Playlist;
-  zoneTrackers: Record<string, ZoneTracker>;
-  advanceZone: (zoneId: string) => void;
-}) => (
-  <div style={{ ...styles.container, display: "flex", flexDirection: "column" }}>
-    <div style={{ ...styles.zone, height: "50%", borderBottom: "2px solid rgba(255,255,255,0.1)" }}>
-      <div style={styles.debugInfo}>
-        Zona Superior ({(zoneTrackers.top?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.top?.items || []}
-        zoneId="top"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.top || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-    <div style={{ ...styles.zone, height: "50%" }}>
-      <div style={styles.debugInfo}>
-        Zona Inferior ({(zoneTrackers.bottom?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.bottom?.items || []}
-        zoneId="bottom"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.bottom || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-  </div>
-));
-SplitHorizontalLayout.displayName = 'SplitHorizontalLayout';
-
-const PipBottomRightLayout = React.memo(({
-  playlist,
-  zoneTrackers,
-  advanceZone,
-}: {
-  playlist: Playlist;
-  zoneTrackers: Record<string, ZoneTracker>;
-  advanceZone: (zoneId: string) => void;
-}) => (
-  <div style={styles.container}>
-    <div style={styles.debugInfo}>
-      Principal ({(zoneTrackers.main?.items.length) || 0} elementos) + PiP ({(zoneTrackers.pip?.items.length) || 0} elementos)
-    </div>
-    <ZonePlayer
-      items={zoneTrackers.main?.items || []}
-      zoneId="main"
-      playlist={playlist}
-      zoneTracker={zoneTrackers.main || { items: [], currentIndex: 0 }}
-      onAdvance={advanceZone}
-    />
-    <div style={{
-      position: "absolute",
-      bottom: "20px",
-      right: "20px",
-      width: "25%",
-      height: "25%",
-      border: "2px solid rgba(255,255,255,0.3)",
-      borderRadius: "8px",
-      overflow: "hidden",
-      zIndex: 100,
-    }}>
-      <ZonePlayer
-        items={zoneTrackers.pip?.items || []}
-        zoneId="pip"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.pip || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-  </div>
-));
-PipBottomRightLayout.displayName = 'PipBottomRightLayout';
-
-const Grid2x2Layout = React.memo(({
-  playlist,
-  zoneTrackers,
-  advanceZone,
-}: {
-  playlist: Playlist;
-  zoneTrackers: Record<string, ZoneTracker>;
-  advanceZone: (zoneId: string) => void;
-}) => (
-  <div style={{ ...styles.container, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "2px" }}>
-    <div style={{ ...styles.zone, backgroundColor: "#111" }}>
-      <div style={styles.debugInfo}>
-        Superior Izq ({(zoneTrackers.top_left?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.top_left?.items || []}
-        zoneId="top_left"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.top_left || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-    <div style={{ ...styles.zone, backgroundColor: "#111" }}>
-      <div style={styles.debugInfo}>
-        Superior Der ({(zoneTrackers.top_right?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.top_right?.items || []}
-        zoneId="top_right"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.top_right || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-    <div style={{ ...styles.zone, backgroundColor: "#111" }}>
-      <div style={styles.debugInfo}>
-        Inferior Izq ({(zoneTrackers.bottom_left?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.bottom_left?.items || []}
-        zoneId="bottom_left"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.bottom_left || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-    <div style={{ ...styles.zone, backgroundColor: "#111" }}>
-      <div style={styles.debugInfo}>
-        Inferior Der ({(zoneTrackers.bottom_right?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.bottom_right?.items || []}
-        zoneId="bottom_right"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.bottom_right || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-  </div>
-));
-Grid2x2Layout.displayName = 'Grid2x2Layout';
-
-const TripleSplitLayout = React.memo(({
-  playlist,
-  zoneTrackers,
-  advanceZone,
-}: {
-  playlist: Playlist;
-  zoneTrackers: Record<string, ZoneTracker>;
-  advanceZone: (zoneId: string) => void;
-}) => (
-  <div style={{ ...styles.container, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "2px" }}>
-    <div style={{ ...styles.zone, gridRow: "1 / 3", backgroundColor: "#111" }}>
-      <div style={styles.debugInfo}>
-        Zona Izquierda ({(zoneTrackers.left?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.left?.items || []}
-        zoneId="left"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.left || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-    <div style={{ ...styles.zone, backgroundColor: "#111" }}>
-      <div style={styles.debugInfo}>
-        Superior Derecha ({(zoneTrackers.top_right?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.top_right?.items || []}
-        zoneId="top_right"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.top_right || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-    <div style={{ ...styles.zone, backgroundColor: "#111" }}>
-      <div style={styles.debugInfo}>
-        Inferior Derecha ({(zoneTrackers.bottom_right?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.bottom_right?.items || []}
-        zoneId="bottom_right"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.bottom_right || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-  </div>
-));
-TripleSplitLayout.displayName = 'TripleSplitLayout';
-
-const LShapeLayout = React.memo(({
-  playlist,
-  zoneTrackers,
-  advanceZone,
-}: {
-  playlist: Playlist;
-  zoneTrackers: Record<string, ZoneTracker>;
-  advanceZone: (zoneId: string) => void;
-}) => (
-  <div style={{ ...styles.container, display: "grid", gridTemplateColumns: "2fr 1fr", gridTemplateRows: "2fr 1fr", gap: "2px" }}>
-    <div style={{ ...styles.zone, backgroundColor: "#111" }}>
-      <div style={styles.debugInfo}>
-        Principal ({(zoneTrackers.main?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.main?.items || []}
-        zoneId="main"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.main || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-    <div style={{ ...styles.zone, backgroundColor: "#111" }}>
-      <div style={styles.debugInfo}>
-        Lateral ({(zoneTrackers.side?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.side?.items || []}
-        zoneId="side"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.side || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-    <div style={{ ...styles.zone, gridColumn: "1 / 3", backgroundColor: "#111" }}>
-      <div style={styles.debugInfo}>
-        Inferior ({(zoneTrackers.bottom?.items.length) || 0} elementos)
-      </div>
-      <ZonePlayer
-        items={zoneTrackers.bottom?.items || []}
-        zoneId="bottom"
-        playlist={playlist}
-        zoneTracker={zoneTrackers.bottom || { items: [], currentIndex: 0 }}
-        onAdvance={advanceZone}
-      />
-    </div>
-  </div>
-));
-LShapeLayout.displayName = 'LShapeLayout';
-
-const Grid3x3Layout = React.memo(({
-  playlist,
-  zoneTrackers,
-  advanceZone,
-}: {
-  playlist: Playlist;
-  zoneTrackers: Record<string, ZoneTracker>;
-  advanceZone: (zoneId: string) => void;
-}) => (
-  <div style={{ ...styles.container, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateRows: "1fr 1fr 1fr", gap: "2px" }}>
-    {Array.from({ length: 9 }, (_, i) => {
-      const zones = ['top_left', 'top_center', 'top_right', 'middle_left', 'middle_center', 'middle_right', 'bottom_left', 'bottom_center', 'bottom_right'];
-      const zoneId = zones[i];
-      const zoneNames = ['Superior Izq', 'Superior Centro', 'Superior Der', 'Medio Izq', 'Medio Centro', 'Medio Der', 'Inferior Izq', 'Inferior Centro', 'Inferior Der'];
-      
-      return (
-        <div key={zoneId} style={{ ...styles.zone, backgroundColor: "#111" }}>
-          <div style={styles.debugInfo}>
-            {zoneNames[i]} ({(zoneTrackers[zoneId]?.items.length) || 0} elementos)
-          </div>
-          <ZonePlayer
-            items={zoneTrackers[zoneId]?.items || []}
-            zoneId={zoneId}
-            playlist={playlist}
-            zoneTracker={zoneTrackers[zoneId] || { items: [], currentIndex: 0 }}
-            onAdvance={advanceZone}
-          />
-        </div>
-      );
-    })}
-  </div>
-));
-Grid3x3Layout.displayName = 'Grid3x3Layout';
-
-const CustomLayout = React.memo(({
-  playlist,
-  zoneTrackers,
-  advanceZone,
-}: {
-  playlist: Playlist;
-  zoneTrackers: Record<string, ZoneTracker>;
-  advanceZone: (zoneId: string) => void;
-}) => {
-  const customLayoutStyle = useMemo(() => {
-    try {
-      return playlist.customLayout ? JSON.parse(playlist.customLayout) : {};
-    } catch (e) {
-      console.warn("Error procesando layout personalizado:", e);
-      return {};
-    }
-  }, [playlist.customLayout]);
-
-  return (
-    <div style={styles.container}>
-      <div style={styles.debugInfo}>
-        Layout Personalizado ({Object.keys(zoneTrackers).length} zonas)
-      </div>
-      <div style={{ position: 'relative', width: '100%', height: '100%', ...customLayoutStyle.container }}>
-        {Object.entries(zoneTrackers).map(([zoneId, tracker]) => {
-          const zoneStyle = customLayoutStyle.zones?.[zoneId] || { 
-            position: 'absolute', 
-            top: 0, 
-            left: 0, 
-            width: '100%', 
-            height: '100%' 
-          };
-          
-          return (
-            <div key={zoneId} style={{ ...styles.zone, ...zoneStyle }}>
-              <div style={styles.debugInfo}>
-                {zoneId} ({tracker.items.length} elementos)
-              </div>
-              <ZonePlayer
-                items={tracker.items}
-                zoneId={zoneId}
-                playlist={playlist}
-                zoneTracker={tracker}
-                onAdvance={advanceZone}
-              />
-            </div>
-          );
-        })}
       </div>
     </div>
   );
 });
-CustomLayout.displayName = 'CustomLayout';
 
-// ===================================================================================
-// COMPONENTE PRINCIPAL OPTIMIZADO
-// ===================================================================================
+ClockWidget.displayName = 'ClockWidget';
 
-export default function ContentPlayer({
-  playlistId,
-  isPreview = false,
-}: {
-  playlistId?: number;
-  isPreview?: boolean;
-}) {
-  const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
-  const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
-
-  // Función memoizada para obtener token de auth
-  const getAuthToken = useCallback(() => {
-    return isPreview ? null : localStorage.getItem("authToken");
-  }, [isPreview]);
-
-  // Query única para playlist con optimizaciones mejoradas
-  const {
-    data: playlist,
-    isLoading,
-    error,
-  } = useQuery<Playlist & { items: PlaylistItem[] }>({
-    queryKey: ["player-playlist", playlistId, isPreview],
-    queryFn: async () => {
-      if (!playlistId) throw new Error("ID de playlist requerido");
-
-      const endpoint = isPreview 
-        ? `/api/playlists/${playlistId}` 
-        : `/api/player/playlists/${playlistId}`;
-
-      const headers: Record<string, string> = {};
-      const authToken = getAuthToken();
-      if (authToken) {
-        headers.Authorization = `Bearer ${authToken}`;
-      }
-
-      const res = await apiFetch(endpoint, { headers });
-      if (!res.ok) {
-        throw new Error(`Error cargando playlist: ${res.statusText}`);
-      }
-      return res.json();
-    },
-    enabled: !!playlistId,
-    staleTime: isPreview ? 5000 : 60000,
-    refetchInterval: isPreview ? 5000 : false,
-    retry: 2,
-  });
-
-  // Query para widgets optimizada
-  const { data: widgets = [] } = useQuery<Widget[]>({
-    queryKey: ["player-widgets"],
-    queryFn: async () => {
-      const authToken = getAuthToken();
-      if (!authToken) return [];
-
-      const res = await apiFetch("/api/player/widgets", {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-
-      if (!res.ok) {
-        console.warn("No se pudieron cargar los widgets");
-        return [];
-      }
-      return res.json();
-    },
-    enabled: !isPreview && !!playlistId,
-    staleTime: 300000,
-    refetchInterval: false,
-    retry: 1,
-  });
-
-  // Inicializar zone trackers de forma optimizada
-  useEffect(() => {
-    if (!playlist?.items || !Array.isArray(playlist.items)) return;
-
-    console.log("Inicializando playlist:", playlist.name, "Layout:", playlist.layout);
-
-    const zones: Record<string, PlaylistItem[]> = {};
-    
-    // Configurar zonas según el layout
-    switch (playlist.layout || "single_zone") {
-      case "split_vertical":
-        zones.left = [];
-        zones.right = [];
-        break;
-      case "split_horizontal":
-        zones.top = [];
-        zones.bottom = [];
-        break;
-      case "pip_bottom_right":
-        zones.main = [];
-        zones.pip = [];
-        break;
-      case "grid_2x2":
-        zones.top_left = [];
-        zones.top_right = [];
-        zones.bottom_left = [];
-        zones.bottom_right = [];
-        break;
-      case "grid_3x3":
-        ['top_left', 'top_center', 'top_right', 'middle_left', 'middle_center', 'middle_right', 'bottom_left', 'bottom_center', 'bottom_right'].forEach(zone => {
-          zones[zone] = [];
-        });
-        break;
-      case "triple_split":
-        zones.left = [];
-        zones.top_right = [];
-        zones.bottom_right = [];
-        break;
-      case "l_shape":
-        zones.main = [];
-        zones.side = [];
-        zones.bottom = [];
-        break;
-      case "custom":
-        // Para layout personalizado, extraer zonas del customLayout
-        try {
-          const customLayout = playlist.customLayout ? JSON.parse(playlist.customLayout) : {};
-          const customZones = Object.keys(customLayout.zones || {});
-          customZones.forEach(zone => {
-            zones[zone] = [];
-          });
-        } catch (e) {
-          zones.main = [];
-        }
-        break;
-      case "single_zone":
-      default:
-        zones.main = [];
-        break;
-    }
-
-    // Asignar items a zonas
-    for (const item of playlist.items) {
-      const zone = item.zone || "main";
-      console.log(`Elemento ${item.id} asignado a zona: ${zone}`);
-      if (!zones[zone]) {
-        zones[zone] = [];
-      }
-      zones[zone].push(item);
-    }
-
-    // Ordenar items en cada zona
-    for (const zoneId in zones) {
-      zones[zoneId].sort((a, b) => (a.order || 0) - (b.order || 0));
-    }
-
-    console.log("Zonas configuradas:", zones);
-
-    // Crear trackers para cada zona
-    const newTrackers: Record<string, ZoneTracker> = {};
-    for (const zoneId in zones) {
-      newTrackers[zoneId] = {
-        items: zones[zoneId],
-        currentIndex: 0,
-      };
-    }
-
-    setZoneTrackers(newTrackers);
-  }, [playlist]);
-
-  // Función memoizada para avanzar al siguiente item
-  const advanceZone = useCallback((zoneId: string) => {
-    setZoneTrackers(prev => {
-      const tracker = prev[zoneId];
-      if (!tracker || tracker.items.length === 0) return prev;
-
-      return {
-        ...prev,
-        [zoneId]: {
-          ...tracker,
-          currentIndex: (tracker.currentIndex + 1) % tracker.items.length,
-        },
-      };
-    });
-  }, []);
-
-  // Gestión optimizada de WebSocket y alertas
-  useEffect(() => {
-    if (isPreview || !playlistId) return;
-
-    const authToken = getAuthToken();
-    if (!authToken) return;
-
-    console.log("🔌 Iniciando WebSocket optimizado para playlist:", playlistId);
-    wsManager.connect(undefined, authToken);
-
-    const alertTimers = new Map<number, NodeJS.Timeout>();
-
-    const handleAlertExpired = useCallback((alertId: number) => {
-      setActiveAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
-      if (alertTimers.has(alertId)) {
-        clearTimeout(alertTimers.get(alertId)!);
-        alertTimers.delete(alertId);
-      }
-    }, []);
-
-    const handleAlert = useCallback((message: { type: string; data: any }) => {
-      const alert = message.data;
-      if (message.type === "alert" && alert?.isActive) {
-        setActiveAlerts((prev) => {
-          if (prev.some((a) => a.id === alert.id)) return prev;
-          return [...prev, alert];
-        });
-
-        if (alert.duration > 0 && !alert.isFixed) {
-          if (alertTimers.has(alert.id)) {
-            clearTimeout(alertTimers.get(alert.id)!);
-          }
-          const timer = setTimeout(
-            () => handleAlertExpired(alert.id),
-            alert.duration * 1000,
-          );
-          alertTimers.set(alert.id, timer);
-        }
-      } else if (message.type === "alert-deleted") {
-        handleAlertExpired(alert?.id);
-      }
-    }, [handleAlertExpired]);
-
-    const handlePlaylistChange = useCallback((message: { type: string; data: any }) => {
-      const screenId = localStorage.getItem("screenId");
-      if (message.data?.screenId?.toString() === screenId) {
-        console.log("🔄 Recargando por cambio de playlist");
-        window.location.reload();
-      }
-    }, []);
-
-    // Heartbeat optimizado para Android
-    const sendHeartbeat = useCallback(() => {
-      if (wsManager.isConnected()) {
-        wsManager.send({
-          type: "player-heartbeat",
-          timestamp: new Date().toISOString(),
-          screenId: localStorage.getItem("screenId"),
-        });
-      }
-    }, []);
-
-    const heartbeatTimer = setInterval(sendHeartbeat, 120000);
-
-    // Suscripciones
-    const unsubscribeAlert = wsManager.subscribe("alert", handleAlert);
-    const unsubscribeAlertDeleted = wsManager.subscribe("alert-deleted", handleAlert);
-    const unsubscribePlaylistChange = wsManager.subscribe("playlist-change", handlePlaylistChange);
-
-    return () => {
-      clearInterval(heartbeatTimer);
-      unsubscribeAlert();
-      unsubscribeAlertDeleted();
-      unsubscribePlaylistChange();
-      alertTimers.forEach((timer) => clearTimeout(timer));
-    };
-  }, [isPreview, playlistId, getAuthToken]);
-
-  // Renderizado memoizado de layouts
-  const renderLayout = useCallback(() => {
-    if (!playlist) return null;
-
-    const layout = playlist.layout || "single_zone";
-    console.log("Renderizando layout:", layout);
-
-    const layoutProps = { playlist, zoneTrackers, advanceZone };
-
-    switch (layout) {
-      case "single_zone":
-        return <SingleZoneLayout {...layoutProps} />;
-      case "split_vertical":
-        return <SplitVerticalLayout {...layoutProps} />;
-      case "split_horizontal":
-        return <SplitHorizontalLayout {...layoutProps} />;
-      case "pip_bottom_right":
-        return <PipBottomRightLayout {...layoutProps} />;
-      case "grid_2x2":
-        return <Grid2x2Layout {...layoutProps} />;
-      case "grid_3x3":
-        return <Grid3x3Layout {...layoutProps} />;
-      case "triple_split":
-        return <TripleSplitLayout {...layoutProps} />;
-      case "l_shape":
-        return <LShapeLayout {...layoutProps} />;
-      case "custom":
-        return <CustomLayout {...layoutProps} />;
+// Componente memoizado para renderizar widgets
+const WidgetRenderer = memo<{ widget: Widget }>(({ widget }) => {
+  const widgetContent = useMemo(() => {
+    switch (widget.type) {
+      case 'weather':
+        return <WeatherWidget config={widget.config} />;
+      case 'news':
+        return <NewsWidget config={widget.config} />;
+      case 'clock':
+        return <ClockWidget config={widget.config} />;
       default:
         return (
-          <div style={styles.container}>
-            <div style={styles.debugInfo}>
-              Layout no reconocido: {layout}
-            </div>
-            <SingleZoneLayout {...layoutProps} />
+          <div className="p-4 bg-gray-200 rounded-lg">
+            <p className="text-gray-600">Widget desconocido: {widget.type}</p>
           </div>
         );
     }
-  }, [playlist, zoneTrackers, advanceZone]);
+  }, [widget.type, widget.config]);
 
-  // Estados de carga y error mejorados
-  if (!playlistId) {
-    return (
-      <div style={styles.container}>
-        <div style={{ margin: "auto", textAlign: "center" }}>
-          <div style={{ fontSize: "24px", marginBottom: "15px" }}>⏳</div>
-          <div>Esperando configuración de reproducción...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div style={styles.container}>
-        <div style={{ margin: "auto", textAlign: "center" }}>
-          <div style={{ fontSize: "24px", marginBottom: "15px" }}>🔄</div>
-          <div>Cargando contenido multimedia...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={styles.container}>
-        <div style={{ margin: "auto", textAlign: "center", color: "#ff6b6b" }}>
-          <div style={{ fontSize: "24px", marginBottom: "15px" }}>❌</div>
-          <div>Error de reproducción: {error instanceof Error ? error.message : "Error desconocido"}</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!playlist) {
-    return (
-      <div style={styles.container}>
-        <div style={{ margin: "auto", textAlign: "center" }}>
-          <div style={{ fontSize: "24px", marginBottom: "15px" }}>📂</div>
-          <div>Lista de reproducción no encontrada</div>
-        </div>
-      </div>
-    );
-  }
+  const positionStyles = useMemo(() => {
+    const positions = {
+      'top-left': { top: '20px', left: '20px' },
+      'top-right': { top: '20px', right: '20px' },
+      'bottom-left': { bottom: '20px', left: '20px' },
+      'bottom-right': { bottom: '20px', right: '20px' },
+      'center': { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+    };
+    return positions[widget.position] || positions['top-left'];
+  }, [widget.position]);
 
   return (
-    <div style={styles.container}>
-      {renderLayout()}
-
-      {/* Widgets memoizados */}
-      {widgets.map((widget) => (
-        <WidgetRenderer key={widget.id} widget={widget} />
-      ))}
-
-      {/* Alertas memoizadas */}
-      {activeAlerts.map((alert) => (
-        <AlertOverlay key={alert.id} alert={alert} />
-      ))}
+    <div
+      className="absolute"
+      style={{
+        ...positionStyles,
+        zIndex: widget.zIndex || 1000,
+        maxWidth: '300px'
+      }}
+    >
+      {widgetContent}
     </div>
   );
-}
+});
+
+WidgetRenderer.displayName = 'WidgetRenderer';
+
+// Componente principal optimizado
+const ContentPlayer = memo<Props>(({ playlistId, isPreview = false }) => {
+  // Estados locales
+  const [playbackState, setPlaybackState] = useState<PlaybackState>({});
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // Query client para optimizar requests
+  const queryClient = useQueryClient();
+
+  // Memoizar configuración de queries para evitar re-renders
+  const playlistQueryConfig = useMemo(() => ({
+    queryKey: ['/api/player/playlists', playlistId],
+    queryFn: async () => {
+      if (!playlistId) return null;
+      console.log(`[apiFetch] Calling: /api/player/playlists/${playlistId}`);
+      return apiFetch(`/api/player/playlists/${playlistId}`);
+    },
+    enabled: !!playlistId,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: 1
+  }), [playlistId]);
+
+  const widgetsQueryConfig = useMemo(() => ({
+    queryKey: ['/api/player/widgets'],
+    queryFn: async () => {
+      console.log(`[apiFetch] Calling: /api/player/widgets`);
+      return apiFetch('/api/player/widgets');
+    },
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    staleTime: 10 * 60 * 1000, // 10 minutos
+    retry: 1
+  }), []);
+
+  // Queries optimizadas
+  const { data: playlist, isLoading: playlistLoading, error: playlistError } = useQuery(playlistQueryConfig);
+  const { data: widgets = [], isLoading: widgetsLoading } = useQuery(widgetsQueryConfig);
+
+  // Memoizar estado actual del playback
+  const currentState = useMemo(() => {
+    if (!playlistId || !playbackState[playlistId]) {
+      return { currentIndex: 0, isPlaying: true, startTime: Date.now() };
+    }
+    return playbackState[playlistId];
+  }, [playlistId, playbackState]);
+
+  // Memoizar item actual
+  const currentItem = useMemo(() => {
+    if (!playlist?.items || playlist.items.length === 0) return null;
+    return playlist.items[currentState.currentIndex] || playlist.items[0];
+  }, [playlist?.items, currentState.currentIndex]);
+
+  // Callback memoizado para avanzar al siguiente item
+  const nextItem = useCallback(() => {
+    if (!playlistId || !playlist?.items || playlist.items.length === 0) return;
+
+    setIsTransitioning(true);
+
+    setTimeout(() => {
+      setPlaybackState(prev => {
+        const current = prev[playlistId] || { currentIndex: 0, isPlaying: true, startTime: Date.now() };
+        const nextIndex = (current.currentIndex + 1) % playlist.items.length;
+
+        return {
+          ...prev,
+          [playlistId]: {
+            ...current,
+            currentIndex: nextIndex,
+            startTime: Date.now()
+          }
+        };
+      });
+      setIsTransitioning(false);
+    }, 300);
+  }, [playlistId, playlist?.items]);
+
+  // Callback memoizado para manejar fin de video
+  const handleVideoEnded = useCallback(() => {
+    nextItem();
+  }, [nextItem]);
+
+  // Efecto para el timer de duración
+  useEffect(() => {
+    if (!currentItem || currentItem.type === 'video' || !currentState.isPlaying) return;
+
+    const duration = (currentItem.duration || 10) * 1000;
+    const elapsed = Date.now() - currentState.startTime;
+    const remaining = Math.max(0, duration - elapsed);
+
+    if (remaining === 0) {
+      nextItem();
+      return;
+    }
+
+    const timer = setTimeout(nextItem, remaining);
+    return () => clearTimeout(timer);
+  }, [currentItem, currentState, nextItem]);
+
+  // WebSocket para actualizaciones en tiempo real
+  useEffect(() => {
+    if (!playlistId) return;
+
+    console.log(`🔌 Iniciando WebSocket para playlist: ${playlistId}`);
+
+    let wsClient: WebSocketClient;
+
+    try {
+      wsClient = WebSocketClient.getInstance();
+
+      const handlePlaylistChange = (data: any) => {
+        const { playlistId: newPlaylistId, screenId: messageScreenId } = data;
+        const currentScreenId = localStorage.getItem('screenId');
+
+        if (messageScreenId && messageScreenId.toString() === currentScreenId && newPlaylistId !== playlistId) {
+          console.log(`🎵 Playlist changed from ${playlistId} to ${newPlaylistId} - IMMEDIATE RELOAD`);
+          window.location.reload();
+        }
+      };
+
+      const handleContentUpdated = (data: any) => {
+        const { screenId: messageScreenId, playlistId: updatedPlaylistId } = data;
+        const currentScreenId = localStorage.getItem('screenId');
+
+        if (messageScreenId === currentScreenId && updatedPlaylistId === playlistId) {
+          console.log('🔄 Content updated, refreshing playlist data...');
+          queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+        }
+      };
+
+      const handleContentDeleted = (data: any) => {
+        const { screenId: messageScreenId, playlistId: deletedFromPlaylistId } = data;
+        const currentScreenId = localStorage.getItem('screenId');
+
+        if (messageScreenId === currentScreenId && deletedFromPlaylistId === playlistId) {
+          console.log('🗑️ Content deleted from current playlist, refreshing...');
+          queryClient.invalidateQueries({ queryKey: ['/api/player/playlists', playlistId] });
+          queryClient.refetchQueries({ queryKey: ['/api/player/playlists', playlistId], type: 'active' });
+
+          setPlaybackState(prev => ({
+            ...prev,
+            [playlistId]: { ...prev[playlistId], currentIndex: 0 }
+          }));
+        }
+      };
+
+      const unsubscribePlaylistChange = wsClient.subscribe('playlist-change', handlePlaylistChange);
+      const unsubscribeContentUpdated = wsClient.subscribe('playlist-content-updated', handleContentUpdated);
+      const unsubscribeContentDeleted = wsClient.subscribe('playlist-item-deleted', handleContentDeleted);
+      const unsubscribeScreenUpdated = wsClient.subscribe('screen-playlist-updated', handlePlaylistChange);
+
+      // Heartbeat para mantener conexión activa
+      const heartbeatInterval = setInterval(() => {
+        if (wsClient.isConnected()) {
+          wsClient.send({
+            type: 'player-heartbeat',
+            timestamp: new Date().toISOString(),
+            screenId: localStorage.getItem('screenId')
+          });
+          console.log('💓 WebSocket heartbeat sent');
+        } else {
+          console.log('💓 Sending HTTP heartbeat (WebSocket not connected)');
+          fetch('/api/player/heartbeat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            },
+            body: JSON.stringify({
+              screenId: localStorage.getItem('screenId'),
+              timestamp: new Date().toISOString()
+            })
+          }).catch(error => console.error('HTTP heartbeat failed:', error));
+        }
+      }, 30000); // 30 segundos
+
+      return () => {
+        unsubscribePlaylistChange();
+        unsubscribeContentUpdated();
+        unsubscribeContentDeleted();
+        unsubscribeScreenUpdated();
+        clearInterval(heartbeatInterval);
+      };
+    } catch (error) {
+      console.error('Error setting up WebSocket:', error);
+    }
+  }, [playlistId, queryClient]);
+
+  // Renderizado condicional memoizado
+  const renderContent = useMemo(() => {
+    if (playlistLoading) {
+      return (
+        <div className="w-full h-screen flex items-center justify-center bg-black text-white">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-2xl">Cargando contenido...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (playlistError) {
+      return (
+        <div className="w-full h-screen flex items-center justify-center bg-red-900 text-white">
+          <div className="text-center">
+            <p className="text-3xl mb-4">❌ Error al cargar playlist</p>
+            <p className="text-lg opacity-75">Verifique la conexión y la configuración</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!playlist?.items || playlist.items.length === 0) {
+      return (
+        <div className="w-full h-screen flex items-center justify-center bg-gray-900 text-white">
+          <div className="text-center">
+            <p className="text-3xl mb-4">📋 Playlist vacía</p>
+            <p className="text-lg opacity-75">Agregue contenido a esta playlist para comenzar</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!currentItem) {
+      return (
+        <div className="w-full h-screen flex items-center justify-center bg-gray-900 text-white">
+          <div className="text-center">
+            <p className="text-3xl mb-4">⚠️ Contenido no disponible</p>
+            <p className="text-lg opacity-75">No se pudo cargar el elemento actual</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Layout por defecto
+    const layout = currentItem.config?.layout || {};
+
+    const contentComponent = (() => {
+      switch (currentItem.type) {
+        case 'image':
+          return <ImageContent item={currentItem} layout={layout} />;
+        case 'video':
+          return <VideoContent item={currentItem} layout={layout} onEnded={handleVideoEnded} />;
+        case 'url':
+          return <URLContent item={currentItem} layout={layout} />;
+        default:
+          return (
+            <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
+              <p className="text-2xl">Tipo de contenido no soportado: {currentItem.type}</p>
+            </div>
+          );
+      }
+    })();
+
+    return (
+      <div 
+        className={`w-full h-screen relative transition-opacity duration-300 ${
+          isTransitioning ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
+        {contentComponent}
+
+        {/* Widgets overlay */}
+        {widgets.map((widget: Widget) => (
+          <WidgetRenderer key={widget.id} widget={widget} />
+        ))}
+
+        {/* Debug info (solo en preview) */}
+        {isPreview && (
+          <div className="absolute top-4 left-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs">
+            <p>Playlist: {playlist.name}</p>
+            <p>Item: {currentState.currentIndex + 1}/{playlist.items.length}</p>
+            <p>Tipo: {currentItem.type}</p>
+            <p>Duración: {currentItem.duration}s</p>
+          </div>
+        )}
+      </div>
+    );
+  }, [
+    playlistLoading,
+    playlistError,
+    playlist,
+    currentItem,
+    currentState,
+    isTransitioning,
+    widgets,
+    isPreview,
+    handleVideoEnded
+  ]);
+
+  return renderContent;
+});
+
+ContentPlayer.displayName = 'ContentPlayer';
+
+export default ContentPlayer;

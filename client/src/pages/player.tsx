@@ -56,10 +56,10 @@ export default function PlayerPage() {
 
       return response.json();
     },
-    retry: 1, // Reduce retries for mobile
-    refetchInterval: 300000, // Check token validity every 5 minutes instead of 1
+    retry: 1,
+    refetchInterval: false, // Disable automatic refetching
     enabled: status === 'paired',
-    staleTime: 240000, // 4 minutes stale time
+    staleTime: 10 * 60 * 1000, // 10 minutes stale time
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     onError: (error) => {
