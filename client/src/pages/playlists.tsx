@@ -928,28 +928,23 @@ export default function Playlists() {
 
   const deletePlaylistMutation = useMutation({
     mutationFn: async (playlistId: number) => {
+      console.log(`🗑️ Deleting playlist ${playlistId}`);
+
       const response = await apiRequest(`/api/playlists/${playlistId}`, {
         method: "DELETE"
       });
+
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        const errorData = await response.text();
+        console.error(`❌ Delete failed for playlist ${playlistId}:`, errorData);
+        throw new Error(errorData || `Server error: ${response.status}`);
       }
-      return response;
+
+      const result = await response.json();
+      console.log(`✅ Server confirmed deletion of playlist ${playlistId}`);
+      return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      toast({
-        title: "Playlist eliminada",
-        description: "La playlist se ha eliminado correctamente.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo eliminar la playlist.",
-        variant: "destructive",
-      });
-    },
+    // Remove onSuccess and onError to prevent duplicate handling
   });
 
   const moveItemMutation = useMutation({
@@ -1020,6 +1015,10 @@ export default function Playlists() {
   // Track items being deleted to prevent duplicates
   const [deletingItems, setDeletingItems] = useState<Set<number>>(new Set());
   const [deletionPromises, setDeletionPromises] = useState<Map<number, Promise<any>>>(new Map());
+  
+  // Track playlists being deleted to prevent duplicates
+  const [deletingPlaylists, setDeletingPlaylists] = useState<Set<number>>(new Set());
+  const [playlistDeletionPromises, setPlaylistDeletionPromises] = useState<Map<number, Promise<any>>>(new Map());
 
   // Handle item removal with proper state tracking and debouncing
   const handleRemoveFromPlaylist = async (itemId: number) => {
@@ -1234,10 +1233,84 @@ export default function Playlists() {
     updateMutation.mutate(editingPlaylist);
   };
 
-  const handleDeletePlaylist = (playlistId: number) => {
-    if (confirm("¿Estás seguro de que quieres eliminar esta playlist?")) {
-      deletePlaylistMutation.mutate(playlistId);
+  const handleDeletePlaylist = async (playlistId: number) => {
+    // Prevent duplicate deletion attempts
+    if (deletingPlaylists.has(playlistId) || deletePlaylistMutation.isPending) {
+      console.log(`❌ Playlist ${playlistId} deletion already in progress`);
+      return;
     }
+
+    // Check if there's already a promise for this playlist
+    if (playlistDeletionPromises.has(playlistId)) {
+      console.log(`❌ Playlist ${playlistId} already has pending deletion promise`);
+      return playlistDeletionPromises.get(playlistId);
+    }
+
+    if (!confirm("¿Estás seguro de que quieres eliminar esta playlist?")) {
+      return;
+    }
+
+    // Add to deleting set
+    setDeletingPlaylists(prev => new Set(prev).add(playlistId));
+
+    console.log(`🗑️ Starting removal of playlist ${playlistId}`);
+
+    // Create a single promise for this deletion
+    const deletionPromise = (async () => {
+      try {
+        const result = await deletePlaylistMutation.mutateAsync(playlistId);
+
+        toast({
+          title: "Playlist eliminada",
+          description: "La playlist se ha eliminado correctamente.",
+        });
+
+        // Force immediate UI refresh
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+
+        return result;
+
+      } catch (error: any) {
+        console.error(`❌ Failed to delete playlist ${playlistId}:`, error);
+
+        // If playlist not found, refresh the playlists to sync state
+        if (error.message?.includes('not found') || error.message?.includes('404')) {
+          console.log(`🔄 Playlist ${playlistId} not found, refreshing playlists state`);
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
+
+          toast({
+            title: "Playlist eliminada",
+            description: "La playlist ya había sido eliminada.",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "No se pudo eliminar la playlist. Intenta de nuevo.",
+            variant: "destructive",
+          });
+        }
+
+        throw error;
+      } finally {
+        // Clean up tracking state
+        setDeletingPlaylists(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(playlistId);
+          return newSet;
+        });
+
+        setPlaylistDeletionPromises(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(playlistId);
+          return newMap;
+        });
+      }
+    })();
+
+    // Store the promise to prevent duplicates
+    setPlaylistDeletionPromises(prev => new Map(prev).set(playlistId, deletionPromise));
+
+    return deletionPromise;
   };
 
   const handleOpenLayoutEditor = (playlist: any) => {
@@ -1492,9 +1565,14 @@ export default function Playlists() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeletePlaylist(playlist.id)}
+                          disabled={deletingPlaylists.has(playlist.id) || deletePlaylistMutation.isPending}
                           className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          {deletingPlaylists.has(playlist.id) ? (
+                            <div className="w-4 h-4 animate-spin rounded-full border border-red-500 border-t-transparent" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
                         </Button>
                       </div>
                     </div>
