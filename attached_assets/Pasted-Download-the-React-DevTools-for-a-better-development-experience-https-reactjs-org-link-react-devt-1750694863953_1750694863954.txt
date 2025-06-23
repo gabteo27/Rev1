@@ -1,0 +1,47 @@
+Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+player.tsx:274 Screen playlist ID: 11, Current: undefined
+player.tsx:276 Updating playlist ID from undefined to 11
+api.ts:18 [apiFetch] Calling: /api/player/playlists/11
+api.ts:18 [apiFetch] Calling: /api/player/widgets
+ContentPlayer.tsx:392 🔌 Iniciando WebSocket para playlist: 11
+websocket.ts:63 🔌 Connecting to WebSocket: <span class="math-inline">{protocol}//</span>{host}/ws
+player.tsx:274 Screen playlist ID: 11, Current: 11
+websocket.ts:65 WebSocket connection to 'wss://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/%3Cspan%20class=%22math-inline%22%3E%7Bprotocol%7D//%3C/span%3E%7Bhost%7D/ws' failed: 
+connect @ websocket.ts:65
+(anonymous) @ ContentPlayer.tsx:393
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:19381
+workLoop @ chunk-PNGJSGSD.js?v=c3b9f91b:197
+flushWork @ chunk-PNGJSGSD.js?v=c3b9f91b:176
+performWorkUntilDeadline @ chunk-PNGJSGSD.js?v=c3b9f91b:384Understand this error
+websocket.ts:108 WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
+ws.onerror @ websocket.ts:108Understand this error
+websocket.ts:98 WebSocket disconnected: 1006 
+websocket.ts:174 Attempting to reconnect in 1000ms (attempt 1/5)
+websocket.ts:63 🔌 Connecting to WebSocket: <span class="math-inline">{protocol}//</span>{host}/ws
+websocket.ts:65 WebSocket connection to 'wss://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/%3Cspan%20class=%22math-inline%22%3E%7Bprotocol%7D//%3C/span%3E%7Bhost%7D/ws' failed: 
+connect @ websocket.ts:65
+(anonymous) @ websocket.ts:177Understand this error
+websocket.ts:108 WebSocket error: Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
+ws.onerror @ websocket.ts:108Understand this error
+websocket.ts:98 WebSocket disconnected: 1006 
+client:815 WebSocket connection to 'wss://localhost:5173/?token=NtLO3wDFaRJe' failed: 
+createConnection @ client:815
+connect @ client:437
+connect @ client:822Understand this error
+client:830 [vite] failed to connect to websocket.
+your current setup:
+  (browser) dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/ <--[HTTP]--> localhost:5173/ (server)
+  (browser) dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev:/ <--[WebSocket (failing)]--> localhost:5173/ (server)
+Check out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr .
+connect @ client:830
+await in connect
+connect @ client:290
+connect @ client:383
+(anonymous) @ client:908Understand this error
