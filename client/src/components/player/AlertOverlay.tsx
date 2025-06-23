@@ -114,3 +114,69 @@ export function AlertOverlay({ alert, onAlertExpired }: AlertOverlayProps) {
     </div>
   );
 }
+import React, { useEffect, useState } from 'react';
+
+interface AlertOverlayProps {
+  alert: {
+    id: string;
+    title: string;
+    message: string;
+    type: 'info' | 'warning' | 'error';
+    duration?: number;
+  };
+  onClose: () => void;
+}
+
+export const AlertOverlay: React.FC<AlertOverlayProps> = ({ alert, onClose }) => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    if (alert.duration) {
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        setTimeout(onClose, 300); // Wait for fade out animation
+      }, alert.duration);
+
+      return () => clearTimeout(timer);
+    }
+  }, [alert.duration, onClose]);
+
+  const getAlertStyles = () => {
+    switch (alert.type) {
+      case 'error':
+        return 'bg-red-600 border-red-700';
+      case 'warning':
+        return 'bg-yellow-600 border-yellow-700';
+      default:
+        return 'bg-blue-600 border-blue-700';
+    }
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4">
+      <div className={`${getAlertStyles()} text-white p-4 rounded-lg border-2 shadow-lg transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <h3 className="font-bold text-lg mb-1">{alert.title}</h3>
+            <p className="text-sm opacity-90">{alert.message}</p>
+          </div>
+          <button
+            onClick={() => {
+              setIsVisible(false);
+              setTimeout(onClose, 300);
+            }}
+            className="ml-4 text-white hover:text-gray-200 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AlertOverlay;

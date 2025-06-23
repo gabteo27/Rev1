@@ -1,10 +1,14 @@
 export class WebSocketManager {
   private ws: WebSocket | null = null;
-  private listeners: Map<string, Function[]> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
+  private eventListeners: Map<string, Set<Function>> = new Map();
   private isAuthenticated = false;
+
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
 
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -68,24 +72,21 @@ export class WebSocketManager {
   }
 
   on(eventType: string, callback: Function): void {
-    if (!this.listeners.has(eventType)) {
-      this.listeners.set(eventType, []);
+    if (!this.eventListeners.has(eventType)) {
+      this.eventListeners.set(eventType, new Set());
     }
-    this.listeners.get(eventType)!.push(callback);
+    this.eventListeners.get(eventType)!.add(callback);
   }
 
   off(eventType: string, callback: Function): void {
-    const callbacks = this.listeners.get(eventType);
+    const callbacks = this.eventListeners.get(eventType);
     if (callbacks) {
-      const index = callbacks.indexOf(callback);
-      if (index !== -1) {
-        callbacks.splice(index, 1);
-      }
+      callbacks.delete(callback);
     }
   }
 
   private handleMessage(data: any): void {
-    const callbacks = this.listeners.get(data.type);
+    const callbacks = this.eventListeners.get(data.type);
     if (callbacks) {
       callbacks.forEach(callback => callback(data.data || data));
     }
@@ -113,7 +114,7 @@ export class WebSocketManager {
       this.ws.close();
       this.ws = null;
     }
-    this.listeners.clear();
+    this.eventListeners.clear();
     this.isAuthenticated = false;
     this.reconnectAttempts = 0;
   }

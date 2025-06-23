@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { lazy, Suspense, useEffect, type PropsWithChildren } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -51,8 +51,46 @@ const AdminLayout = ({ children }: PropsWithChildren) => (
 );
 
 // Component interno que maneja la autenticación
-const AppWithAuth = () => {
+const AppContent = () => {
   const { isAuthenticated, isLoading, error } = useAuth();
+
+  useEffect(() => {
+    // Initialize WebSocket connection with error handling
+    const initializeWebSocket = async () => {
+      try {
+        await wsManager.connect();
+      } catch (error) {
+        console.error('Failed to initialize WebSocket:', error);
+        // Continue without WebSocket - app should still work
+      }
+    };
+
+    initializeWebSocket();
+
+    return () => {
+      wsManager.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      wsManager.disconnect();
+    };
+
+    // Handle unhandled promise rejections
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      event.preventDefault(); // Prevent the default browser behavior
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
 
   // Show loading state
   if (isLoading) {
@@ -93,89 +131,6 @@ const AppWithAuth = () => {
         <Switch>
           <Route path="/" component={Landing} />
           <Route path="/:rest*">
-            {() => { window.location.href = "/"; return null; }}
-          </Route>
-        </Switch>
-      )}
-    </Switch>
-  );
-};
-
-const AppContent = () => {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  useEffect(() => {
-    // Initialize WebSocket connection with error handling
-    const initializeWebSocket = async () => {
-      try {
-        await wsManager.connect();
-      } catch (error) {
-        console.error('Failed to initialize WebSocket:', error);
-        // Continue without WebSocket - app should still work
-      }
-    };
-
-    initializeWebSocket();
-
-    return () => {
-      wsManager.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      wsManager.disconnect();
-    };
-
-    // Handle unhandled promise rejections
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('Unhandled promise rejection:', event.reason);
-      event.preventDefault(); // Prevent the default browser behavior
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-    };
-  }, []);
-
-  if (isLoading) {
-    return <Loading />;
-  }
-
-  return (
-    <Switch>
-      {/* Ruta especial para el reproductor, siempre disponible y sin layout */}
-      <Route path="/screen-player" component={ScreenPlayer} />
-
-      {/* Si el usuario está autenticado, muestra el dashboard con sidebar */}
-      {isAuthenticated ? (
-        <AdminLayout>
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/dashboard" component={Dashboard} />
-            <Route path="/content" component={Content} />
-            <Route path="/media-library" component={MediaLibrary} />
-            <Route path="/playlists" component={Playlists} />
-            <Route path="/playlist/:id" component={PlaylistDetail} />
-            <Route path="/screens" component={Screens} />
-            <Route path="/alerts" component={Alerts} />
-            <Route path="/scheduling" component={Scheduling} />
-            <Route path="/widgets" component={Widgets} />
-            <Route path="/deployment" component={Deployment} />
-            <Route path="/settings" component={Settings} />
-            <Route path="/analytics" component={Analytics} />
-            <Route component={NotFound} />
-          </Switch>
-        </AdminLayout>
-      ) : (
-        /* Si no está autenticado, muestra solo el landing */
-        <Switch>
-          <Route path="/" component={Landing} />
-          <Route path="/:rest*">
             <Redirect to="/" />
           </Route>
         </Switch>
@@ -183,6 +138,8 @@ const AppContent = () => {
     </Switch>
   );
 };
+
+
 
 function App() {
   return (
