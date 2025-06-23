@@ -183,14 +183,14 @@ export default function EditModal({ open, onClose, content }: EditModalProps) {
             <div>
               <Label htmlFor="edit-category">Categoría</Label>
               <Select 
-                value={formData.category} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                value={formData.category || "none"} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, category: value === "none" ? "" : value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">Seleccionar categoría</SelectItem>
+                    <SelectItem value="none">Sin categoría</SelectItem>
                     {categories.map((cat) => (
                       <SelectItem key={cat} value={cat}>
                         {cat}
