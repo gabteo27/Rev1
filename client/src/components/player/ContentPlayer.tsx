@@ -1,608 +1,868 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { WebSocketManager } from "@/lib/websocket";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { wsManager } from "@/lib/websocket";
 import { AlertOverlay } from "@/components/player/AlertOverlay";
 import { apiRequest } from "@/lib/queryClient";
 
-// Memoized components for better performance
-const MemoizedImage = memo(({ src, alt, className }: { src: string; alt: string; className: string }) => (
-  <img 
-    src={src} 
-    alt={alt} 
-    className={className}
-    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-    loading="lazy"
-    onError={(e) => {
-      console.error('Image failed to load:', src);
-      e.currentTarget.style.display = 'none';
-    }}
-  />
-));
-MemoizedImage.displayName = "MemoizedImage";
-
-const MemoizedVideo = memo(({ src, className }: { src: string; className: string }) => (
-  <video
-    className={className}
-    autoPlay
-    muted
-    loop
-    playsInline
-    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-    onError={(e) => {
-      console.error('Video failed to load:', src);
-    }}
-  >
-    <source src={src} type="video/mp4" />
-    <source src={src} type="video/webm" />
-    <source src={src} type="video/ogg" />
-  </video>
-));
-MemoizedVideo.displayName = "MemoizedVideo";
-
-const MemoizedWebPage = memo(({ url, className }: { url: string; className: string }) => (
-  <iframe
-    src={url}
-    className={className}
-    style={{ width: '100%', height: '100%', border: 'none' }}
-    title="Contenido Web"
-    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-    onError={() => {
-      console.error('Webpage failed to load:', url);
-    }}
-  />
-));
-MemoizedWebPage.displayName = "MemoizedWebPage";
-
-// Helper function to detect content type from URL
-const detectContentType = (url: string, explicitType?: string): string => {
-  if (explicitType) {
-    return explicitType.toLowerCase().trim();
-  }
-
-  if (!url) return 'unknown';
-
-  const urlLower = url.toLowerCase();
-  
-  // Image extensions
-  if (urlLower.match(/\.(jpg|jpeg|png|gif|bmp|webp|svg)(\?.*)?$/)) {
-    return 'image';
-  }
-  
-  // Video extensions
-  if (urlLower.match(/\.(mp4|webm|ogg|avi|mov|wmv|flv|m4v)(\?.*)?$/)) {
-    return 'video';
-  }
-  
-  // PDF extension
-  if (urlLower.match(/\.pdf(\?.*)?$/)) {
-    return 'pdf';
-  }
-  
-  // Web URLs
-  if (urlLower.startsWith('http://') || urlLower.startsWith('https://')) {
-    return 'webpage';
-  }
-  
-  return 'unknown';
+// Estilos para el reproductor
+const styles = {
+  container: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: '#000', color: 'white', overflow: 'hidden' } as React.CSSProperties,
+  media: { width: '100%', height: '100%', objectFit: 'contain' } as React.CSSProperties,
+  zone: { position: 'relative', width: '100%', height: '100%', overflow: 'hidden' } as React.CSSProperties,
 };
 
-// Optimized content item component
-const ContentItem = memo(({ 
-  content, 
-  isVisible, 
-  onLoadComplete 
-}: { 
-  content: any; 
-  isVisible: boolean; 
-  onLoadComplete: () => void;
-}) => {
-  const itemRef = useRef<HTMLDivElement>(null);
+// Función para obtener el estilo de media con objectFit personalizado
+const getMediaStyle = (objectFit: string = 'contain') => ({
+  width: '100%',
+  height: '100%',
+  objectFit: objectFit as any
+} as React.CSSProperties);
 
-  const contentElement = useMemo(() => {
-    const baseClassName = `absolute inset-0 transition-opacity duration-1000 ${
-      isVisible ? 'opacity-100' : 'opacity-0'
-    }`;
+// Componentes para renderizar cada tipo de contenido
+const ImagePlayer = ({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => 
+  <img src={src} style={getMediaStyle(objectFit)} alt="" />;
 
-    // Basic validation - just check if we have some content data
-    if (!content) {
-      console.warn('No content provided');
-      return (
-        <div className={`${baseClassName} flex items-center justify-center bg-gray-800 text-white`}>
-          <p className="text-2xl">Sin contenido</p>
+const VideoPlayer = ({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => 
+  <video src={src} style={getMediaStyle(objectFit)} autoPlay muted loop playsInline />;
+
+const WebpagePlayer = ({ src }: { src: string }) => {
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  if (error) {
+    return (
+      <div style={{ 
+        ...styles.media, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: '18px',
+        backgroundColor: '#1a1a1a'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>🌐</div>
+          <div>Error cargando página web</div>
+          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{src}</div>
         </div>
-      );
-    }
-
-    // Get URL - support multiple possible URL fields
-    const contentUrl = content.url || content.src || content.path || content.filePath;
-    if (!contentUrl) {
-      console.warn('No URL found in content:', content);
-      return (
-        <div className={`${baseClassName} flex items-center justify-center bg-gray-800 text-white`}>
-          <div className="text-center">
-            <p className="text-2xl mb-2">⚠️</p>
-            <p className="text-xl mb-2">URL no encontrada</p>
-            <p className="text-sm opacity-70">Contenido: {JSON.stringify(content)}</p>
-          </div>
-        </div>
-      );
-    }
-
-    // Detect content type
-    const contentType = detectContentType(contentUrl, content.type || content.contentType);
-    
-    console.log('Rendering content:', {
-      type: contentType,
-      url: contentUrl,
-      title: content.title || content.name,
-      originalContent: content
-    });
-
-    switch (contentType) {
-      case 'image':
-      case 'imagen':
-        return (
-          <MemoizedImage
-            src={contentUrl}
-            alt={content.title || content.name || 'Imagen'}
-            className={baseClassName}
-          />
-        );
-      case 'video':
-        return (
-          <MemoizedVideo
-            src={contentUrl}
-            className={baseClassName}
-          />
-        );
-      case 'webpage':
-      case 'web':
-      case 'website':
-        return (
-          <MemoizedWebPage
-            url={contentUrl}
-            className={baseClassName}
-          />
-        );
-      case 'pdf':
-      case 'document':
-        return (
-          <iframe
-            src={`${contentUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-            className={baseClassName}
-            style={{ width: '100%', height: '100%', border: 'none' }}
-            title={content.title || content.name || 'Documento PDF'}
-            onError={() => {
-              console.error('PDF failed to load:', contentUrl);
-            }}
-          />
-        );
-      case 'unknown':
-      default:
-        // Try to render as image first, then fallback
-        return (
-          <div className={baseClassName}>
-            <img 
-              src={contentUrl}
-              alt={content.title || content.name || 'Contenido'}
-              style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-              onError={(e) => {
-                console.warn('Failed to load as image, showing fallback for:', contentUrl);
-                const target = e.target as HTMLImageElement;
-                const parent = target.parentElement;
-                if (parent) {
-                  parent.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #1a1a1a; color: white;">
-                      <div style="text-align: center;">
-                        <div style="font-size: 24px; margin-bottom: 10px;">📄</div>
-                        <div style="font-size: 18px; margin-bottom: 10px;">Contenido no soportado</div>
-                        <div style="font-size: 12px; opacity: 0.7;">Tipo: ${contentType}</div>
-                        <div style="font-size: 10px; opacity: 0.5; margin-top: 5px; max-width: 300px; word-break: break-all;">${contentUrl}</div>
-                      </div>
-                    </div>
-                  `;
-                }
-              }}
-              onLoad={() => {
-                console.log('Content loaded successfully as image:', contentUrl);
-              }}
-            />
-          </div>
-        );
-    }
-  }, [content, isVisible]);
-
-  useEffect(() => {
-    if (isVisible) {
-      const timer = setTimeout(onLoadComplete, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isVisible, onLoadComplete]);
+      </div>
+    );
+  }
 
   return (
-    <div ref={itemRef} className="absolute inset-0">
-      {contentElement}
+    <div style={{ ...styles.media, position: 'relative' }}>
+      {loading && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#1a1a1a',
+          color: 'white',
+          zIndex: 1
+        }}>
+          <div>Cargando página web...</div>
+        </div>
+      )}
+      <iframe 
+        src={src} 
+        style={{ ...styles.media, border: 'none' }} 
+        title="web-content"
+        onLoad={() => setLoading(false)}
+        onError={() => {
+          setError(true);
+          setLoading(false);
+        }}
+      />
     </div>
   );
-});
-ContentItem.displayName = "ContentItem";
+};
 
-// Optimized widget components
-const ClockWidget = memo(() => {
-  const [time, setTime] = useState(new Date());
+const PDFPlayer = ({ src }: { src: string }) => {
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const pdfViewerUrl = src.startsWith('http') 
+    ? `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
+    : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + src)}&embedded=true`;
+
+  if (error) {
+    return (
+      <div style={{ 
+        ...styles.media, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: '18px',
+        backgroundColor: '#1a1a1a'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📄</div>
+          <div>Error cargando PDF</div>
+          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{src}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg">
-      <div className="text-2xl font-bold">
-        {time.toLocaleTimeString('es-ES', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: false 
-        })}
-      </div>
-      <div className="text-sm opacity-80">
-        {time.toLocaleDateString('es-ES', { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        })}
-      </div>
-    </div>
+    <iframe
+      src={pdfViewerUrl}
+      style={{ 
+        ...styles.media, 
+        border: 'none',
+        background: '#f5f5f5'
+      }}
+      title="PDF document"
+      loading="eager"
+      sandbox="allow-scripts allow-same-origin"
+      onError={() => setError(true)}
+    />
   );
-});
-ClockWidget.displayName = "ClockWidget";
+};
 
-const WeatherWidget = memo(() => (
-  <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg">
-    <div className="flex items-center space-x-2">
-      <span className="text-lg">☀️</span>
-      <div>
-        <div className="font-bold">25°C</div>
-        <div className="text-sm opacity-80">Soleado</div>
-      </div>
-    </div>
-  </div>
-));
-WeatherWidget.displayName = "WeatherWidget";
+// YouTube Player Component
+const YouTubePlayer = ({ url }: { url: string }) => {
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-// Main component with optimizations
-const ContentPlayer = memo(({ 
-  playlistId, 
-  isPreview = false 
-}: { 
-  playlistId?: number; 
-  isPreview?: boolean;
-}) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const wsManager = useMemo(() => new WebSocketManager(), []);
+  const getYouTubeID = (url: string) => {
+    if (!url || typeof url !== 'string') {
+      return null;
+    }
 
-  // Query configuration with conditional fetching
-  const queryOptions = useMemo(() => ({
-    queryKey: [isPreview ? "/api/playlists" : "/api/player/playlists", playlistId],
-    queryFn: async () => {
-      if (!playlistId) return null;
+    const cleanUrl = url.trim();
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+      /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/
+    ];
 
+    for (const pattern of patterns) {
       try {
-        let endpoint;
-        let headers: Record<string, string> = {};
-
-        if (isPreview) {
-          endpoint = `/api/playlists/${playlistId}`;
-          const response = await apiRequest(endpoint);
-          if (!response.ok) {
-            if (response.status === 404) {
-              console.warn(`Playlist ${playlistId} not found`);
-              return null;
-            }
-            throw new Error(`Failed to fetch playlist: ${response.status}`);
-          }
-          return response.json();
-        } else {
-          endpoint = `/api/player/playlists/${playlistId}`;
-          const authToken = localStorage.getItem('authToken');
-          if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
-          }
-
-          const response = await fetch(endpoint, { headers });
-
-          if (!response.ok) {
-            if (response.status === 404) {
-              console.warn(`Playlist ${playlistId} not found`);
-              return null;
-            }
-            throw new Error(`Failed to fetch playlist: ${response.status}`);
-          }
-
-          const data = await response.json();
-          console.log('Playlist data loaded:', data);
-          return data;
+        const match = cleanUrl.match(pattern);
+        if (match && match[1] && match[1].length === 11) {
+          return match[1];
         }
-      } catch (error) {
-        console.error('Error loading playlist:', error);
-        throw error;
+      } catch (e) {
+        console.error('Error matching YouTube URL pattern:', e);
+        continue;
+      }
+    }
+    return null;
+  };
+
+  const videoId = getYouTubeID(url);
+
+  if (!videoId || error) {
+    return (
+      <div style={{ 
+        ...styles.media, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: '18px',
+        backgroundColor: '#1a1a1a'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📺</div>
+          <div>{error ? 'Error cargando video de YouTube' : 'URL de YouTube no válida'}</div>
+          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>
+            {url?.substring(0, 50)}{url?.length > 50 ? '...' : ''}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?` + [
+    'autoplay=1',
+    'mute=1',
+    'loop=1',
+    `playlist=${videoId}`,
+    'controls=0',
+    'showinfo=0',
+    'iv_load_policy=3',
+    'modestbranding=1',
+    'rel=0',
+    'fs=0',
+    'disablekb=1',
+    'cc_load_policy=0',
+    'playsinline=1',
+    'enablejsapi=1'
+  ].join('&');
+
+  return (
+    <div style={{ ...styles.media, position: 'relative' }}>
+      {loading && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#1a1a1a',
+          color: 'white',
+          zIndex: 1
+        }}>
+          <div>Cargando video de YouTube...</div>
+        </div>
+      )}
+      <iframe
+        key={`youtube-${videoId}-${Date.now()}`}
+        src={embedUrl}
+        style={{ 
+          ...styles.media, 
+          border: 'none',
+          background: '#000'
+        }}
+        title={`YouTube video player - ${videoId}`}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen={false}
+        loading="eager"
+        onLoad={() => setLoading(false)}
+        onError={() => {
+          setError(true);
+          setLoading(false);
+        }}
+      />
+    </div>
+  );
+};
+
+interface ZoneTracker {
+  currentIndex: number;
+  items: any[];
+}
+
+export default function ContentPlayer({ playlistId, isPreview = false }: { playlistId?: number, isPreview?: boolean }) {
+  const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
+  const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
+  const queryClient = useQueryClient();
+
+  const { data: playlist, isLoading } = useQuery<any & { items: any[] }>({
+    queryKey: isPreview ? ['/api/playlists', playlistId] : ['/api/player/playlists', playlistId],
+    queryFn: async () => {
+      const endpoint = isPreview ? `/api/playlists/${playlistId}` : `/api/player/playlists/${playlistId}`;
+      console.log(`🎵 Fetching playlist data from: ${endpoint}`);
+
+      if (isPreview) {
+        const response = await apiRequest(endpoint);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch playlist: ${response.status}`);
+        }
+        return response.json();
+      } else {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch playlist: ${response.status}`);
+        }
+        return response.json();
       }
     },
     enabled: !!playlistId,
-    retry: 1,
-    staleTime: isPreview ? 60000 : 300000, // 1 min for preview, 5 min for player
-    refetchInterval: isPreview ? false : 30000, // Only auto-refresh in production
-  }), [playlistId, isPreview]);
+    refetchInterval: isPreview ? 30000 : false,
+    staleTime: isPreview ? 30000 : Infinity,
+    gcTime: 300000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
-  const { data: playlistData, isLoading, error, refetch } = useQuery(queryOptions);
-
-  const contentItems = useMemo(() => {
-    const items = playlistData?.items || [];
-    console.log('Content items loaded:', items);
-    return items;
-  }, [playlistData?.items]);
-
-  // Memoized callbacks
-  const goToNext = useCallback(() => {
-    if (contentItems.length <= 1 || !isPlaying) return;
-
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrentIndex(prev => (prev + 1) % contentItems.length);
-      setIsTransitioning(false);
-    }, 500);
-  }, [contentItems.length, isPlaying]);
-
-  const resetInterval = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    if (contentItems.length > 1 && isPlaying) {
-      const currentItem = contentItems[currentIndex];
-      const duration = (currentItem?.duration || 10) * 1000;
-
-      intervalRef.current = setInterval(goToNext, duration);
-    }
-  }, [contentItems, currentIndex, goToNext, isPlaying]);
-
-  // Real-time update system using WebSocket
+  // Inicializa o actualiza los trackers cuando la playlist cambia
   useEffect(() => {
-    if (isPreview) return;
+    if (playlist?.items && Array.isArray(playlist.items)) {
+      console.log('Playlist changed, updating trackers:', playlist.items);
 
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) return;
+      const zones: Record<string, any[]> = {};
+      const layout = playlist.layout || 'single_zone';
 
-    const setupWebSocket = async () => {
-      try {
-        await wsManager.connect();
+      switch (layout) {
+        case 'split_vertical':
+          zones['left'] = [];
+          zones['right'] = [];
+          break;
+        case 'split_horizontal':
+          zones['top'] = [];
+          zones['bottom'] = [];
+          break;
+        case 'pip_bottom_right':
+          zones['main'] = [];
+          zones['pip'] = [];
+          break;
+        case 'grid_2x2':
+          zones['top_left'] = [];
+          zones['top_right'] = [];
+          zones['bottom_left'] = [];
+          zones['bottom_right'] = [];
+          break;
+        case 'grid_3x3':
+          zones['grid_1'] = [];
+          zones['grid_2'] = [];
+          zones['grid_3'] = [];
+          zones['grid_4'] = [];
+          zones['grid_5'] = [];
+          zones['grid_6'] = [];
+          zones['grid_7'] = [];
+          zones['grid_8'] = [];
+          zones['grid_9'] = [];
+          break;
+        case 'sidebar_left':
+          zones['sidebar'] = [];
+          zones['main'] = [];
+          break;
+        case 'sidebar_right':
+          zones['main'] = [];
+          zones['sidebar'] = [];
+          break;
+        case 'header_footer':
+          zones['header'] = [];
+          zones['main'] = [];
+          zones['footer'] = [];
+          break;
+        case 'triple_vertical':
+          zones['left'] = [];
+          zones['center'] = [];
+          zones['right'] = [];
+          break;
+        case 'triple_horizontal':
+          zones['top'] = [];
+          zones['middle'] = [];
+          zones['bottom'] = [];
+          break;
+        case 'custom_layout':
+          if (playlist.customLayoutConfig) {
+            try {
+              const customConfig = JSON.parse(playlist.customLayoutConfig);
+              if (customConfig.zones) {
+                customConfig.zones.forEach((zone: any) => {
+                  zones[zone.id] = [];
+                });
+              }
+            } catch (e) {
+              console.error('Error parsing custom layout config:', e);
+              zones['main'] = [];
+            }
+          } else {
+            zones['main'] = [];
+          }
+          break;
+        case 'single_zone':
+        default:
+          zones['main'] = [];
+          break;
+      }
 
-        // Authenticate with the server
-        wsManager.send({
-          type: 'player-auth',
-          token: authToken
-        });
-
-        // Identify as screen
-        const screenId = localStorage.getItem('screenId');
-        if (screenId) {
-          wsManager.send({
-            type: 'screen-identify',
-            screenId: parseInt(screenId)
-          });
+      for (const item of playlist.items) {
+        const zone = item.zone || 'main';
+        if (!zones[zone]) {
+          zones[zone] = [];
         }
-      } catch (error) {
-        console.error('WebSocket connection failed:', error);
+        zones[zone].push(item);
       }
-    };
 
-    setupWebSocket();
-
-    // Handle WebSocket messages
-    const handlePlaylistChange = (data: any) => {
-      const newPlaylistId = data.playlistId;
-      const targetScreenId = data.screenId;
-      const currentScreenId = localStorage.getItem('screenId');
-
-      console.log(`🔄 Playlist change: ${playlistId} → ${newPlaylistId}, screenId: ${targetScreenId}`);
-
-      if (targetScreenId && targetScreenId.toString() === currentScreenId && newPlaylistId !== playlistId) {
-        console.log(`🎵 Playlist changed - RELOADING`);
-        window.location.reload();
+      for(const zone in zones) {
+        zones[zone].sort((a,b) => (a.order || 0) - (b.order || 0));
       }
-    };
 
-    const handlePlaylistUpdate = (data: any) => {
-      if (data.playlistId === playlistId) {
-        console.log('🔄 Playlist content updated, refreshing...');
-        refetch();
+      const newTrackers: Record<string, ZoneTracker> = {};
+      for (const zoneId in zones) {
+        newTrackers[zoneId] = {
+          currentIndex: 0,
+          items: zones[zoneId],
+        };
       }
-    };
 
-    const handleContentDelete = (data: any) => {
-      const targetScreenId = data.screenId;
-      const currentScreenId = localStorage.getItem('screenId');
-      const deletedPlaylistId = data.playlistId;
+      setZoneTrackers(newTrackers);
+    } else {
+      setZoneTrackers({});
+    }
+  }, [playlist?.id, playlist?.items, playlist?.layout]);
 
-      if (targetScreenId === currentScreenId && deletedPlaylistId === playlistId) {
-        console.log('🗑️ Content deleted from current playlist, refreshing...');
-        refetch();
-        setCurrentIndex(0);
-      }
-    };
-
-    const handleScreenUpdate = (data: any) => {
-      const targetScreenId = data.screenId;
-      const currentScreenId = localStorage.getItem('screenId');
-
-      if (targetScreenId === currentScreenId) {
-        console.log('🔄 Screen updated - reloading...');
-        setTimeout(() => window.location.reload(), 500);
-      }
-    };
-
-    // Subscribe to events
-    wsManager.on('playlist-change', handlePlaylistChange);
-    wsManager.on('playlist-content-updated', handlePlaylistUpdate);
-    wsManager.on('content-deleted-from-playlist', handleContentDelete);
-    wsManager.on('screen-playlist-updated', handleScreenUpdate);
-
-    // Heartbeat system
-    const heartbeat = () => {
-      if (wsManager.isConnected()) {
-        wsManager.send({
-          type: 'player-heartbeat',
-          timestamp: new Date().toISOString(),
-          screenId: localStorage.getItem('screenId')
-        });
-      }
-    };
-
-    const heartbeatInterval = setInterval(heartbeat, 30000);
-
-    // Connection check
-    const connectionCheck = setInterval(() => {
-      if (!wsManager.isConnected()) {
-        console.log('🔄 Reconnecting WebSocket...');
-        setupWebSocket();
-      }
-    }, 10000);
-
-    return () => {
-      clearInterval(heartbeatInterval);
-      clearInterval(connectionCheck);
-      wsManager.off('playlist-change', handlePlaylistChange);
-      wsManager.off('playlist-content-updated', handlePlaylistUpdate);
-      wsManager.off('content-deleted-from-playlist', handleContentDelete);
-      wsManager.off('screen-playlist-updated', handleScreenUpdate);
-    };
-  }, [playlistId, refetch, isPreview]);
-
-  // Content rotation logic
+  // Lógica de temporizadores para cada zona
   useEffect(() => {
-    resetInterval();
+    const timers: NodeJS.Timeout[] = [];
+
+    for (const zoneId in zoneTrackers) {
+      const tracker = zoneTrackers[zoneId];
+      if (tracker.items.length > 0) {
+        const currentItem = tracker.items[tracker.currentIndex];
+        const duration = (currentItem.customDuration || currentItem.contentItem?.duration || 10) * 1000;
+
+        const timer = setTimeout(() => {
+          setZoneTrackers(prev => ({
+            ...prev,
+            [zoneId]: {
+              ...prev[zoneId],
+              currentIndex: (prev[zoneId].currentIndex + 1) % prev[zoneId].items.length,
+            },
+          }));
+        }, duration);
+
+        timers.push(timer);
+      }
+    }
+
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      timers.forEach(clearTimeout);
+    };
+  }, [zoneTrackers]);
+
+  // Función para renderizar el contenido de un item
+  const renderContentItem = (item: any, zoneId?: string) => {
+    if (!item?.contentItem) {
+      return (
+        <div style={{ 
+          ...styles.media, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          color: 'rgba(255,255,255,0.5)',
+          backgroundColor: '#1a1a1a'
+        }}>
+          Sin contenido disponible
+        </div>
+      );
+    }
+
+    const { type, url, title } = item.contentItem;
+
+    if (!url) {
+      console.warn('No URL found in contentItem:', item.contentItem);
+      return (
+        <div style={{ 
+          ...styles.media, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          color: 'rgba(255,255,255,0.5)',
+          backgroundColor: '#1a1a1a'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚠️</div>
+            <div>URL no encontrada</div>
+            <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
+              {title || 'Sin título'}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Obtener configuración de objectFit para la zona
+    let zoneSettings: any = {};
+    try {
+      if (playlist?.zoneSettings && typeof playlist.zoneSettings === 'string') {
+        zoneSettings = JSON.parse(playlist.zoneSettings);
+      } else if (playlist?.zoneSettings && typeof playlist.zoneSettings === 'object') {
+        zoneSettings = playlist.zoneSettings;
+      }
+    } catch (e) {
+      console.warn('Error parsing zone settings:', e);
+      zoneSettings = {};
+    }
+
+    const currentZoneId = zoneId || 'main';
+    const objectFit = zoneSettings[currentZoneId]?.objectFit || 'contain';
+
+    const isYouTubeURL = (url: string) => {
+      if (!url || typeof url !== 'string') {
+        return false;
+      }
+
+      try {
+        const cleanUrl = url.trim().toLowerCase();
+        return cleanUrl.includes('youtube.com/watch') || 
+               cleanUrl.includes('youtu.be/') || 
+               cleanUrl.includes('youtube.com/embed/') ||
+               cleanUrl.includes('youtube.com/v/');
+      } catch (e) {
+        console.error('Error validating YouTube URL:', e);
+        return false;
       }
     };
-  }, [resetInterval]);
 
-  // Alert cleanup
-  const removeAlert = useCallback((alertId: string) => {
-    setAlerts(prev => prev.filter(alert => alert.id !== alertId));
-  }, []);
+    if (isYouTubeURL(url)) {
+      return <YouTubePlayer url={url} />;
+    }
 
-  // Render loading state
-  if (isLoading) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-black text-white">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-xl">Cargando contenido...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Render error state
-  if (error) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-red-500 text-white">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Error al cargar contenido</h2>
-          <p className="text-lg">Por favor, verifica la configuración de la playlist.</p>
-          <p className="text-sm mt-2 opacity-75">Error: {error.message}</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Render empty playlist
-  if (!contentItems || contentItems.length === 0) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-black text-white">
-        <div className="text-center">
-          <div className="text-6xl mb-4">📺</div>
-          <h2 className="text-3xl font-bold mb-4">Playlist Vacía</h2>
-          <p className="text-xl mb-2">No hay contenido configurado para mostrar.</p>
-          <p className="text-sm opacity-70">Playlist ID: {playlistId}</p>
-          {isPreview && (
-            <p className="text-sm mt-4 opacity-70">
-              Agrega contenido a tu playlist desde el panel de administración.
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const currentItem = contentItems[currentIndex];
-
-  return (
-    <div className="relative w-full h-full bg-black overflow-hidden">
-      {/* Content Area */}
-      <div className="relative w-full h-full">
-        {contentItems.map((item, index) => (
-          <ContentItem
-            key={`${item.id || index}-${index}`}
-            content={item}
-            isVisible={index === currentIndex && !isTransitioning}
-            onLoadComplete={() => {}}
-          />
-        ))}
-      </div>
-
-      {/* Widgets - Only show in preview mode */}
-      {isPreview && (
-        <>
-          <ClockWidget />
-          <WeatherWidget />
-        </>
-      )}
-
-      {/* Content Info Overlay */}
-      {currentItem && (
-        <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded-lg">
-          <div className="text-sm font-medium">{currentItem.title || currentItem.name || 'Sin título'}</div>
-          {contentItems.length > 1 && (
-            <div className="text-xs opacity-70">
-              {currentIndex + 1} de {contentItems.length}
+    switch (type) {
+      case 'image': 
+        return <ImagePlayer src={url} objectFit={objectFit} />;
+      case 'video': 
+        return <VideoPlayer src={url} objectFit={objectFit} />;
+      case 'pdf':
+        return <PDFPlayer src={url} />;
+      case 'webpage': 
+        return <WebpagePlayer src={url} />;
+      default: 
+        return (
+          <div style={{ 
+            ...styles.media, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            color: 'rgba(255,255,255,0.5)',
+            backgroundColor: '#1a1a1a'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', marginBottom: '10px' }}>❓</div>
+              <div>Tipo de contenido no soportado: {type}</div>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        );
+    }
+  };
 
-      {/* Progress Bar */}
-      {contentItems.length > 1 && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
-          <div 
-            className="h-full bg-blue-500 transition-all duration-1000 ease-linear"
-            style={{ 
-              width: `${((currentIndex + 1) / contentItems.length) * 100}%` 
-            }}
-          />
+  // Función para renderizar una zona específica
+  const renderZone = (zoneId: string) => {
+    const tracker = zoneTrackers[zoneId];
+    if (!tracker || tracker.items.length === 0) {
+      return (
+        <div style={{ 
+          ...styles.zone, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          color: 'rgba(255,255,255,0.5)',
+          backgroundColor: '#1a1a1a'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '16px', marginBottom: '5px' }}>{zoneId}</div>
+            <div style={{ fontSize: '12px', opacity: 0.7 }}>Sin contenido</div>
+          </div>
         </div>
-      )}
+      );
+    }
+    const currentItem = tracker.items[tracker.currentIndex];
+    return renderContentItem(currentItem, zoneId);
+  };
 
-      {/* Alert Overlays */}
-      {alerts.map(alert => (
-        <AlertOverlay
-          key={alert.id}
-          alert={alert}
-          onClose={() => removeAlert(alert.id)}
-        />
-      ))}
+  // Si no hay playlistId, mostrar mensaje de espera
+  if (!playlistId) {
+    return (
+      <div style={styles.container}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', marginBottom: '15px' }}>⏳ Esperando configuración</div>
+            <div style={{ fontSize: '16px', opacity: 0.8, maxWidth: '600px', lineHeight: '1.5' }}>
+              Esta pantalla está emparejada pero no tiene una playlist asignada.
+              <br />
+              Asigna una playlist desde el panel de administración para comenzar la reproducción.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) return (
+    <div style={styles.container}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '20px', marginBottom: '10px' }}>Cargando Playlist...</div>
+          <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {playlistId}</div>
+        </div>
+      </div>
     </div>
   );
-});
 
-ContentPlayer.displayName = "ContentPlayer";
+  if (!playlist) return (
+    <div style={styles.container}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '20px', marginBottom: '10px' }}>Playlist no encontrada</div>
+          <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {playlistId}</div>
+        </div>
+      </div>
+    </div>
+  );
 
-export default ContentPlayer;
+  // Renderizado del Layout
+  const layout = playlist?.layout || 'single_zone';
+
+  switch (layout) {
+    case 'split_vertical':
+      return (
+        <div style={{ ...styles.container, display: 'flex' }}>
+          <div style={{ ...styles.zone, width: '50%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('left')}
+          </div>
+          <div style={{ ...styles.zone, width: '50%' }}>
+            {renderZone('right')}
+          </div>
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+
+    case 'split_horizontal':
+      return (
+        <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ ...styles.zone, height: '50%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('top')}
+          </div>
+          <div style={{ ...styles.zone, height: '50%' }}>
+            {renderZone('bottom')}
+          </div>
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+
+    case 'grid_2x2':
+      return (
+        <div style={{ ...styles.container, display: 'grid', gridTemplate: '1fr 1fr / 1fr 1fr', gap: '2px' }}>
+          <div style={{ ...styles.zone, backgroundColor: '#111' }}>
+            {renderZone('top_left')}
+          </div>
+          <div style={{ ...styles.zone, backgroundColor: '#111' }}>
+            {renderZone('top_right')}
+          </div>
+          <div style={{ ...styles.zone, backgroundColor: '#111' }}>
+            {renderZone('bottom_left')}
+          </div>
+          <div style={{ ...styles.zone, backgroundColor: '#111' }}>
+            {renderZone('bottom_right')}
+          </div>
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+
+    case 'grid_3x3':
+      return (
+        <div style={{ ...styles.container, display: 'grid', gridTemplate: '1fr 1fr 1fr / 1fr 1fr 1fr', gap: '2px' }}>
+          {Array.from({length: 9}, (_, i) => {
+            const zoneId = `grid_${i + 1}`;
+            return (
+              <div key={zoneId} style={{ ...styles.zone, backgroundColor: '#111' }}>
+                {renderZone(zoneId)}
+              </div>
+            );
+          })}
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+
+    case 'sidebar_left':
+      return (
+        <div style={{ ...styles.container, display: 'flex' }}>
+          <div style={{ ...styles.zone, width: '25%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('sidebar')}
+          </div>
+          <div style={{ ...styles.zone, width: '75%' }}>
+            {renderZone('main')}
+          </div>
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+
+    case 'sidebar_right':
+      return (
+        <div style={{ ...styles.container, display: 'flex' }}>
+          <div style={{ ...styles.zone, width: '75%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('main')}
+          </div>
+          <div style={{ ...styles.zone, width: '25%' }}>
+            {renderZone('sidebar')}
+          </div>
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+
+    case 'header_footer':
+      return (
+        <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ ...styles.zone, height: '15%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('header')}
+          </div>
+          <div style={{ ...styles.zone, height: '70%' }}>
+            {renderZone('main')}
+          </div>
+          <div style={{ ...styles.zone, height: '15%', borderTop: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('footer')}
+          </div>
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+
+    case 'triple_vertical':
+      return (
+        <div style={{ ...styles.container, display: 'flex' }}>
+          <div style={{ ...styles.zone, width: '33.33%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('left')}
+          </div>
+          <div style={{ ...styles.zone, width: '33.33%', borderRight: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('center')}
+          </div>
+          <div style={{ ...styles.zone, width: '33.33%' }}>
+            {renderZone('right')}
+          </div>
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+
+    case 'triple_horizontal':
+      return (
+        <div style={{ ...styles.container, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ ...styles.zone, height: '33.33%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('top')}
+          </div>
+          <div style={{ ...styles.zone, height: '33.33%', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
+            {renderZone('middle')}
+          </div>
+          <div style={{ ...styles.zone, height: '33.33%' }}>
+            {renderZone('bottom')}
+          </div>
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+
+    case 'pip_bottom_right':
+      return (
+        <div style={{...styles.container, position: 'relative' }}>
+          <div style={{...styles.zone}}>
+            {renderZone('main')}
+          </div>
+          <div style={{
+            position: 'absolute', 
+            bottom: '20px', 
+            right: '20px', 
+            width: '25%', 
+            height: '25%', 
+            border: '3px solid rgba(255,255,255,0.8)', 
+            borderRadius: '8px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            zIndex: 10
+          }}>
+            {renderZone('pip')}
+          </div>
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+
+    case 'custom_layout': {
+      let customZones: any[] = [];
+      let customConfig: any = {};
+
+      try {
+        if (typeof playlist.customLayoutConfig === 'string') {
+          customConfig = JSON.parse(playlist.customLayoutConfig);
+        } else if (typeof playlist.customLayoutConfig === 'object' && playlist.customLayoutConfig !== null) {
+          customConfig = playlist.customLayoutConfig;
+        }
+
+        customZones = customConfig.zones || [];
+        console.log('Custom layout zones:', customZones);
+      } catch (e) {
+        console.error('Error parsing custom layout config:', e, 'Config:', playlist.customLayoutConfig);
+        return (
+          <div style={styles.container}>
+            {renderZone('main')}
+            {activeAlerts.map((alert) => (
+              <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+            ))}
+          </div>
+        );
+      }
+
+      if (customZones.length === 0) {
+        const mainZoneItems = zoneTrackers['main']?.items || [];
+        return (
+          <div style={styles.container}>
+            {mainZoneItems.length > 0 ? renderZone('main') : (
+              <div style={{ ...styles.zone, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚙️</div>
+                  <div>Layout personalizado sin zonas configuradas</div>
+                </div>
+              </div>
+            )}
+            {activeAlerts.map((alert) => (
+              <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+            ))}
+          </div>
+        );
+      }
+
+      return (
+        <div style={{ 
+          ...styles.container, 
+          position: 'relative',
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden'
+        }}>
+          {customZones.map((zone: any) => (
+            <div
+              key={zone.id}
+              style={{
+                position: 'absolute',
+                left: `${zone.x}%`,
+                top: `${zone.y}%`,
+                width: `${zone.width}%`,
+                height: `${zone.height}%`,
+                border: isPreview ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                zIndex: 1
+              }}
+            >
+              {renderZone(zone.id)}
+            </div>
+          ))}
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+    }
+
+    case 'single_zone':
+    default:
+      return (
+        <div style={styles.container}>
+          {renderZone('main')}
+          {activeAlerts.map((alert) => (
+            <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
+          ))}
+        </div>
+      );
+  }
+}
