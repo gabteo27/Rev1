@@ -45,7 +45,13 @@ export default function Screens() {
 
   const { data: screens = [], isLoading, error } = useQuery({
     queryKey: ["/api/screens"],
-    queryFn: () => apiRequest("/api/screens").then(res => res.json()),
+    queryFn: async () => {
+      const response = await apiRequest("/api/screens");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch screens: ${response.status}`);
+      }
+      return response.json();
+    },
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
     retry: 1,
@@ -53,7 +59,13 @@ export default function Screens() {
 
   const { data: playlists = [] } = useQuery({
     queryKey: ["/api/playlists"],
-    queryFn: () => apiRequest("/api/playlists").then(res => res.json()),
+    queryFn: async () => {
+      const response = await apiRequest("/api/playlists");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch playlists: ${response.status}`);
+      }
+      return response.json();
+    },
     staleTime: 60000,
     refetchOnWindowFocus: false,
     retry: 1,

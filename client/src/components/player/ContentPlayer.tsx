@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { WebSocketManager } from "@/lib/websocket";
@@ -12,6 +13,10 @@ const MemoizedImage = memo(({ src, alt, className }: { src: string; alt: string;
     className={className}
     style={{ objectFit: 'cover', width: '100%', height: '100%' }}
     loading="lazy"
+    onError={(e) => {
+      console.error('Image failed to load:', src);
+      e.currentTarget.style.display = 'none';
+    }}
   />
 ));
 MemoizedImage.displayName = "MemoizedImage";
@@ -24,8 +29,13 @@ const MemoizedVideo = memo(({ src, className }: { src: string; className: string
     loop
     playsInline
     style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+    onError={(e) => {
+      console.error('Video failed to load:', src);
+    }}
   >
     <source src={src} type="video/mp4" />
+    <source src={src} type="video/webm" />
+    <source src={src} type="video/ogg" />
   </video>
 ));
 MemoizedVideo.displayName = "MemoizedVideo";
@@ -37,9 +47,45 @@ const MemoizedWebPage = memo(({ url, className }: { url: string; className: stri
     style={{ width: '100%', height: '100%', border: 'none' }}
     title="Contenido Web"
     sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+    onError={() => {
+      console.error('Webpage failed to load:', url);
+    }}
   />
 ));
 MemoizedWebPage.displayName = "MemoizedWebPage";
+
+// Helper function to detect content type from URL
+const detectContentType = (url: string, explicitType?: string): string => {
+  if (explicitType) {
+    return explicitType.toLowerCase().trim();
+  }
+
+  if (!url) return 'unknown';
+
+  const urlLower = url.toLowerCase();
+  
+  // Image extensions
+  if (urlLower.match(/\.(jpg|jpeg|png|gif|bmp|webp|svg)(\?.*)?$/)) {
+    return 'image';
+  }
+  
+  // Video extensions
+  if (urlLower.match(/\.(mp4|webm|ogg|avi|mov|wmv|flv|m4v)(\?.*)?$/)) {
+    return 'video';
+  }
+  
+  // PDF extension
+  if (urlLower.match(/\.pdf(\?.*)?$/)) {
+    return 'pdf';
+  }
+  
+  // Web URLs
+  if (urlLower.startsWith('http://') || urlLower.startsWith('https://')) {
+    return 'webpage';
+  }
+  
+  return 'unknown';
+};
 
 // Optimized content item component
 const ContentItem = memo(({ 
@@ -58,35 +104,55 @@ const ContentItem = memo(({
       isVisible ? 'opacity-100' : 'opacity-0'
     }`;
 
-    // Validate content object
-    if (!content || !content.url || !content.type) {
-      console.warn('Invalid content object:', content);
+    // Basic validation - just check if we have some content data
+    if (!content) {
+      console.warn('No content provided');
       return (
         <div className={`${baseClassName} flex items-center justify-center bg-gray-800 text-white`}>
-          <p className="text-2xl">Contenido no válido</p>
+          <p className="text-2xl">Sin contenido</p>
         </div>
       );
     }
 
-    // Log content type for debugging
-    console.log('Rendering content type:', content.type, 'URL:', content.url);
+    // Get URL - support multiple possible URL fields
+    const contentUrl = content.url || content.src || content.path || content.filePath;
+    if (!contentUrl) {
+      console.warn('No URL found in content:', content);
+      return (
+        <div className={`${baseClassName} flex items-center justify-center bg-gray-800 text-white`}>
+          <div className="text-center">
+            <p className="text-2xl mb-2">⚠️</p>
+            <p className="text-xl mb-2">URL no encontrada</p>
+            <p className="text-sm opacity-70">Contenido: {JSON.stringify(content)}</p>
+          </div>
+        </div>
+      );
+    }
 
-    const contentType = content.type.toLowerCase().trim();
+    // Detect content type
+    const contentType = detectContentType(contentUrl, content.type || content.contentType);
+    
+    console.log('Rendering content:', {
+      type: contentType,
+      url: contentUrl,
+      title: content.title || content.name,
+      originalContent: content
+    });
 
     switch (contentType) {
       case 'image':
       case 'imagen':
         return (
           <MemoizedImage
-            src={content.url}
-            alt={content.title || 'Imagen'}
+            src={contentUrl}
+            alt={content.title || content.name || 'Imagen'}
             className={baseClassName}
           />
         );
       case 'video':
         return (
           <MemoizedVideo
-            src={content.url}
+            src={contentUrl}
             className={baseClassName}
           />
         );
@@ -95,7 +161,7 @@ const ContentItem = memo(({
       case 'website':
         return (
           <MemoizedWebPage
-            url={content.url}
+            url={contentUrl}
             className={baseClassName}
           />
         );
@@ -103,21 +169,45 @@ const ContentItem = memo(({
       case 'document':
         return (
           <iframe
-            src={`${content.url}#toolbar=0&navpanes=0&scrollbar=0`}
+            src={`${contentUrl}#toolbar=0&navpanes=0&scrollbar=0`}
             className={baseClassName}
             style={{ width: '100%', height: '100%', border: 'none' }}
-            title={content.title || 'Documento PDF'}
+            title={content.title || content.name || 'Documento PDF'}
+            onError={() => {
+              console.error('PDF failed to load:', contentUrl);
+            }}
           />
         );
+      case 'unknown':
       default:
-        console.warn('Unsupported content type:', contentType);
+        // Try to render as image first, then fallback
         return (
-          <div className={`${baseClassName} flex items-center justify-center bg-gray-800 text-white`}>
-            <div className="text-center">
-              <p className="text-2xl mb-2">⚠️</p>
-              <p className="text-xl mb-2">Tipo de contenido no soportado</p>
-              <p className="text-sm opacity-70">Tipo: {contentType}</p>
-            </div>
+          <div className={baseClassName}>
+            <img 
+              src={contentUrl}
+              alt={content.title || content.name || 'Contenido'}
+              style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+              onError={(e) => {
+                console.warn('Failed to load as image, showing fallback for:', contentUrl);
+                const target = e.target as HTMLImageElement;
+                const parent = target.parentElement;
+                if (parent) {
+                  parent.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #1a1a1a; color: white;">
+                      <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">📄</div>
+                        <div style="font-size: 18px; margin-bottom: 10px;">Contenido no soportado</div>
+                        <div style="font-size: 12px; opacity: 0.7;">Tipo: ${contentType}</div>
+                        <div style="font-size: 10px; opacity: 0.5; margin-top: 5px; max-width: 300px; word-break: break-all;">${contentUrl}</div>
+                      </div>
+                    </div>
+                  `;
+                }
+              }}
+              onLoad={() => {
+                console.log('Content loaded successfully as image:', contentUrl);
+              }}
+            />
           </div>
         );
     }
@@ -194,9 +284,7 @@ const ContentPlayer = memo(({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [alerts, setAlerts] = useState<any[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const wsManagerRef = useRef<WebSocketManager | null>(null);
-  const [isPlaying, setIsPlaying] = useState(true); // Control playback state
-  const authToken = localStorage.getItem('authToken');
+  const [isPlaying, setIsPlaying] = useState(true);
   const wsManager = useMemo(() => new WebSocketManager(), []);
 
   // Query configuration with conditional fetching
@@ -254,10 +342,11 @@ const ContentPlayer = memo(({
 
   const { data: playlistData, isLoading, error, refetch } = useQuery(queryOptions);
 
-  const contentItems = useMemo(() => 
-    playlistData?.items || [], 
-    [playlistData?.items]
-  );
+  const contentItems = useMemo(() => {
+    const items = playlistData?.items || [];
+    console.log('Content items loaded:', items);
+    return items;
+  }, [playlistData?.items]);
 
   // Memoized callbacks
   const goToNext = useCallback(() => {
@@ -283,17 +372,12 @@ const ContentPlayer = memo(({
     }
   }, [contentItems, currentIndex, goToNext, isPlaying]);
 
-  // Real-time update system using WebSocket with heartbeat
+  // Real-time update system using WebSocket
   useEffect(() => {
     if (isPreview) return;
 
     const authToken = localStorage.getItem('authToken');
     if (!authToken) return;
-
-    let lastPlaylistId = playlistId;
-
-    // Connect to WebSocket with player authentication
-    console.log('🔌 Connecting player WebSocket...');
 
     const setupWebSocket = async () => {
       try {
@@ -349,13 +433,7 @@ const ContentPlayer = memo(({
       if (targetScreenId === currentScreenId && deletedPlaylistId === playlistId) {
         console.log('🗑️ Content deleted from current playlist, refreshing...');
         refetch();
-        setCurrentIndices(prev => {
-          const newIndices = { ...prev };
-          Object.keys(newIndices).forEach(zoneId => {
-            newIndices[zoneId] = { ...newIndices[zoneId], currentIndex: 0 };
-          });
-          return newIndices;
-        });
+        setCurrentIndex(0);
       }
     };
 
@@ -440,6 +518,7 @@ const ContentPlayer = memo(({
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Error al cargar contenido</h2>
           <p className="text-lg">Por favor, verifica la configuración de la playlist.</p>
+          <p className="text-sm mt-2 opacity-75">Error: {error.message}</p>
         </div>
       </div>
     );
@@ -453,6 +532,7 @@ const ContentPlayer = memo(({
           <div className="text-6xl mb-4">📺</div>
           <h2 className="text-3xl font-bold mb-4">Playlist Vacía</h2>
           <p className="text-xl mb-2">No hay contenido configurado para mostrar.</p>
+          <p className="text-sm opacity-70">Playlist ID: {playlistId}</p>
           {isPreview && (
             <p className="text-sm mt-4 opacity-70">
               Agrega contenido a tu playlist desde el panel de administración.
@@ -471,7 +551,7 @@ const ContentPlayer = memo(({
       <div className="relative w-full h-full">
         {contentItems.map((item, index) => (
           <ContentItem
-            key={`${item.id}-${index}`}
+            key={`${item.id || index}-${index}`}
             content={item}
             isVisible={index === currentIndex && !isTransitioning}
             onLoadComplete={() => {}}
@@ -490,7 +570,7 @@ const ContentPlayer = memo(({
       {/* Content Info Overlay */}
       {currentItem && (
         <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded-lg">
-          <div className="text-sm font-medium">{currentItem.title}</div>
+          <div className="text-sm font-medium">{currentItem.title || currentItem.name || 'Sin título'}</div>
           {contentItems.length > 1 && (
             <div className="text-xs opacity-70">
               {currentIndex + 1} de {contentItems.length}

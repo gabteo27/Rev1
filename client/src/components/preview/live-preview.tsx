@@ -9,7 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function LivePreview() {
   const [selectedScreenId, setSelectedScreenId] = useState<string>("");
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   // Fetch screens
   const { data: screens = [] } = useQuery({
@@ -49,6 +49,8 @@ export default function LivePreview() {
       setShowModal(true);
     }
   };
+
+  const selectedScreenData = screens.find((s: any) => s.id.toString() === selectedScreenId);
 
   return (
     <>
