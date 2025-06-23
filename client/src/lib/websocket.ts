@@ -56,7 +56,7 @@ class WebSocketManager {
             // MODO DESARROLLO (preview de Replit): Construye la URL relativa
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const host = window.location.host;
-            wsUrl = `<span class="math-inline">\{protocol\}//</span>{host}/ws`;
+            wsUrl = `${protocol}//${host}/ws`;
           }
           // --- FIN DE LA LÓGICA CORREGIDA ---
 
