@@ -1,0 +1,114 @@
+player.tsx:274 Screen playlist ID: 15, Current: 15
+chunk-PNGJSGSD.js?v=c3b9f91b:14080 The above error occurred in the <ContentPlayer> component:
+
+    at ContentPlayer (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/player/ContentPlayer.tsx:1524:3)
+    at PlayerPage (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/player.tsx:57:31)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=c3b9f91b:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=c3b9f91b:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=c3b9f91b:2932:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-PNGJSGSD.js?v=c3b9f91b:14080
+update.callback @ chunk-PNGJSGSD.js?v=c3b9f91b:14100
+callCallback @ chunk-PNGJSGSD.js?v=c3b9f91b:11296
+commitUpdateQueue @ chunk-PNGJSGSD.js?v=c3b9f91b:11313
+commitLayoutEffectOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:17141
+commitLayoutMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18030
+commitLayoutEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18019
+commitLayoutEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:17970
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19406
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19559
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:19381
+workLoop @ chunk-PNGJSGSD.js?v=c3b9f91b:197
+flushWork @ chunk-PNGJSGSD.js?v=c3b9f91b:176
+performWorkUntilDeadline @ chunk-PNGJSGSD.js?v=c3b9f91b:384Understand this error
+chunk-PNGJSGSD.js?v=c3b9f91b:11549 Uncaught Error: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+    at Object.throwInvalidHookError (chunk-PNGJSGSD.js?v=c3b9f91b:11549:17)
+    at useCallback (chunk-3TFVT2CW.js?v=c3b9f91b:1090:29)
+    at ContentPlayer.tsx:1124:32
+    at commitHookEffectListMount (chunk-PNGJSGSD.js?v=c3b9f91b:16963:34)
+    at commitPassiveMountOnFiber (chunk-PNGJSGSD.js?v=c3b9f91b:18206:19)
+    at commitPassiveMountEffects_complete (chunk-PNGJSGSD.js?v=c3b9f91b:18179:17)
+    at commitPassiveMountEffects_begin (chunk-PNGJSGSD.js?v=c3b9f91b:18169:15)
+    at commitPassiveMountEffects (chunk-PNGJSGSD.js?v=c3b9f91b:18159:11)
+    at flushPassiveEffectsImpl (chunk-PNGJSGSD.js?v=c3b9f91b:19543:11)
+    at flushPassiveEffects (chunk-PNGJSGSD.js?v=c3b9f91b:19500:22)
+throwInvalidHookError @ chunk-PNGJSGSD.js?v=c3b9f91b:11549
+useCallback @ chunk-3TFVT2CW.js?v=c3b9f91b:1090
+(anonymous) @ ContentPlayer.tsx:1124
+commitHookEffectListMount @ chunk-PNGJSGSD.js?v=c3b9f91b:16963
+commitPassiveMountOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:18206
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18179
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:19381
+workLoop @ chunk-PNGJSGSD.js?v=c3b9f91b:197
+flushWork @ chunk-PNGJSGSD.js?v=c3b9f91b:176
+performWorkUntilDeadline @ chunk-PNGJSGSD.js?v=c3b9f91b:384Understand this error
+websocket.ts:78 WebSocket connected successfully
+websocket.ts:87 Authenticating player WebSocket connection with token: 3baab03e...
+websocket.ts:130 WebSocket connection established
+websocket.ts:117 WebSocket authentication successful
+client:815 WebSocket connection to 'wss://localhost:5173/?token=B3Xge_JJfQar' failed: 
+createConnection @ client:815
+connect @ client:437
+connect @ client:822Understand this error
+client:830 [vite] failed to connect to websocket.
+your current setup:
+  (browser) dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/ <--[HTTP]--> localhost:5173/ (server)
+  (browser) dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev:/ <--[WebSocket (failing)]--> localhost:5173/ (server)
+Check out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr .
+connect @ client:830
+await in connect
+connect @ client:290
+connect @ client:383
+(anonymous) @ client:908Understand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+error @ client:882
+(anonymous) @ client:137
+Promise.catch
+send @ client:136
+send @ client:100
+sendError @ player.html:16
+(anonymous) @ player.html:20
+invokeGuardedCallbackDev @ chunk-PNGJSGSD.js?v=c3b9f91b:3705
+invokeGuardedCallback @ chunk-PNGJSGSD.js?v=c3b9f91b:3739
+reportUncaughtErrorInDEV @ chunk-PNGJSGSD.js?v=c3b9f91b:16717
+captureCommitPhaseError @ chunk-PNGJSGSD.js?v=c3b9f91b:19611
+commitPassiveMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18181
+commitPassiveMountEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18169
+commitPassiveMountEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:18159
+flushPassiveEffectsImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19543
+flushPassiveEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:19500
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:19381
+workLoop @ chunk-PNGJSGSD.js?v=c3b9f91b:197
+flushWork @ chunk-PNGJSGSD.js?v=c3b9f91b:176
+performWorkUntilDeadline @ chunk-PNGJSGSD.js?v=c3b9f91b:384Understand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+error @ client:882
+(anonymous) @ client:137
+Promise.catch
+send @ client:136
+send @ client:100
+sendError @ player.html:16
+(anonymous) @ player.html:20Understand this error

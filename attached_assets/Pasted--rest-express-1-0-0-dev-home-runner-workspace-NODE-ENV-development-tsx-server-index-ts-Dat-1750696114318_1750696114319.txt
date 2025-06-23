@@ -1,0 +1,72 @@
+> rest-express@1.0.0 dev /home/runner/workspace
+> NODE_ENV=development tsx server/index.ts
+
+✅ Database connected successfully
+16:26:50 [express] serving on port 5000
+4:27:03 PM [express] GET /api/auth/user 304 in 203ms :: {"id":"38813652","email":"software@mesquite.…
+🔌 Client 45i9co connected to WebSocket
+Fetching screens for user: 38813652
+4:27:03 PM [express] GET /api/auth/user 304 in 66ms :: {"id":"38813652","email":"software@mesquite.m…
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:27:03 PM [express] GET /api/screens 200 in 67ms :: [{"id":40,"userId":"38813652","name":"asdasd","…
+4:27:03 PM [express] GET /api/alerts 304 in 62ms :: []
+Fetching screens for user: 38813652
+🔌 Client e8jqa9 connected to WebSocket
+4:27:03 PM [express] GET /api/content 304 in 190ms :: [{"id":26,"userId":"38813652","title":"cancela…
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:27:03 PM [express] GET /api/screens 304 in 63ms :: [{"id":40,"userId":"38813652","name":"asdasd","…
+4:27:03 PM [express] GET /api/alerts 304 in 66ms :: []
+4:27:03 PM [express] GET /api/content 304 in 65ms :: [{"id":26,"userId":"38813652","title":"cancelac…
+4:27:03 PM [express] GET /api/playlists 200 in 418ms :: [{"id":15,"userId":"38813652","name":"Oficia…
+4:27:03 PM [express] GET /api/playlists 304 in 103ms :: [{"id":15,"userId":"38813652","name":"Oficia…
+Fetching screens for user: 38813652
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:27:04 PM [express] GET /api/screens 200 in 65ms :: [{"id":40,"userId":"38813652","name":"asdasd","…
+4:27:05 PM [express] GET /api/playlists 304 in 102ms :: [{"id":15,"userId":"38813652","name":"Oficia…
+4:27:12 PM [vite] (client) hmr update /src/pages/screens.tsx, /src/index.css
+Fetching screens for user: 38813652
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:27:17 PM [express] GET /api/screens 200 in 308ms :: [{"id":40,"userId":"38813652","name":"asdasd",…
+4:27:17 PM [express] GET /api/playlists 200 in 480ms :: [{"id":15,"userId":"38813652","name":"Oficia…
+Fetching screens for user: 38813652
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:27:18 PM [express] GET /api/screens 304 in 65ms :: [{"id":40,"userId":"38813652","name":"asdasd","…
+4:27:18 PM [express] GET /api/playlists 304 in 100ms :: [{"id":15,"userId":"38813652","name":"Oficia…
+4:27:38 PM [express] GET /api/player/validate-token 304 in 214ms :: {"valid":true,"screen":{"id":40,…
+4:27:39 PM [express] GET /api/player/validate-token 304 in 260ms :: {"valid":true,"screen":{"id":40,…
+4:27:39 PM [express] GET /api/player/validate-token 304 in 73ms :: {"valid":true,"screen":{"id":40,"…
+🔌 Client ib1hm2 connected to WebSocket
+Player requesting playlist 15 for user 38813652
+4:27:39 PM [express] GET /api/player/widgets 304 in 291ms :: []
+🔐 Player auth attempt with token: 3baab03e...
+Playlist 15 found with 2 items
+4:27:39 PM [express] GET /api/player/playlists/15 304 in 333ms :: {"id":15,"userId":"38813652","name…
+🔍 Screen lookup result: { id: 40, userId: '38813652', name: 'asdasd' }
+✅ Player WebSocket authenticated - Screen: 40, User: 38813652, Name: asdasd
+4:27:47 PM [express] GET /api/auth/user 304 in 67ms :: {"id":"38813652","email":"software@mesquite.m…
+🔌 Client 1fe91x connected to WebSocket
+Fetching screens for user: 38813652
+Fetching screens for user: 38813652
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:27:47 PM [express] GET /api/screens 200 in 63ms :: [{"id":40,"userId":"38813652","name":"asdasd","…
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:27:47 PM [express] GET /api/screens 200 in 63ms :: [{"id":40,"userId":"38813652","name":"asdasd","…
+4:27:47 PM [express] GET /api/playlists 200 in 234ms :: [{"id":15,"userId":"38813652","name":"Oficia…
+4:27:47 PM [express] GET /api/playlists 304 in 266ms :: [{"id":15,"userId":"38813652","name":"Oficia…
+4:27:47 PM [express] GET /api/playlists/15 304 in 115ms :: {"id":15,"userId":"38813652","name":"Ofic…
+Fetching screens for user: 38813652
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:27:48 PM [express] GET /api/screens 304 in 64ms :: [{"id":40,"userId":"38813652","name":"asdasd","…
+4:27:48 PM [express] GET /api/playlists 304 in 100ms :: [{"id":15,"userId":"38813652","name":"Oficia…
+Fetching screens for user: 38813652
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:28:05 PM [express] GET /api/screens 200 in 320ms :: [{"id":40,"userId":"38813652","name":"asdasd",…
+4:28:05 PM [express] GET /api/playlists 304 in 491ms :: [{"id":15,"userId":"38813652","name":"Oficia…
+Fetching screens for user: 38813652
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:28:17 PM [express] GET /api/screens 304 in 306ms :: [{"id":40,"userId":"38813652","name":"asdasd",…
+4:28:17 PM [express] GET /api/playlists 304 in 484ms :: [{"id":15,"userId":"38813652","name":"Oficia…
+Fetching screens for user: 38813652
+Found 1 screens for user 38813652: [ { id: 40, name: 'asdasd', userId: '38813652' } ]
+4:28:18 PM [express] GET /api/screens 304 in 62ms :: [{"id":40,"userId":"38813652","name":"asdasd","…
+4:28:18 PM [express] GET /api/playlists 304 in 102ms :: [{"id":15,"userId":"38813652","name":"Oficia…
