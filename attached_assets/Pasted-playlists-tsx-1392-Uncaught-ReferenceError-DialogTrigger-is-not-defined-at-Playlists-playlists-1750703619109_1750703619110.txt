@@ -1,0 +1,89 @@
+playlists.tsx:1392 Uncaught ReferenceError: DialogTrigger is not defined
+    at Playlists (playlists.tsx:1392:14)
+    at renderWithHooks (chunk-PNGJSGSD.js?v=c3b9f91b:11596:26)
+    at mountIndeterminateComponent (chunk-PNGJSGSD.js?v=c3b9f91b:14974:21)
+    at beginWork (chunk-PNGJSGSD.js?v=c3b9f91b:15962:22)
+    at HTMLUnknownElement.callCallback2 (chunk-PNGJSGSD.js?v=c3b9f91b:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-PNGJSGSD.js?v=c3b9f91b:3705:24)
+    at invokeGuardedCallback (chunk-PNGJSGSD.js?v=c3b9f91b:3739:39)
+    at beginWork$1 (chunk-PNGJSGSD.js?v=c3b9f91b:19818:15)
+    at performUnitOfWork (chunk-PNGJSGSD.js?v=c3b9f91b:19251:20)
+    at workLoopSync (chunk-PNGJSGSD.js?v=c3b9f91b:19190:13)
+Playlists @ playlists.tsx:1392
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+mountIndeterminateComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14974
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15962
+callCallback2 @ chunk-PNGJSGSD.js?v=c3b9f91b:3680
+invokeGuardedCallbackDev @ chunk-PNGJSGSD.js?v=c3b9f91b:3705
+invokeGuardedCallback @ chunk-PNGJSGSD.js?v=c3b9f91b:3739
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19818
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18927
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+playlists.tsx:1392 Uncaught ReferenceError: DialogTrigger is not defined
+    at Playlists (playlists.tsx:1392:14)
+    at renderWithHooks (chunk-PNGJSGSD.js?v=c3b9f91b:11596:26)
+    at mountIndeterminateComponent (chunk-PNGJSGSD.js?v=c3b9f91b:14974:21)
+    at beginWork (chunk-PNGJSGSD.js?v=c3b9f91b:15962:22)
+    at HTMLUnknownElement.callCallback2 (chunk-PNGJSGSD.js?v=c3b9f91b:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-PNGJSGSD.js?v=c3b9f91b:3705:24)
+    at invokeGuardedCallback (chunk-PNGJSGSD.js?v=c3b9f91b:3739:39)
+    at beginWork$1 (chunk-PNGJSGSD.js?v=c3b9f91b:19818:15)
+    at performUnitOfWork (chunk-PNGJSGSD.js?v=c3b9f91b:19251:20)
+    at workLoopSync (chunk-PNGJSGSD.js?v=c3b9f91b:19190:13)
+Playlists @ playlists.tsx:1392
+renderWithHooks @ chunk-PNGJSGSD.js?v=c3b9f91b:11596
+mountIndeterminateComponent @ chunk-PNGJSGSD.js?v=c3b9f91b:14974
+beginWork @ chunk-PNGJSGSD.js?v=c3b9f91b:15962
+callCallback2 @ chunk-PNGJSGSD.js?v=c3b9f91b:3680
+invokeGuardedCallbackDev @ chunk-PNGJSGSD.js?v=c3b9f91b:3705
+invokeGuardedCallback @ chunk-PNGJSGSD.js?v=c3b9f91b:3739
+beginWork$1 @ chunk-PNGJSGSD.js?v=c3b9f91b:19818
+performUnitOfWork @ chunk-PNGJSGSD.js?v=c3b9f91b:19251
+workLoopSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19190
+renderRootSync @ chunk-PNGJSGSD.js?v=c3b9f91b:19169
+recoverFromConcurrentError @ chunk-PNGJSGSD.js?v=c3b9f91b:18786
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18932
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+chunk-PNGJSGSD.js?v=c3b9f91b:14080 The above error occurred in the <Playlists> component:
+
+    at Playlists (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/playlists.tsx:930:49)
+    at Route (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=c3b9f91b:280:16)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=c3b9f91b:336:17)
+    at Suspense
+    at div
+    at div
+    at div
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=c3b9f91b:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=c3b9f91b:64:5)
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/sidebar.tsx:60:7
+    at AdminLayout (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:66:24)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=c3b9f91b:336:17)
+    at AppContent (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:97:49)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PLT6GTVM.js?v=c3b9f91b:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=c3b9f91b:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=c3b9f91b:2932:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-PNGJSGSD.js?v=c3b9f91b:14080
+update.callback @ chunk-PNGJSGSD.js?v=c3b9f91b:14100
+callCallback @ chunk-PNGJSGSD.js?v=c3b9f91b:11296
+commitUpdateQueue @ chunk-PNGJSGSD.js?v=c3b9f91b:11313
+commitLayoutEffectOnFiber @ chunk-PNGJSGSD.js?v=c3b9f91b:17141
+commitLayoutMountEffects_complete @ chunk-PNGJSGSD.js?v=c3b9f91b:18030
+commitLayoutEffects_begin @ chunk-PNGJSGSD.js?v=c3b9f91b:18019
+commitLayoutEffects @ chunk-PNGJSGSD.js?v=c3b9f91b:17970
+commitRootImpl @ chunk-PNGJSGSD.js?v=c3b9f91b:19406
+commitRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:19330
+performSyncWorkOnRoot @ chunk-PNGJSGSD.js?v=c3b9f91b:18948
+flushSyncCallbacks @ chunk-PNGJSGSD.js?v=c3b9f91b:9166
+(anonymous) @ chunk-PNGJSGSD.js?v=c3b9f91b:18677Understand this error
+chunk-PNGJSGSD.js?v=c3b9f91b:9176 Uncaught ReferenceError: DialogTrigger is not defined
+    at Playlists (playlists.tsx:1392:14)

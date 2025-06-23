@@ -1,6 +1,3 @@
-The code has been updated to include missing queryFn in useQuery hooks and add missing imports for apiRequest.
-```
-```replit_final_file
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Calendar, Clock, Monitor, PlayCircle, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
