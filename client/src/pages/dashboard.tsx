@@ -781,7 +781,7 @@ return (
                   </div>
                 </div>
 
-                <```
+                <
 div className="flex items-start gap-3 p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded border-l-2 border-cyan-500">
                   <div className="w-2 h-2 bg-cyan-500 rounded-full mt-2" />
                   <div className="flex-1">
