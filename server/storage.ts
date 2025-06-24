@@ -806,18 +806,15 @@ export class DatabaseStorage implements IStorage {
 
   async updateWidget(
     id: number,
-    widget: Partial<InsertWidget>,
+    updates: Partial<InsertWidget>,
     userId: string,
   ): Promise<Widget | undefined> {
-    // Ensure config is properly handled
-    const updateData = { ...widget, updatedAt: new Date() };
-    if (updateData.config && typeof updateData.config !== 'string') {
-      updateData.config = JSON.stringify(updateData.config);
-    }
+    // Remove timestamp fields from updates to avoid conflicts
+    const { createdAt, updatedAt, ...safeUpdates } = updates as any;
 
     const [item] = await db
       .update(widgets)
-      .set(updateData)
+      .set({ ...safeUpdates, updatedAt: new Date() })
       .where(and(eq(widgets.id, id), eq(widgets.userId, userId)))
       .returning();
     return item;

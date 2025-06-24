@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { wsManager } from "@/lib/websocket";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -340,6 +341,36 @@ export default function Widgets() {
   });
   const [editFormData, setEditFormData] = useState<any>({});
   const { toast } = useToast();
+
+  // Set up WebSocket for real-time updates
+  useEffect(() => {
+    const handleWidgetUpdate = (data: any) => {
+      console.log('🔧 Real-time widget update received:', data);
+      queryClient.invalidateQueries({ queryKey: ["/api/widgets"] });
+      
+      // Show appropriate toast based on action
+      if (data.action === 'updated') {
+        toast({
+          title: "Widget actualizado",
+          description: `El widget "${data.widget?.name || 'Widget'}" ha sido actualizado.`,
+        });
+      } else if (data.action === 'deleted') {
+        toast({
+          title: "Widget eliminado",
+          description: `El widget ha sido eliminado.`,
+        });
+      }
+    };
+
+    // Subscribe to WebSocket events
+    wsManager.on('widget-updated', handleWidgetUpdate);
+    wsManager.on('widget-realtime-update', handleWidgetUpdate);
+
+    return () => {
+      wsManager.off('widget-updated', handleWidgetUpdate);
+      wsManager.off('widget-realtime-update', handleWidgetUpdate);
+    };
+  }, [queryClient, toast]);
 
   // Fetch widgets
   const { data: widgets = [], isLoading } = useQuery({

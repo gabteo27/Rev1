@@ -1578,13 +1578,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updates = req.body;
 
+      console.log(`🔧 Updating widget ${id} for user ${userId}:`, updates);
+
+      // Verify widget belongs to user first
+      const existingWidget = await storage.getWidgetById(id);
+      if (!existingWidget || existingWidget.userId !== userId) {
+        return res.status(404).json({ message: "Widget not found" });
+      }
+
       const widget = await storage.updateWidget(id, updates, userId);
       if (!widget) {
         return res.status(404).json({ message: "Widget not found" });
       }
 
+      console.log(`✅ Widget ${id} updated successfully`);
+
       // Broadcast widget change to all user's clients
       broadcastToUser(userId, "widget-updated", { action: "updated", widget });
+
+      // Broadcast to all user's player screens immediately
+      const wssInstance = app.get("wss") as WebSocketServer;
+      wssInstance.clients.forEach((client: WebSocket) => {
+        const clientWithId = client as any;
+        if (
+          clientWithId.readyState === WebSocket.OPEN &&
+          clientWithId.userId === userId
+        ) {
+          clientWithId.send(
+            JSON.stringify({
+              type: "widget-realtime-update",
+              data: { action: "updated", widget },
+            }),
+          );
+        }
+      });
 
       res.json(widget);
     } catch (error) {
@@ -1598,18 +1625,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const widgetId = parseInt(req.params.id);
 
+      console.log(`🗑️ Deleting widget ${widgetId} for user ${userId}`);
+
       // Verify widget belongs to user
       const widget = await storage.getWidgetById(widgetId);
       if (!widget || widget.userId !== userId) {
         return res.status(404).json({ message: "Widget not found" });
       }
 
-      await storage.deleteWidget(widgetId);
+      const success = await storage.deleteWidget(widgetId);
+      if (!success) {
+        return res.status(404).json({ message: "Widget not found" });
+      }
 
-      // Broadcast widget change to all user's clients
+      console.log(`✅ Widget ${widgetId} deleted successfully`);
+
+      // Broadcast widget deletion to all user's clients
       broadcastToUser(userId, "widget-updated", { action: "deleted", widgetId });
 
-      res.json({ success: true });
+      // Broadcast to all user's player screens immediately
+      const wssInstance = app.get("wss") as WebSocketServer;
+      wssInstance.clients.forEach((client: WebSocket) => {
+        const clientWithId = client as any;
+        if (
+          clientWithId.readyState === WebSocket.OPEN &&
+          clientWithId.userId === userId
+        ) {
+          clientWithId.send(
+            JSON.stringify({
+              type: "widget-realtime-update",
+              data: { action: "deleted", widgetId },
+            }),
+          );
+        }
+      });
+
+      res.json({ success: true, message: "Widget deleted successfully" });
     } catch (error) {
       console.error("Error deleting widget:", error);
       res.status(500).json({ message: "Failed to delete widget" });

@@ -658,12 +658,25 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         queryClient.invalidateQueries({ queryKey: ['user-widgets'] });
       };
 
+      // Handle real-time widget updates
+      const handleWidgetRealtimeUpdate = (data: any) => {
+        console.log('🔧 Widget real-time update received:', data);
+        queryClient.invalidateQueries({ queryKey: ['user-widgets'] });
+        
+        // Force immediate refetch for instant updates
+        queryClient.refetchQueries({ 
+          queryKey: ['user-widgets'],
+          type: 'active'
+        });
+      };
+
       // Subscribe to WebSocket events
       wsManager.on('playlist-content-updated', handlePlaylistUpdate);
       wsManager.on('playlist-change', handlePlaylistChange);
       wsManager.on('playlist-item-deleted', handlePlaylistUpdate);
       wsManager.on('playlist-item-added', handlePlaylistUpdate);
       wsManager.on('widget-updated', handleWidgetUpdate);
+      wsManager.on('widget-realtime-update', handleWidgetRealtimeUpdate);
 
       return () => {
         wsManager.off('playlist-content-updated', handlePlaylistUpdate);
@@ -671,6 +684,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         wsManager.off('playlist-item-deleted', handlePlaylistUpdate);
         wsManager.off('playlist-item-added', handlePlaylistUpdate);
         wsManager.off('widget-updated', handleWidgetUpdate);
+        wsManager.off('widget-realtime-update', handleWidgetRealtimeUpdate);
       };
     }
   }, [isPreview, playlistId, queryClient]);
