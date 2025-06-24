@@ -1,0 +1,69 @@
+Uncaught ReferenceError: DialogDescription is not defined
+    at EditModal (edit-modal.tsx:142:12)
+    at renderWithHooks (chunk-H343HIDT.js?v=d8459197:11596:26)
+    at updateFunctionComponent (chunk-H343HIDT.js?v=d8459197:14630:28)
+    at beginWork (chunk-H343HIDT.js?v=d8459197:15972:22)
+    at HTMLUnknownElement.callCallback2 (chunk-H343HIDT.js?v=d8459197:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-H343HIDT.js?v=d8459197:3705:24)
+    at invokeGuardedCallback (chunk-H343HIDT.js?v=d8459197:3739:39)
+    at beginWork$1 (chunk-H343HIDT.js?v=d8459197:19818:15)
+    at performUnitOfWork (chunk-H343HIDT.js?v=d8459197:19251:20)
+    at workLoopSync (chunk-H343HIDT.js?v=d8459197:19190:13)Understand this error
+chunk-H343HIDT.js?v=d8459197:14080 The above error occurred in the <EditModal> component:
+
+    at EditModal (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/content/edit-modal.tsx:35:37)
+    at div
+    at Content (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/content.tsx:54:49)
+    at Route (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=d8459197:280:16)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=d8459197:336:17)
+    at Suspense
+    at div
+    at div
+    at div
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=d8459197:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=d8459197:64:5)
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/sidebar.tsx:60:7
+    at AdminLayout (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:66:24)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=d8459197:336:17)
+    at AppContent (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:97:49)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=d8459197:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=d8459197:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=d8459197:2933:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-H343HIDT.js?v=d8459197:14080Understand this error
+chunk-H343HIDT.js?v=d8459197:9176 Uncaught ReferenceError: DialogDescription is not defined
+    at EditModal (edit-modal.tsx:142:12)
+    at renderWithHooks (chunk-H343HIDT.js?v=d8459197:11596:26)
+    at updateFunctionComponent (chunk-H343HIDT.js?v=d8459197:14630:28)
+    at beginWork (chunk-H343HIDT.js?v=d8459197:15972:22)
+    at beginWork$1 (chunk-H343HIDT.js?v=d8459197:19806:22)
+    at performUnitOfWork (chunk-H343HIDT.js?v=d8459197:19251:20)
+    at workLoopSync (chunk-H343HIDT.js?v=d8459197:19190:13)
+    at renderRootSync (chunk-H343HIDT.js?v=d8459197:19169:15)
+    at recoverFromConcurrentError (chunk-H343HIDT.js?v=d8459197:18786:28)
+    at performSyncWorkOnRoot (chunk-H343HIDT.js?v=d8459197:18932:28)Understand this error
+2client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (VM193 playlists:13:7)
+    at VM193 playlists:17:3
+    at Object.invokeGuardedCallbackDev (chunk-H343HIDT.js?v=d8459197:3705:24)
+    at invokeGuardedCallback (chunk-H343HIDT.js?v=d8459197:3739:39)
+error @ client:882Understand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (VM193 playlists:13:7)
+    at VM193 playlists:17:3

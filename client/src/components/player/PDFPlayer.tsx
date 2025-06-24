@@ -1,113 +1,65 @@
+import React, { useState, useEffect, useCallback, memo } from 'react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
 
-import React, { useState, useEffect, memo } from 'react';
+pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.js`;
 
 interface PDFPlayerProps {
   src: string;
-  objectFit?: string;
+  objectFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
 }
 
 const PDFPlayer = memo(({ src, objectFit = 'contain' }: PDFPlayerProps) => {
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLoad = () => {
-    setLoading(false);
-  };
+  useEffect(() => {
+    if (numPages && numPages > 1) {
+      const interval = setInterval(() => {
+        setCurrentPage(prevPage => (prevPage % numPages) + 1);
+      }, 10000); 
+      return () => clearInterval(interval);
+    }
+  }, [numPages]);
 
-  const handleError = () => {
-    setError(true);
-    setLoading(false);
-  };
+  const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+    setCurrentPage(1);
+    setError(null);
+  }, []);
+
+  const onDocumentLoadError = useCallback((error: Error) => {
+    console.error('Error al cargar el PDF:', error.message);
+    setError('No se pudo cargar el archivo PDF.');
+  }, []);
 
   if (error) {
     return (
-      <div style={{ 
-        width: '100%', 
-        height: '100%', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        color: 'rgba(255,255,255,0.7)',
-        fontSize: '18px',
-        backgroundColor: '#1a1a1a'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📄</div>
-          <div>Error cargando PDF</div>
-          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{src}</div>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1a1a1a', color: 'white' }}>
+        <div>{error}</div>
       </div>
     );
   }
 
-  // Configurar estilos según objectFit
-  const getContainerStyle = () => {
-    const baseStyle = {
-      width: '100%',
-      height: '100%',
-      position: 'relative' as const,
-      overflow: 'hidden' as const,
-      backgroundColor: '#1a1a1a'
-    };
-
-    return baseStyle;
-  };
-
-  const getIframeStyle = () => {
-    const baseStyle = {
-      width: '100%',
-      height: '100%',
-      border: 'none',
-      background: '#fff'
-    };
-
-    // Aplicar transformaciones según objectFit
-    switch (objectFit) {
-      case 'cover':
-        return {
-          ...baseStyle,
-          transform: 'scale(1.1)',
-          transformOrigin: 'center center'
-        };
-      case 'fill':
-        return {
-          ...baseStyle,
-          width: '100%',
-          height: '100%'
-        };
-      case 'contain':
-      default:
-        return baseStyle;
-    }
-  };
-
   return (
-    <div style={getContainerStyle()}>
-      {loading && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#1a1a1a',
-          color: 'white',
-          zIndex: 1
-        }}>
-          <div>Cargando PDF...</div>
-        </div>
-      )}
-      <iframe
-        src={`${src}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
-        style={getIframeStyle()}
-        title="PDF viewer"
-        onLoad={handleLoad}
-        onError={handleError}
-        allowFullScreen
-      />
+    // Contenedor principal con clase dinámica para el object-fit
+    <div className={`pdf-container-fit-${objectFit}`} style={{ width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#000' }}>
+      <Document
+        file={src}
+        onLoadSuccess={onDocumentLoadSuccess}
+        onLoadError={onDocumentLoadError}
+        loading={<div style={{ color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Cargando PDF...</div>}
+      >
+        <Page
+          pageNumber={currentPage}
+          // Renderizamos a un ancho fijo y grande para tener buena calidad, CSS se encargará de escalarlo
+          width={1920} 
+          renderTextLayer={false}
+          renderAnnotationLayer={false}
+        />
+      </Document>
     </div>
   );
 });

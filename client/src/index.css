@@ -132,6 +132,42 @@
   height: 24px;
 }
 
+.react-pdf__Page {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Forzamos al canvas (donde se dibuja el PDF) a ocupar el 100% de su contenedor */
+.react-pdf__Page__canvas {
+  width: 100% !important;
+  height: 100% !important;
+  /* El object-fit se aplicará aquí */
+}
+
+/* Reglas específicas de object-fit que ahora sí funcionarán */
+.pdf-container-fit-contain .react-pdf__Page__canvas {
+  object-fit: contain;
+}
+
+.pdf-container-fit-cover .react-pdf__Page__canvas {
+  object-fit: cover;
+}
+
+.pdf-container-fit-fill .react-pdf__Page__canvas {
+  object-fit: fill;
+}
+
+.pdf-container-fit-none .react-pdf__Page__canvas {
+  object-fit: none;
+}
+
+.pdf-container-fit-scale-down .react-pdf__Page__canvas {
+  object-fit: scale-down;
+}
+
 .switch input {
   opacity: 0;
   width: 0;
