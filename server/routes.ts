@@ -7,9 +7,8 @@ import path from "path";
 import fs from "fs-extra";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { validatePlayerAuth } from "./playerAuth";
+import { validatePlayerAuth, isPlayerAuthenticated } from "./playerAuth";
 import { randomBytes } from "crypto";
-import { isPlayerAuthenticated } from "./playerAuth";
 import {
   insertContentItemSchema,
   insertPlaylistSchema,
@@ -2722,7 +2721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Player-specific endpoints (authenticated with player token)
-  app.get("/api/player/playlists/:id", authenticatePlayer, async (req: any, res) => {
+  app.get("/api/player/playlists/:id", isPlayerAuthenticated, async (req: any, res) => {
     try {
       const playlistId = parseInt(req.params.id);
       const playlist = await storage.getPlaylistById(playlistId);
@@ -2738,7 +2737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/player/playlists/:id/widgets", authenticatePlayer, async (req: any, res) => {
+  app.get("/api/player/playlists/:id/widgets", isPlayerAuthenticated, async (req: any, res) => {
     try {
       const playlistId = parseInt(req.params.id);
       const widgets = await storage.getPlaylistWidgets(playlistId);
