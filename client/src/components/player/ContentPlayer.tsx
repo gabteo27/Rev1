@@ -408,7 +408,22 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       Object.values(intervals).forEach(interval => clearInterval(interval));
     };
   }, [shouldProceed, zones, advanceZone, playlistData?.items]);
-
+  const renderContentItem = useCallback((item: any, zoneId?: string) => {
+    // Validación inicial del item
+    if (!item?.contentItem) {
+      return (
+        <div style={{ 
+          ...styles.media, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          color: 'rgba(255,255,255,0.5)',
+          backgroundColor: '#1a1a1a'
+        }}>
+          Sin contenido disponible
+        </div>
+      );
+    }
   const renderZone = useCallback((zoneName: string, zoneStyles?: any) => {
     const zoneItems = zones[zoneName];
     if (!zoneItems || zoneItems.length === 0) {
@@ -440,22 +455,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   }, [playlistData?.zoneSettings]);
 
   // Función memoizada para renderizar el contenido de un item
-  const renderContentItem = useCallback((item: any, zoneId?: string) => {
-    // Validación inicial del item
-    if (!item?.contentItem) {
-      return (
-        <div style={{ 
-          ...styles.media, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          color: 'rgba(255,255,255,0.5)',
-          backgroundColor: '#1a1a1a'
-        }}>
-          Sin contenido disponible
-        </div>
-      );
-    }
+  
 
     const { type, url, title } = item.contentItem;
 
