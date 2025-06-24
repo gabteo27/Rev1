@@ -821,7 +821,8 @@ export default function Widgets() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="top-left">Superior Izquierda</SelectItem>
-                              <SelectItem value="top-right">Superior Derecha                              <SelectItem value="bottom-left">Inferior Izquierda</SelectItem>
+                              <SelectItem value="top-right">Superior Derecha</SelectItem>                          
+                                <SelectItem value="bottom-left">Inferior Izquierda</SelectItem>
                               <SelectItem value="bottom-right">Inferior Derecha</SelectItem>
                               <SelectItem value="center">Centro</SelectItem>
                             </SelectContent>

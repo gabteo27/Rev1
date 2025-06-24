@@ -983,7 +983,7 @@ export class DatabaseStorage implements IStorage {
 
   async getScreenByAuthToken(token: string): Promise<Screen | undefined> {
     const [screen] = await db
-```tool_code
+
 // Adding the method to get widget by ID and adjusting deleteWidget method.
       .select()
       .from(screens)
