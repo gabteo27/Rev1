@@ -800,8 +800,6 @@ export class DatabaseStorage implements IStorage {
         : widgetData.config || '{}'
     };
 
-    console.log('Creating widget with processed data:', processedData);
-
     const [widget] = await db.insert(widgets).values(processedData).returning();
     return widget;
   }
@@ -820,15 +818,11 @@ export class DatabaseStorage implements IStorage {
         safeUpdates.config = JSON.stringify(safeUpdates.config);
       }
 
-      console.log('Updating widget with safe updates:', safeUpdates);
-
       const [item] = await db
         .update(widgets)
         .set({ ...safeUpdates, updatedAt: new Date() })
         .where(and(eq(widgets.id, id), eq(widgets.userId, userId)))
         .returning();
-      
-      console.log('Widget updated successfully:', item);
       return item;
     } catch (error) {
       console.error('Error updating widget:', error);
