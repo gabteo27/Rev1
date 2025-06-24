@@ -2707,26 +2707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Player-specific endpoints (authenticated with player token)
-  app.get('/api/player/playlists/:id/widgets', isPlayerAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.screen.userId;
-      const playlistId = parseInt(req.params.id);
-
-      if (!userId) {
-        return res.status(403).json({ message: "Screen is not associated with a user." });
-      }
-
-      // For now, just return all user widgets since playlist-specific widgets are complex
-      const userWidgets = await storage.getWidgets(userId);
-      const enabledWidgets = userWidgets.filter((widget: any) => widget.isEnabled);
-
-      res.json(enabledWidgets);
-    } catch (error) {
-      console.error('Error fetching playlist widgets:', error);
-      res.status(500).json({ message: 'Failed to fetch playlist widgets' });
-    }
-  });
+  
 
   // Player specific routes (no authentication required, uses screen token)
   app.get("/api/player/playlists/:id", isPlayerAuthenticated, async (req: any, res) => {

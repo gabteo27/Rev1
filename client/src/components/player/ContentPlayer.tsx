@@ -315,17 +315,28 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   // Only proceed with hooks if we have valid data
   const shouldProceed = !!playlistId && !!playlistData;
 
-  // Fetch widgets for the current playlist
+  // Fetch widgets for the current user (not playlist-specific)
   const { data: widgets = [] } = useQuery({
-    queryKey: ['playlist-widgets', playlistId],
+    queryKey: ['user-widgets'],
     queryFn: async () => {
-      if (!playlistId) return [];
-      console.log(`🔄 Fetching widgets for playlist ${playlistId}`);
-      const response = await fetch(`/api/player/playlists/${playlistId}/widgets`);
-      if (!response.ok) throw new Error('Failed to fetch widgets');
-      const data = await response.json();
-      console.log(`✅ Fetched ${data.length} widgets for playlist ${playlistId}`);
-      return data;
+      console.log(`🔄 Fetching widgets for user`);
+      if (isPreview) {
+        const response = await apiRequest('/api/widgets');
+        const data = await response.json();
+        return data.filter((w: any) => w.isEnabled);
+      } else {
+        const authToken = localStorage.getItem('authToken');
+        const response = await fetch('/api/player/widgets', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) throw new Error('Failed to fetch widgets');
+        const data = await response.json();
+        console.log(`✅ Fetched ${data.length} widgets for user`);
+        return data;
+      }
     },
     enabled: !!playlistId,
   });
