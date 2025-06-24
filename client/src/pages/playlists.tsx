@@ -69,7 +69,7 @@ import {
   ScrollText,
   SidebarOpen,
   SidebarClose,
-  Widget,
+  Settings,
   MoreHorizontal
 } from "lucide-react";
 
@@ -1588,7 +1588,7 @@ export default function Playlists() {
                             size="sm"
                             onClick={() => setLocation(`/playlists/${playlist.id}#widgets`)}
                           >
-                            <Widget className="w-4 h-4 mr-2" />
+                            <Settings className="w-4 h-4 mr-2" />
                             Agregar Widget
                           </Button>
                           <DropdownMenu>
