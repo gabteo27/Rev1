@@ -13,42 +13,54 @@ const styles = {
 };
 
 // Función para obtener el estilo de media con objectFit personalizado
-const getMediaStyle = (objectFit: string = 'contain') => {
-  const baseStyle = {
+const getMediaStyle = (objectFit: string = 'contain'): React.CSSProperties => {
+  // Validar que objectFit sea un valor válido
+  const validObjectFitValues = ['contain', 'cover', 'fill', 'none', 'scale-down'];
+  const finalObjectFit = validObjectFitValues.includes(objectFit) ? objectFit : 'contain';
+
+  console.log(`📐 getMediaStyle called with objectFit: ${objectFit} -> ${finalObjectFit}`);
+
+  return {
     width: '100%',
     height: '100%',
-    objectFit: objectFit as any,
-    backgroundColor: '#000'
-  } as React.CSSProperties;
-
-  // Aplicar estilos adicionales según el tipo de objectFit
-  if (objectFit === 'fill') {
-    return {
-      ...baseStyle,
-      objectFit: 'fill' as any
-    };
-  } else if (objectFit === 'cover') {
-    return {
-      ...baseStyle,
-      objectFit: 'cover' as any
-    };
-  } else {
-    return {
-      ...baseStyle,
-      objectFit: 'contain' as any
-    };
-  }
+    objectFit: finalObjectFit as any,
+    backgroundColor: '#000',
+    display: 'block',
+    // Asegurar que el elemento se centre cuando sea necesario
+    margin: 'auto'
+  };
 };
 
 // Componentes memoizados para renderizar cada tipo de contenido
-const ImagePlayer = memo(({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => 
-  <img src={src} style={getMediaStyle(objectFit)} alt="" />
-);
+const ImagePlayer = memo(({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => {
+  console.log(`🖼️ ImagePlayer rendering with objectFit: ${objectFit}`);
+  return (
+    <img 
+      src={src} 
+      style={getMediaStyle(objectFit)} 
+      alt=""
+      onError={(e) => console.error('Error loading image:', e)}
+      onLoad={() => console.log('Image loaded successfully')}
+    />
+  );
+});
 ImagePlayer.displayName = 'ImagePlayer';
 
-const VideoPlayer = memo(({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => 
-  <video src={src} style={getMediaStyle(objectFit)} autoPlay muted loop playsInline />
-);
+const VideoPlayer = memo(({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => {
+  console.log(`🎥 VideoPlayer rendering with objectFit: ${objectFit}`);
+  return (
+    <video 
+      src={src} 
+      style={getMediaStyle(objectFit)} 
+      autoPlay 
+      muted 
+      loop 
+      playsInline
+      onError={(e) => console.error('Error loading video:', e)}
+      onLoadedData={() => console.log('Video loaded successfully')}
+    />
+  );
+});
 VideoPlayer.displayName = 'VideoPlayer';
 
 const WebpagePlayer = memo(({ src }: { src: string }) => {
@@ -417,6 +429,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
   // Función memoizada para renderizar el contenido de un item
   const renderContentItem = useCallback((item: any, zoneId?: string) => {
+    // Validación inicial del item
     if (!item?.contentItem) {
       return (
         <div style={{ 
@@ -434,6 +447,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     const { type, url, title } = item.contentItem;
 
+    // Validación de URL
     if (!url) {
       console.warn('No URL found in contentItem:', item.contentItem);
       return (
@@ -456,10 +470,19 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       );
     }
 
+    // Obtener configuración de objectFit para la zona actual
     const currentZoneId = zoneId || 'main';
     const objectFit = zoneSettings[currentZoneId]?.objectFit || 'contain';
 
-    const isYouTubeURL = (url: string) => {
+    console.log(`🎯 Rendering content for zone ${currentZoneId}:`, {
+      type,
+      objectFit,
+      zoneSettings: zoneSettings[currentZoneId],
+      url: url.substring(0, 50) + '...'
+    });
+
+    // Función para validar URLs de YouTube
+    const isYouTubeURL = (url: string): boolean => {
       if (!url || typeof url !== 'string') {
         return false;
       }
@@ -476,36 +499,87 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       }
     };
 
+    // Manejo especial para URLs de YouTube
     if (isYouTubeURL(url)) {
       return <YouTubePlayer url={url} />;
     }
 
-    switch (type) {
-      case 'image': 
-        return <ImagePlayer src={url} objectFit={objectFit} />;
-      case 'video': 
-        return <VideoPlayer src={url} objectFit={objectFit} />;
-      case 'pdf':
-        return <PDFPlayer src={url} objectFit={objectFit} />;
-
-      case 'webpage': 
-        return <WebpagePlayer src={url} />;
-      default: 
-        return (
-          <div style={{ 
-            ...styles.media, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: 'rgba(255,255,255,0.5)',
-            backgroundColor: '#1a1a1a'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '24px', marginBottom: '10px' }}>❓</div>
-              <div>Tipo de contenido no soportado: {type}</div>
+    // Renderizado según el tipo de contenido
+    try {
+      switch (type) {
+        case 'image': 
+          return <ImagePlayer src={url} objectFit={objectFit} />;
+        
+        case 'video': 
+          return <VideoPlayer src={url} objectFit={objectFit} />;
+        
+        case 'pdf':
+          // Mantener la lógica existente de renderizado de PDFs
+          return <PDFPlayer src={url} objectFit={objectFit} />;
+        
+        case 'webpage': 
+          return <WebpagePlayer src={url} />;
+        
+        case 'text':
+          return (
+            <div style={{ 
+              ...styles.media, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              color: 'white',
+              backgroundColor: '#1a1a1a',
+              padding: '20px',
+              textAlign: 'center'
+            }}>
+              <div>
+                <div style={{ fontSize: '24px', marginBottom: '10px' }}>📄</div>
+                <div>{title || 'Contenido de texto'}</div>
+              </div>
+            </div>
+          );
+        
+        default: 
+          console.warn(`Unsupported content type: ${type}`);
+          return (
+            <div style={{ 
+              ...styles.media, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              color: 'rgba(255,255,255,0.5)',
+              backgroundColor: '#1a1a1a'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', marginBottom: '10px' }}>❓</div>
+                <div>Tipo de contenido no soportado: {type}</div>
+                <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
+                  {title || 'Sin título'}
+                </div>
+              </div>
+            </div>
+          );
+      }
+    } catch (error) {
+      console.error('Error rendering content item:', error);
+      return (
+        <div style={{ 
+          ...styles.media, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          color: 'rgba(255,255,255,0.7)',
+          backgroundColor: '#1a1a1a'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚠️</div>
+            <div>Error al cargar contenido</div>
+            <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
+              {title || type || 'Error desconocido'}
             </div>
           </div>
-        );
+        </div>
+      );
     }
   }, [zoneSettings]);
 
