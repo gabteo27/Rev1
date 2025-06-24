@@ -903,7 +903,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       return (
         <div style={{ ...styles.container, display: 'grid', gridTemplate: '1fr 1fr 1fr / 1fr 1fr 1fr', gap: '2px' }}>
           {Array.from({length: 9}, (_, i) => {
-            const zoneId = `grid_${{i + 1}`;
+            const zoneId = `grid_${i + 1}`;
             return (
               <div key={zoneId} style={{ ...styles.zone, backgroundColor: '#111' }}>
                 {renderZone(zoneId)}
