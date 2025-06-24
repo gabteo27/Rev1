@@ -1,0 +1,77 @@
+Failed to load resource: the server responded with a status of 500 (Internal Server Error)Understand this error
+2widgets.tsx:640 Uncaught TypeError: widgets.map is not a function
+    at Widgets (widgets.tsx:640:26)
+    at renderWithHooks (chunk-H343HIDT.js?v=e2cfaf84:11596:26)
+    at updateFunctionComponent (chunk-H343HIDT.js?v=e2cfaf84:14630:28)
+    at beginWork (chunk-H343HIDT.js?v=e2cfaf84:15972:22)
+    at HTMLUnknownElement.callCallback2 (chunk-H343HIDT.js?v=e2cfaf84:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-H343HIDT.js?v=e2cfaf84:3705:24)
+    at invokeGuardedCallback (chunk-H343HIDT.js?v=e2cfaf84:3739:39)
+    at beginWork$1 (chunk-H343HIDT.js?v=e2cfaf84:19818:15)
+    at performUnitOfWork (chunk-H343HIDT.js?v=e2cfaf84:19251:20)
+    at workLoopSync (chunk-H343HIDT.js?v=e2cfaf84:19190:13)Understand this error
+chunk-H343HIDT.js?v=e2cfaf84:14080 The above error occurred in the <Widgets> component:
+
+    at Widgets (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/widgets.tsx:389:53)
+    at Route (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=e2cfaf84:280:16)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=e2cfaf84:336:17)
+    at Suspense
+    at div
+    at div
+    at div
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=e2cfaf84:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=e2cfaf84:64:5)
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/sidebar.tsx:60:7
+    at AdminLayout (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:66:24)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=e2cfaf84:336:17)
+    at AppContent (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:97:49)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=e2cfaf84:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=e2cfaf84:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=e2cfaf84:2933:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-H343HIDT.js?v=e2cfaf84:14080Understand this error
+chunk-H343HIDT.js?v=e2cfaf84:9176 Uncaught TypeError: widgets.map is not a function
+    at Widgets (widgets.tsx:640:26)
+    at renderWithHooks (chunk-H343HIDT.js?v=e2cfaf84:11596:26)
+    at updateFunctionComponent (chunk-H343HIDT.js?v=e2cfaf84:14630:28)
+    at beginWork (chunk-H343HIDT.js?v=e2cfaf84:15972:22)
+    at beginWork$1 (chunk-H343HIDT.js?v=e2cfaf84:19806:22)
+    at performUnitOfWork (chunk-H343HIDT.js?v=e2cfaf84:19251:20)
+    at workLoopSync (chunk-H343HIDT.js?v=e2cfaf84:19190:13)
+    at renderRootSync (chunk-H343HIDT.js?v=e2cfaf84:19169:15)
+    at recoverFromConcurrentError (chunk-H343HIDT.js?v=e2cfaf84:18786:28)
+    at performSyncWorkOnRoot (chunk-H343HIDT.js?v=e2cfaf84:18932:28)Understand this error
+2client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (VM129 17:13:7)
+    at VM129 17:17:3
+    at Object.invokeGuardedCallbackDev (chunk-H343HIDT.js?v=e2cfaf84:3705:24)
+    at invokeGuardedCallback (chunk-H343HIDT.js?v=e2cfaf84:3739:39)
+error @ client:882Understand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (VM129 17:13:7)
+    at VM129 17:17:3
+error @ client:882Understand this error
+websocket.ts:47 🔌 WebSocket disconnected 1005 
+websocket.ts:113 🔄 Attempting reconnect 1/5 in 1000ms
+websocket.ts:31 🔌 WebSocket connected successfully
+websocket.ts:118 ✅ Reconnection successful
+widgets:1 
+            
+            
+           Failed to load resource: the server responded with a status of 503 (Service Unavailable)

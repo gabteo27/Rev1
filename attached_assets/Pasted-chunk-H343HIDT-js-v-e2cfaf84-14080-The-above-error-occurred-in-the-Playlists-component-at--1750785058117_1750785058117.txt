@@ -1,0 +1,58 @@
+chunk-H343HIDT.js?v=e2cfaf84:14080 The above error occurred in the <Playlists> component:
+
+    at Playlists (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/playlists.tsx:925:49)
+    at Route (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=e2cfaf84:280:16)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=e2cfaf84:336:17)
+    at Suspense
+    at div
+    at div
+    at div
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…unner/workspace/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=e2cfaf84:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=e2cfaf84:64:5)
+    at https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/ui/sidebar.tsx:60:7
+    at AdminLayout (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:66:24)
+    at Switch (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=e2cfaf84:336:17)
+    at AppContent (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/App.tsx:97:49)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…unner/workspace/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=e2cfaf84:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=e2cfaf84:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=e2cfaf84:2933:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-H343HIDT.js?v=e2cfaf84:9176 Uncaught ReferenceError: Edit3 is not defined
+    at playlists.tsx:1585:34
+    at Array.map (<anonymous>)
+    at Playlists (playlists.tsx:1537:26)
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (scheduling:16:7)
+    at scheduling:20:3
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (scheduling:16:7)
+    at scheduling:20:3
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (scheduling:16:7)
+    at scheduling:20:3
+websocket.ts:47 🔌 WebSocket disconnected 1005 
+websocket.ts:113 🔄 Attempting reconnect 1/5 in 1000ms
+websocket.ts:31 🔌 WebSocket connected successfully
+websocket.ts:118 ✅ Reconnection successful

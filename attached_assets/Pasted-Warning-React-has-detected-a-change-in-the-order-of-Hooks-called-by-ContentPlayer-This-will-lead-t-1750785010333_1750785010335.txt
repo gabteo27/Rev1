@@ -1,0 +1,474 @@
+Warning: React has detected a change in the order of Hooks called by ContentPlayer. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://reactjs.org/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+1. useContext                 useContext
+2. useState                   useState
+3. useState                   useState
+4. useContext                 useContext
+5. useContext                 useContext
+6. useContext                 useContext
+7. useEffect                  useEffect
+8. useState                   useState
+9. useCallback                useCallback
+10. useSyncExternalStore      useSyncExternalStore
+11. useEffect                 useEffect
+12. useContext                useContext
+13. useContext                useContext
+14. useContext                useContext
+15. useEffect                 useEffect
+16. useState                  useState
+17. useCallback               useCallback
+18. useSyncExternalStore      useSyncExternalStore
+19. useEffect                 useEffect
+20. useMemo                   useMemo
+21. useMemo                   useMemo
+22. useEffect                 useEffect
+23. useMemo                   useMemo
+24. useCallback               useCallback
+25. useCallback               useCallback
+26. useEffect                 useEffect
+27. useEffect                 useEffect
+28. undefined                 useCallback
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    at ContentPlayer (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/player/ContentPlayer.tsx:343:41)
+    at PlayerPage (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/player.tsx:57:31)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=e2cfaf84:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=e2cfaf84:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=e2cfaf84:2933:3)
+printWarning @ chunk-H343HIDT.js?v=e2cfaf84:521
+error @ chunk-H343HIDT.js?v=e2cfaf84:505
+warnOnHookMismatchInDev @ chunk-H343HIDT.js?v=e2cfaf84:11543
+updateHookTypesDev @ chunk-H343HIDT.js?v=e2cfaf84:11513
+useCallback @ chunk-H343HIDT.js?v=e2cfaf84:12740
+useCallback @ chunk-VJA5E53X.js?v=e2cfaf84:1090
+ContentPlayer @ ContentPlayer.tsx:769
+renderWithHooks @ chunk-H343HIDT.js?v=e2cfaf84:11596
+updateFunctionComponent @ chunk-H343HIDT.js?v=e2cfaf84:14630
+beginWork @ chunk-H343HIDT.js?v=e2cfaf84:15972
+beginWork$1 @ chunk-H343HIDT.js?v=e2cfaf84:19806
+performUnitOfWork @ chunk-H343HIDT.js?v=e2cfaf84:19251
+workLoopSync @ chunk-H343HIDT.js?v=e2cfaf84:19190
+renderRootSync @ chunk-H343HIDT.js?v=e2cfaf84:19169
+performSyncWorkOnRoot @ chunk-H343HIDT.js?v=e2cfaf84:18927
+flushSyncCallbacks @ chunk-H343HIDT.js?v=e2cfaf84:9166
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=e2cfaf84:565
+flush @ @tanstack_react-query.js?v=e2cfaf84:589
+batch @ @tanstack_react-query.js?v=e2cfaf84:607
+dispatch_fn @ @tanstack_react-query.js?v=e2cfaf84:1040
+setData @ @tanstack_react-query.js?v=e2cfaf84:718
+onSuccess @ @tanstack_react-query.js?v=e2cfaf84:940
+resolve @ @tanstack_react-query.js?v=e2cfaf84:475
+Promise.then
+run @ @tanstack_react-query.js?v=e2cfaf84:517
+start @ @tanstack_react-query.js?v=e2cfaf84:555
+fetch @ @tanstack_react-query.js?v=e2cfaf84:969
+executeFetch_fn @ @tanstack_react-query.js?v=e2cfaf84:2279
+setOptions @ @tanstack_react-query.js?v=e2cfaf84:2040
+(anonymous) @ @tanstack_react-query.js?v=e2cfaf84:3156
+commitHookEffectListMount @ chunk-H343HIDT.js?v=e2cfaf84:16963
+commitPassiveMountOnFiber @ chunk-H343HIDT.js?v=e2cfaf84:18206
+commitPassiveMountEffects_complete @ chunk-H343HIDT.js?v=e2cfaf84:18179
+commitPassiveMountEffects_begin @ chunk-H343HIDT.js?v=e2cfaf84:18169
+commitPassiveMountEffects @ chunk-H343HIDT.js?v=e2cfaf84:18159
+flushPassiveEffectsImpl @ chunk-H343HIDT.js?v=e2cfaf84:19543
+flushPassiveEffects @ chunk-H343HIDT.js?v=e2cfaf84:19500
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:19381
+workLoop @ chunk-H343HIDT.js?v=e2cfaf84:197
+flushWork @ chunk-H343HIDT.js?v=e2cfaf84:176
+performWorkUntilDeadline @ chunk-H343HIDT.js?v=e2cfaf84:384Understand this error
+ContentPlayer.tsx:347 Processing zones for playlist: (9) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+chunk-H343HIDT.js?v=e2cfaf84:11726 Uncaught Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (chunk-H343HIDT.js?v=e2cfaf84:11726:21)
+    at updateCallback (chunk-H343HIDT.js?v=e2cfaf84:12225:22)
+    at Object.useCallback (chunk-H343HIDT.js?v=e2cfaf84:12741:22)
+    at useCallback (chunk-VJA5E53X.js?v=e2cfaf84:1090:29)
+    at ContentPlayer (ContentPlayer.tsx:769:24)
+    at renderWithHooks (chunk-H343HIDT.js?v=e2cfaf84:11596:26)
+    at updateFunctionComponent (chunk-H343HIDT.js?v=e2cfaf84:14630:28)
+    at beginWork (chunk-H343HIDT.js?v=e2cfaf84:15972:22)
+    at HTMLUnknownElement.callCallback2 (chunk-H343HIDT.js?v=e2cfaf84:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-H343HIDT.js?v=e2cfaf84:3705:24)
+updateWorkInProgressHook @ chunk-H343HIDT.js?v=e2cfaf84:11726
+updateCallback @ chunk-H343HIDT.js?v=e2cfaf84:12225
+useCallback @ chunk-H343HIDT.js?v=e2cfaf84:12741
+useCallback @ chunk-VJA5E53X.js?v=e2cfaf84:1090
+ContentPlayer @ ContentPlayer.tsx:769
+renderWithHooks @ chunk-H343HIDT.js?v=e2cfaf84:11596
+updateFunctionComponent @ chunk-H343HIDT.js?v=e2cfaf84:14630
+beginWork @ chunk-H343HIDT.js?v=e2cfaf84:15972
+callCallback2 @ chunk-H343HIDT.js?v=e2cfaf84:3680
+invokeGuardedCallbackDev @ chunk-H343HIDT.js?v=e2cfaf84:3705
+invokeGuardedCallback @ chunk-H343HIDT.js?v=e2cfaf84:3739
+beginWork$1 @ chunk-H343HIDT.js?v=e2cfaf84:19818
+performUnitOfWork @ chunk-H343HIDT.js?v=e2cfaf84:19251
+workLoopSync @ chunk-H343HIDT.js?v=e2cfaf84:19190
+renderRootSync @ chunk-H343HIDT.js?v=e2cfaf84:19169
+performSyncWorkOnRoot @ chunk-H343HIDT.js?v=e2cfaf84:18927
+flushSyncCallbacks @ chunk-H343HIDT.js?v=e2cfaf84:9166
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=e2cfaf84:565
+flush @ @tanstack_react-query.js?v=e2cfaf84:589
+batch @ @tanstack_react-query.js?v=e2cfaf84:607
+dispatch_fn @ @tanstack_react-query.js?v=e2cfaf84:1040
+setData @ @tanstack_react-query.js?v=e2cfaf84:718
+onSuccess @ @tanstack_react-query.js?v=e2cfaf84:940
+resolve @ @tanstack_react-query.js?v=e2cfaf84:475
+Promise.then
+run @ @tanstack_react-query.js?v=e2cfaf84:517
+start @ @tanstack_react-query.js?v=e2cfaf84:555
+fetch @ @tanstack_react-query.js?v=e2cfaf84:969
+executeFetch_fn @ @tanstack_react-query.js?v=e2cfaf84:2279
+setOptions @ @tanstack_react-query.js?v=e2cfaf84:2040
+(anonymous) @ @tanstack_react-query.js?v=e2cfaf84:3156
+commitHookEffectListMount @ chunk-H343HIDT.js?v=e2cfaf84:16963
+commitPassiveMountOnFiber @ chunk-H343HIDT.js?v=e2cfaf84:18206
+commitPassiveMountEffects_complete @ chunk-H343HIDT.js?v=e2cfaf84:18179
+commitPassiveMountEffects_begin @ chunk-H343HIDT.js?v=e2cfaf84:18169
+commitPassiveMountEffects @ chunk-H343HIDT.js?v=e2cfaf84:18159
+flushPassiveEffectsImpl @ chunk-H343HIDT.js?v=e2cfaf84:19543
+flushPassiveEffects @ chunk-H343HIDT.js?v=e2cfaf84:19500
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:19381
+workLoop @ chunk-H343HIDT.js?v=e2cfaf84:197
+flushWork @ chunk-H343HIDT.js?v=e2cfaf84:176
+performWorkUntilDeadline @ chunk-H343HIDT.js?v=e2cfaf84:384Understand this error
+ContentPlayer.tsx:347 Processing zones for playlist: (9) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+ContentPlayer.tsx:347 Processing zones for playlist: (9) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+chunk-H343HIDT.js?v=e2cfaf84:11726 Uncaught Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (chunk-H343HIDT.js?v=e2cfaf84:11726:21)
+    at updateCallback (chunk-H343HIDT.js?v=e2cfaf84:12225:22)
+    at Object.useCallback (chunk-H343HIDT.js?v=e2cfaf84:12741:22)
+    at useCallback (chunk-VJA5E53X.js?v=e2cfaf84:1090:29)
+    at ContentPlayer (ContentPlayer.tsx:769:24)
+    at renderWithHooks (chunk-H343HIDT.js?v=e2cfaf84:11596:26)
+    at updateFunctionComponent (chunk-H343HIDT.js?v=e2cfaf84:14630:28)
+    at beginWork (chunk-H343HIDT.js?v=e2cfaf84:15972:22)
+    at HTMLUnknownElement.callCallback2 (chunk-H343HIDT.js?v=e2cfaf84:3680:22)
+    at Object.invokeGuardedCallbackDev (chunk-H343HIDT.js?v=e2cfaf84:3705:24)
+updateWorkInProgressHook @ chunk-H343HIDT.js?v=e2cfaf84:11726
+updateCallback @ chunk-H343HIDT.js?v=e2cfaf84:12225
+useCallback @ chunk-H343HIDT.js?v=e2cfaf84:12741
+useCallback @ chunk-VJA5E53X.js?v=e2cfaf84:1090
+ContentPlayer @ ContentPlayer.tsx:769
+renderWithHooks @ chunk-H343HIDT.js?v=e2cfaf84:11596
+updateFunctionComponent @ chunk-H343HIDT.js?v=e2cfaf84:14630
+beginWork @ chunk-H343HIDT.js?v=e2cfaf84:15972
+callCallback2 @ chunk-H343HIDT.js?v=e2cfaf84:3680
+invokeGuardedCallbackDev @ chunk-H343HIDT.js?v=e2cfaf84:3705
+invokeGuardedCallback @ chunk-H343HIDT.js?v=e2cfaf84:3739
+beginWork$1 @ chunk-H343HIDT.js?v=e2cfaf84:19818
+performUnitOfWork @ chunk-H343HIDT.js?v=e2cfaf84:19251
+workLoopSync @ chunk-H343HIDT.js?v=e2cfaf84:19190
+renderRootSync @ chunk-H343HIDT.js?v=e2cfaf84:19169
+recoverFromConcurrentError @ chunk-H343HIDT.js?v=e2cfaf84:18786
+performSyncWorkOnRoot @ chunk-H343HIDT.js?v=e2cfaf84:18932
+flushSyncCallbacks @ chunk-H343HIDT.js?v=e2cfaf84:9166
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=e2cfaf84:565
+flush @ @tanstack_react-query.js?v=e2cfaf84:589
+batch @ @tanstack_react-query.js?v=e2cfaf84:607
+dispatch_fn @ @tanstack_react-query.js?v=e2cfaf84:1040
+setData @ @tanstack_react-query.js?v=e2cfaf84:718
+onSuccess @ @tanstack_react-query.js?v=e2cfaf84:940
+resolve @ @tanstack_react-query.js?v=e2cfaf84:475
+Promise.then
+run @ @tanstack_react-query.js?v=e2cfaf84:517
+start @ @tanstack_react-query.js?v=e2cfaf84:555
+fetch @ @tanstack_react-query.js?v=e2cfaf84:969
+executeFetch_fn @ @tanstack_react-query.js?v=e2cfaf84:2279
+setOptions @ @tanstack_react-query.js?v=e2cfaf84:2040
+(anonymous) @ @tanstack_react-query.js?v=e2cfaf84:3156
+commitHookEffectListMount @ chunk-H343HIDT.js?v=e2cfaf84:16963
+commitPassiveMountOnFiber @ chunk-H343HIDT.js?v=e2cfaf84:18206
+commitPassiveMountEffects_complete @ chunk-H343HIDT.js?v=e2cfaf84:18179
+commitPassiveMountEffects_begin @ chunk-H343HIDT.js?v=e2cfaf84:18169
+commitPassiveMountEffects @ chunk-H343HIDT.js?v=e2cfaf84:18159
+flushPassiveEffectsImpl @ chunk-H343HIDT.js?v=e2cfaf84:19543
+flushPassiveEffects @ chunk-H343HIDT.js?v=e2cfaf84:19500
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:19381
+workLoop @ chunk-H343HIDT.js?v=e2cfaf84:197
+flushWork @ chunk-H343HIDT.js?v=e2cfaf84:176
+performWorkUntilDeadline @ chunk-H343HIDT.js?v=e2cfaf84:384Understand this error
+chunk-H343HIDT.js?v=e2cfaf84:14080 The above error occurred in the <ContentPlayer> component:
+
+    at ContentPlayer (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/player/ContentPlayer.tsx:343:41)
+    at PlayerPage (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/player.tsx:57:31)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=e2cfaf84:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=e2cfaf84:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=e2cfaf84:2933:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-H343HIDT.js?v=e2cfaf84:14080
+update.callback @ chunk-H343HIDT.js?v=e2cfaf84:14100
+callCallback @ chunk-H343HIDT.js?v=e2cfaf84:11296
+commitUpdateQueue @ chunk-H343HIDT.js?v=e2cfaf84:11313
+commitLayoutEffectOnFiber @ chunk-H343HIDT.js?v=e2cfaf84:17141
+commitLayoutMountEffects_complete @ chunk-H343HIDT.js?v=e2cfaf84:18030
+commitLayoutEffects_begin @ chunk-H343HIDT.js?v=e2cfaf84:18019
+commitLayoutEffects @ chunk-H343HIDT.js?v=e2cfaf84:17970
+commitRootImpl @ chunk-H343HIDT.js?v=e2cfaf84:19406
+commitRoot @ chunk-H343HIDT.js?v=e2cfaf84:19330
+performSyncWorkOnRoot @ chunk-H343HIDT.js?v=e2cfaf84:18948
+flushSyncCallbacks @ chunk-H343HIDT.js?v=e2cfaf84:9166
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=e2cfaf84:565
+flush @ @tanstack_react-query.js?v=e2cfaf84:589
+batch @ @tanstack_react-query.js?v=e2cfaf84:607
+dispatch_fn @ @tanstack_react-query.js?v=e2cfaf84:1040
+setData @ @tanstack_react-query.js?v=e2cfaf84:718
+onSuccess @ @tanstack_react-query.js?v=e2cfaf84:940
+resolve @ @tanstack_react-query.js?v=e2cfaf84:475
+Promise.then
+run @ @tanstack_react-query.js?v=e2cfaf84:517
+start @ @tanstack_react-query.js?v=e2cfaf84:555
+fetch @ @tanstack_react-query.js?v=e2cfaf84:969
+executeFetch_fn @ @tanstack_react-query.js?v=e2cfaf84:2279
+setOptions @ @tanstack_react-query.js?v=e2cfaf84:2040
+(anonymous) @ @tanstack_react-query.js?v=e2cfaf84:3156
+commitHookEffectListMount @ chunk-H343HIDT.js?v=e2cfaf84:16963
+commitPassiveMountOnFiber @ chunk-H343HIDT.js?v=e2cfaf84:18206
+commitPassiveMountEffects_complete @ chunk-H343HIDT.js?v=e2cfaf84:18179
+commitPassiveMountEffects_begin @ chunk-H343HIDT.js?v=e2cfaf84:18169
+commitPassiveMountEffects @ chunk-H343HIDT.js?v=e2cfaf84:18159
+flushPassiveEffectsImpl @ chunk-H343HIDT.js?v=e2cfaf84:19543
+flushPassiveEffects @ chunk-H343HIDT.js?v=e2cfaf84:19500
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:19381
+workLoop @ chunk-H343HIDT.js?v=e2cfaf84:197
+flushWork @ chunk-H343HIDT.js?v=e2cfaf84:176
+performWorkUntilDeadline @ chunk-H343HIDT.js?v=e2cfaf84:384Understand this error
+chunk-H343HIDT.js?v=e2cfaf84:11726 Uncaught Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (chunk-H343HIDT.js?v=e2cfaf84:11726:21)
+    at updateCallback (chunk-H343HIDT.js?v=e2cfaf84:12225:22)
+    at Object.useCallback (chunk-H343HIDT.js?v=e2cfaf84:12741:22)
+    at useCallback (chunk-VJA5E53X.js?v=e2cfaf84:1090:29)
+    at ContentPlayer (ContentPlayer.tsx:769:24)
+    at renderWithHooks (chunk-H343HIDT.js?v=e2cfaf84:11596:26)
+    at updateFunctionComponent (chunk-H343HIDT.js?v=e2cfaf84:14630:28)
+    at beginWork (chunk-H343HIDT.js?v=e2cfaf84:15972:22)
+    at beginWork$1 (chunk-H343HIDT.js?v=e2cfaf84:19806:22)
+    at performUnitOfWork (chunk-H343HIDT.js?v=e2cfaf84:19251:20)
+updateWorkInProgressHook @ chunk-H343HIDT.js?v=e2cfaf84:11726
+updateCallback @ chunk-H343HIDT.js?v=e2cfaf84:12225
+useCallback @ chunk-H343HIDT.js?v=e2cfaf84:12741
+useCallback @ chunk-VJA5E53X.js?v=e2cfaf84:1090
+ContentPlayer @ ContentPlayer.tsx:769
+renderWithHooks @ chunk-H343HIDT.js?v=e2cfaf84:11596
+updateFunctionComponent @ chunk-H343HIDT.js?v=e2cfaf84:14630
+beginWork @ chunk-H343HIDT.js?v=e2cfaf84:15972
+beginWork$1 @ chunk-H343HIDT.js?v=e2cfaf84:19806
+performUnitOfWork @ chunk-H343HIDT.js?v=e2cfaf84:19251
+workLoopSync @ chunk-H343HIDT.js?v=e2cfaf84:19190
+renderRootSync @ chunk-H343HIDT.js?v=e2cfaf84:19169
+recoverFromConcurrentError @ chunk-H343HIDT.js?v=e2cfaf84:18786
+performSyncWorkOnRoot @ chunk-H343HIDT.js?v=e2cfaf84:18932
+flushSyncCallbacks @ chunk-H343HIDT.js?v=e2cfaf84:9166
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=e2cfaf84:565
+flush @ @tanstack_react-query.js?v=e2cfaf84:589
+batch @ @tanstack_react-query.js?v=e2cfaf84:607
+dispatch_fn @ @tanstack_react-query.js?v=e2cfaf84:1040
+setData @ @tanstack_react-query.js?v=e2cfaf84:718
+onSuccess @ @tanstack_react-query.js?v=e2cfaf84:940
+resolve @ @tanstack_react-query.js?v=e2cfaf84:475
+Promise.then
+run @ @tanstack_react-query.js?v=e2cfaf84:517
+start @ @tanstack_react-query.js?v=e2cfaf84:555
+fetch @ @tanstack_react-query.js?v=e2cfaf84:969
+executeFetch_fn @ @tanstack_react-query.js?v=e2cfaf84:2279
+setOptions @ @tanstack_react-query.js?v=e2cfaf84:2040
+(anonymous) @ @tanstack_react-query.js?v=e2cfaf84:3156
+commitHookEffectListMount @ chunk-H343HIDT.js?v=e2cfaf84:16963
+commitPassiveMountOnFiber @ chunk-H343HIDT.js?v=e2cfaf84:18206
+commitPassiveMountEffects_complete @ chunk-H343HIDT.js?v=e2cfaf84:18179
+commitPassiveMountEffects_begin @ chunk-H343HIDT.js?v=e2cfaf84:18169
+commitPassiveMountEffects @ chunk-H343HIDT.js?v=e2cfaf84:18159
+flushPassiveEffectsImpl @ chunk-H343HIDT.js?v=e2cfaf84:19543
+flushPassiveEffects @ chunk-H343HIDT.js?v=e2cfaf84:19500
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:19381
+workLoop @ chunk-H343HIDT.js?v=e2cfaf84:197
+flushWork @ chunk-H343HIDT.js?v=e2cfaf84:176
+performWorkUntilDeadline @ chunk-H343HIDT.js?v=e2cfaf84:384Understand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (player.html:16:7)
+    at player.html:20:3
+    at Object.invokeGuardedCallbackDev (chunk-H343HIDT.js?v=e2cfaf84:3705:24)
+    at invokeGuardedCallback (chunk-H343HIDT.js?v=e2cfaf84:3739:39)
+error @ client:882
+(anonymous) @ client:137
+Promise.catch
+send @ client:136
+send @ client:100
+sendError @ player.html:16
+(anonymous) @ player.html:20
+invokeGuardedCallbackDev @ chunk-H343HIDT.js?v=e2cfaf84:3705
+invokeGuardedCallback @ chunk-H343HIDT.js?v=e2cfaf84:3739
+beginWork$1 @ chunk-H343HIDT.js?v=e2cfaf84:19818
+performUnitOfWork @ chunk-H343HIDT.js?v=e2cfaf84:19251
+workLoopSync @ chunk-H343HIDT.js?v=e2cfaf84:19190
+renderRootSync @ chunk-H343HIDT.js?v=e2cfaf84:19169
+performSyncWorkOnRoot @ chunk-H343HIDT.js?v=e2cfaf84:18927
+flushSyncCallbacks @ chunk-H343HIDT.js?v=e2cfaf84:9166
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=e2cfaf84:565
+flush @ @tanstack_react-query.js?v=e2cfaf84:589
+batch @ @tanstack_react-query.js?v=e2cfaf84:607
+dispatch_fn @ @tanstack_react-query.js?v=e2cfaf84:1040
+setData @ @tanstack_react-query.js?v=e2cfaf84:718
+onSuccess @ @tanstack_react-query.js?v=e2cfaf84:940
+resolve @ @tanstack_react-query.js?v=e2cfaf84:475
+Promise.then
+run @ @tanstack_react-query.js?v=e2cfaf84:517
+start @ @tanstack_react-query.js?v=e2cfaf84:555
+fetch @ @tanstack_react-query.js?v=e2cfaf84:969
+executeFetch_fn @ @tanstack_react-query.js?v=e2cfaf84:2279
+setOptions @ @tanstack_react-query.js?v=e2cfaf84:2040
+(anonymous) @ @tanstack_react-query.js?v=e2cfaf84:3156
+commitHookEffectListMount @ chunk-H343HIDT.js?v=e2cfaf84:16963
+commitPassiveMountOnFiber @ chunk-H343HIDT.js?v=e2cfaf84:18206
+commitPassiveMountEffects_complete @ chunk-H343HIDT.js?v=e2cfaf84:18179
+commitPassiveMountEffects_begin @ chunk-H343HIDT.js?v=e2cfaf84:18169
+commitPassiveMountEffects @ chunk-H343HIDT.js?v=e2cfaf84:18159
+flushPassiveEffectsImpl @ chunk-H343HIDT.js?v=e2cfaf84:19543
+flushPassiveEffects @ chunk-H343HIDT.js?v=e2cfaf84:19500
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:19381
+workLoop @ chunk-H343HIDT.js?v=e2cfaf84:197
+flushWork @ chunk-H343HIDT.js?v=e2cfaf84:176
+performWorkUntilDeadline @ chunk-H343HIDT.js?v=e2cfaf84:384Understand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (player.html:16:7)
+    at player.html:20:3
+    at Object.invokeGuardedCallbackDev (chunk-H343HIDT.js?v=e2cfaf84:3705:24)
+    at invokeGuardedCallback (chunk-H343HIDT.js?v=e2cfaf84:3739:39)
+error @ client:882
+(anonymous) @ client:137
+Promise.catch
+send @ client:136
+send @ client:100
+sendError @ player.html:16
+(anonymous) @ player.html:20
+invokeGuardedCallbackDev @ chunk-H343HIDT.js?v=e2cfaf84:3705
+invokeGuardedCallback @ chunk-H343HIDT.js?v=e2cfaf84:3739
+beginWork$1 @ chunk-H343HIDT.js?v=e2cfaf84:19818
+performUnitOfWork @ chunk-H343HIDT.js?v=e2cfaf84:19251
+workLoopSync @ chunk-H343HIDT.js?v=e2cfaf84:19190
+renderRootSync @ chunk-H343HIDT.js?v=e2cfaf84:19169
+recoverFromConcurrentError @ chunk-H343HIDT.js?v=e2cfaf84:18786
+performSyncWorkOnRoot @ chunk-H343HIDT.js?v=e2cfaf84:18932
+flushSyncCallbacks @ chunk-H343HIDT.js?v=e2cfaf84:9166
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:18677
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=e2cfaf84:565
+flush @ @tanstack_react-query.js?v=e2cfaf84:589
+batch @ @tanstack_react-query.js?v=e2cfaf84:607
+dispatch_fn @ @tanstack_react-query.js?v=e2cfaf84:1040
+setData @ @tanstack_react-query.js?v=e2cfaf84:718
+onSuccess @ @tanstack_react-query.js?v=e2cfaf84:940
+resolve @ @tanstack_react-query.js?v=e2cfaf84:475
+Promise.then
+run @ @tanstack_react-query.js?v=e2cfaf84:517
+start @ @tanstack_react-query.js?v=e2cfaf84:555
+fetch @ @tanstack_react-query.js?v=e2cfaf84:969
+executeFetch_fn @ @tanstack_react-query.js?v=e2cfaf84:2279
+setOptions @ @tanstack_react-query.js?v=e2cfaf84:2040
+(anonymous) @ @tanstack_react-query.js?v=e2cfaf84:3156
+commitHookEffectListMount @ chunk-H343HIDT.js?v=e2cfaf84:16963
+commitPassiveMountOnFiber @ chunk-H343HIDT.js?v=e2cfaf84:18206
+commitPassiveMountEffects_complete @ chunk-H343HIDT.js?v=e2cfaf84:18179
+commitPassiveMountEffects_begin @ chunk-H343HIDT.js?v=e2cfaf84:18169
+commitPassiveMountEffects @ chunk-H343HIDT.js?v=e2cfaf84:18159
+flushPassiveEffectsImpl @ chunk-H343HIDT.js?v=e2cfaf84:19543
+flushPassiveEffects @ chunk-H343HIDT.js?v=e2cfaf84:19500
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:19381
+workLoop @ chunk-H343HIDT.js?v=e2cfaf84:197
+flushWork @ chunk-H343HIDT.js?v=e2cfaf84:176
+performWorkUntilDeadline @ chunk-H343HIDT.js?v=e2cfaf84:384Understand this error
+client:882 [vite] TypeError: Cannot read properties of undefined (reading 'send')
+    at Object.send (client:483:10)
+    at Object.send (client:849:21)
+    at Object.send (client:326:24)
+    at Object.send (client:417:33)
+    at HMRClient.send (client:136:20)
+    at HMRContext.send (client:100:20)
+    at sendError (player.html:16:7)
+    at player.html:20:3
+error @ client:882
+(anonymous) @ client:137
+Promise.catch
+send @ client:136
+send @ client:100
+sendError @ player.html:16
+(anonymous) @ player.html:20
+setTimeout
+defaultScheduler @ @tanstack_react-query.js?v=e2cfaf84:565
+flush @ @tanstack_react-query.js?v=e2cfaf84:589
+batch @ @tanstack_react-query.js?v=e2cfaf84:607
+dispatch_fn @ @tanstack_react-query.js?v=e2cfaf84:1040
+setData @ @tanstack_react-query.js?v=e2cfaf84:718
+onSuccess @ @tanstack_react-query.js?v=e2cfaf84:940
+resolve @ @tanstack_react-query.js?v=e2cfaf84:475
+Promise.then
+run @ @tanstack_react-query.js?v=e2cfaf84:517
+start @ @tanstack_react-query.js?v=e2cfaf84:555
+fetch @ @tanstack_react-query.js?v=e2cfaf84:969
+executeFetch_fn @ @tanstack_react-query.js?v=e2cfaf84:2279
+setOptions @ @tanstack_react-query.js?v=e2cfaf84:2040
+(anonymous) @ @tanstack_react-query.js?v=e2cfaf84:3156
+commitHookEffectListMount @ chunk-H343HIDT.js?v=e2cfaf84:16963
+commitPassiveMountOnFiber @ chunk-H343HIDT.js?v=e2cfaf84:18206
+commitPassiveMountEffects_complete @ chunk-H343HIDT.js?v=e2cfaf84:18179
+commitPassiveMountEffects_begin @ chunk-H343HIDT.js?v=e2cfaf84:18169
+commitPassiveMountEffects @ chunk-H343HIDT.js?v=e2cfaf84:18159
+flushPassiveEffectsImpl @ chunk-H343HIDT.js?v=e2cfaf84:19543
+flushPassiveEffects @ chunk-H343HIDT.js?v=e2cfaf84:19500
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:19381
+workLoop @ chunk-H343HIDT.js?v=e2cfaf84:197
+flushWork @ chunk-H343HIDT.js?v=e2cfaf84:176
+performWorkUntilDeadline @ chunk-H343HIDT.js?v=e2cfaf84:384Understand this error
+websocket.ts:31 🔌 WebSocket connected successfully
+ContentPlayer.tsx:679 ✅ WebSocket connected for ContentPlayer
+ContentPlayer.tsx:274 
+            
+            
+           GET https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/api/player/playlists/16/widgets 500 (Internal Server Error)
+queryFn @ ContentPlayer.tsx:274
+fetchFn @ @tanstack_react-query.js?v=e2cfaf84:881
+run @ @tanstack_react-query.js?v=e2cfaf84:513
+start @ @tanstack_react-query.js?v=e2cfaf84:555
+fetch @ @tanstack_react-query.js?v=e2cfaf84:969
+executeFetch_fn @ @tanstack_react-query.js?v=e2cfaf84:2279
+setOptions @ @tanstack_react-query.js?v=e2cfaf84:2040
+(anonymous) @ @tanstack_react-query.js?v=e2cfaf84:3156
+commitHookEffectListMount @ chunk-H343HIDT.js?v=e2cfaf84:16963
+commitPassiveMountOnFiber @ chunk-H343HIDT.js?v=e2cfaf84:18206
+commitPassiveMountEffects_complete @ chunk-H343HIDT.js?v=e2cfaf84:18179
+commitPassiveMountEffects_begin @ chunk-H343HIDT.js?v=e2cfaf84:18169
+commitPassiveMountEffects @ chunk-H343HIDT.js?v=e2cfaf84:18159
+flushPassiveEffectsImpl @ chunk-H343HIDT.js?v=e2cfaf84:19543
+flushPassiveEffects @ chunk-H343HIDT.js?v=e2cfaf84:19500
+(anonymous) @ chunk-H343HIDT.js?v=e2cfaf84:19381
+workLoop @ chunk-H343HIDT.js?v=e2cfaf84:197
+flushWork @ chunk-H343HIDT.js?v=e2cfaf84:176
+performWorkUntilDeadline @ chunk-H343HIDT.js?v=e2cfaf84:384Understand this error
