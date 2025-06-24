@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { wsManager } from "@/lib/websocket";
@@ -662,7 +661,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       const handleWidgetRealtimeUpdate = (data: any) => {
         console.log('🔧 Widget real-time update received:', data);
         queryClient.invalidateQueries({ queryKey: ['user-widgets'] });
-        
+
         // Force immediate refetch for instant updates
         queryClient.refetchQueries({ 
           queryKey: ['user-widgets'],
@@ -741,7 +740,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           const now = new Date();
           const format = config.format || '24h';
           const timezone = config.timezone || 'America/Mexico_City';
-          
+
           const formatTime = (date: Date) => {
             try {
               return new Intl.DateTimeFormat('es-ES', {
@@ -799,7 +798,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           // Use the provided API key
           const apiKey = config.apiKey || 'e437ff7a677ba82390fcd98091006776';
           const city = config.city || 'Mexico City';
-          
+
           content = (
             <WeatherWidgetContent 
               apiKey={apiKey} 

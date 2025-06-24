@@ -52,7 +52,6 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
     const fetchWeather = async () => {
       setLoading(true);
       try {
-        // Using OpenWeatherMap API
         const apiKey = config?.apiKey || 'e437ff7a677ba82390fcd98091006776';
         const city = config?.city || 'Mexico City';
 
@@ -75,7 +74,6 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
             throw new Error('Weather API response not ok');
           }
         } else {
-          // Fallback to demo data when no API key
           setWeather({
             location: { name: city },
             current: { temp_c: 22, condition: { text: 'Soleado' }, humidity: 65, feels_like: 24 }
@@ -93,9 +91,9 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
     };
 
     fetchWeather();
-    const interval = setInterval(fetchWeather, 5 * 60 * 1000); // 5 minutes
+    const interval = setInterval(fetchWeather, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [config?.apiKey, config?.city]); // Solo refetch cuando cambien estos valores específicos
+  }, [config?.apiKey, config?.city]);
 
   if (loading) {
     return (
@@ -136,10 +134,7 @@ const LiveNewsWidget = ({ config }: { config: any }) => {
     const fetchNews = async () => {
       setLoading(true);
       try {
-        // Using RSS feed or news API
         const rssUrl = config?.rssUrl || 'https://feeds.bbci.co.uk/mundo/rss.xml';
-
-        // For demo purposes, using a CORS proxy for RSS feeds
         const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
 
         const response = await fetch(proxyUrl);
@@ -160,11 +155,10 @@ const LiveNewsWidget = ({ config }: { config: any }) => {
     };
 
     fetchNews();
-      const interval = setInterval(fetchNews, 5 * 60 * 1000); // Update every 5 minutes
-      return () => clearInterval(interval);
-  }, [config]);
+    const interval = setInterval(fetchNews, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [config?.rssUrl, config?.maxItems]);
 
-  // Rotate news items every 8 seconds
   useEffect(() => {
     if (news.length > 1) {
       const interval = setInterval(() => {
@@ -299,13 +293,7 @@ const widgetTypes = [
       city: "Mexico City", 
       units: "metric", 
       apiKey: "e437ff7a677ba82390fcd98091006776" 
-    },
-    hasApiConfig: true,
-    apiFields: [
-      { key: 'apiKey', label: 'API Key de OpenWeatherMap', type: 'text' },
-      { key: 'city', label: 'Ciudad', type: 'text' },
-      { key: 'units', label: 'Unidades', type: 'select', options: ['metric', 'imperial'] }
-    ]
+    }
   },
   { 
     type: "news", 
@@ -313,12 +301,7 @@ const widgetTypes = [
     icon: Rss, 
     description: "Feed de noticias RSS en tiempo real",
     component: LiveNewsWidget,
-    defaultConfig: { rssUrl: "https://feeds.bbci.co.uk/mundo/rss.xml", maxItems: 5 },
-    hasApiConfig: true,
-    apiFields: [
-      { key: 'rssUrl', label: 'URL RSS', type: 'text' },
-      { key: 'maxItems', label: 'Máximo de noticias', type: 'number' }
-    ]
+    defaultConfig: { rssUrl: "https://feeds.bbci.co.uk/mundo/rss.xml", maxItems: 5 }
   },
   { 
     type: "text", 
@@ -326,12 +309,7 @@ const widgetTypes = [
     icon: Type, 
     description: "Texto personalizable",
     component: TextWidget,
-    defaultConfig: { text: "Texto personalizado", fontSize: "16px", color: "#ffffff" },
-    customFields: [
-      { key: 'text', label: 'Texto', type: 'textarea' },
-      { key: 'fontSize', label: 'Tamaño de letra', type: 'text' },
-      { key: 'color', label: 'Color', type: 'color' }
-    ]
+    defaultConfig: { text: "Texto personalizado", fontSize: "16px", color: "#000000" }
   },
 ];
 
@@ -349,13 +327,11 @@ export default function Widgets() {
   const [editFormData, setEditFormData] = useState<any>({});
   const { toast } = useToast();
 
-  // Set up WebSocket for real-time updates
   useEffect(() => {
     const handleWidgetUpdate = (data: any) => {
       console.log('🔧 Real-time widget update received:', data);
       queryClient.invalidateQueries({ queryKey: ["/api/widgets"] });
 
-      // Show appropriate toast based on action
       if (data.action === 'updated') {
         toast({
           title: "Widget actualizado",
@@ -369,7 +345,6 @@ export default function Widgets() {
       }
     };
 
-    // Subscribe to WebSocket events
     wsManager.on('widget-updated', handleWidgetUpdate);
     wsManager.on('widget-realtime-update', handleWidgetUpdate);
 
@@ -379,7 +354,6 @@ export default function Widgets() {
     };
   }, [queryClient, toast]);
 
-  // Fetch widgets
   const { data: widgets = [], isLoading } = useQuery({
     queryKey: ["/api/widgets"],
     queryFn: async () => {
@@ -399,7 +373,6 @@ export default function Widgets() {
     refetchOnMount: true,
   });
 
-  // Fetch screens to show widget usage
   const { data: screens = [] } = useQuery({
     queryKey: ["/api/screens"],
     queryFn: async () => {
@@ -416,7 +389,6 @@ export default function Widgets() {
     },
   });
 
-  // Create widget mutation
   const createWidgetMutation = useMutation({
     mutationFn: async (widgetData: any) => {
       const response = await apiRequest("/api/widgets", {
@@ -441,7 +413,6 @@ export default function Widgets() {
     }
   });
 
-  // Update widget mutation
   const updateWidgetMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: any }) => {
       const response = await apiRequest(`/api/widgets/${id}`, {
@@ -458,12 +429,10 @@ export default function Widgets() {
     }
   });
 
-  // Delete widget mutation
   const deleteWidgetMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await apiRequest(`/api/widgets/${id}`, { method: "DELETE" });
 
-      // Si el widget ya fue eliminado (404), consideramos esto como éxito
       if (response.status === 404) {
         return { success: true, message: "Widget ya eliminado" };
       }
@@ -472,13 +441,11 @@ export default function Widgets() {
       return response.json();
     },
     onSuccess: (data, variables) => {
-      // Actualizar inmediatamente el estado local
       queryClient.setQueryData(["/api/widgets"], (oldData: any[]) => {
         if (!oldData) return [];
         return oldData.filter(widget => widget.id !== parseInt(variables));
       });
 
-      // Invalidar después para asegurar sincronización
       queryClient.invalidateQueries({ queryKey: ["/api/widgets"] });
 
       toast({ 
@@ -558,27 +525,9 @@ export default function Widgets() {
       config = {};
     }
 
-    // Asegurar que el config tenga valores por defecto según el tipo
-    if (widget.type === 'weather') {
-      config = {
-        city: config.city || 'Mexico City',
-        apiKey: config.apiKey || 'e437ff7a677ba82390fcd98091006776',
-        units: config.units || 'metric',
-        ...config
-      };
-    } else if (widget.type === 'text') {
-      config = {
-        text: config.text || 'Texto personalizado',
-        fontSize: config.fontSize || '16px',
-        color: config.color || '#ffffff',
-        ...config
-      };
-    } else if (widget.type === 'clock') {
-      config = {
-        format: config.format || '24h',
-        timezone: config.timezone || 'America/Mexico_City',
-        ...config
-      };
+    const widgetType = widgetTypes.find(t => t.type === widget.type);
+    if (widgetType) {
+      config = { ...widgetType.defaultConfig, ...config };
     }
 
     setEditFormData({
@@ -616,7 +565,7 @@ export default function Widgets() {
     try {
       config = JSON.parse(widget.config || '{}');
     } catch (error) {
-      config = {};
+      config = widgetType.defaultConfig || {};
     }
 
     return widgetType.component;
@@ -632,7 +581,6 @@ export default function Widgets() {
       <div className="flex-1 main-content-scroll px-6 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* Widget Gallery */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -653,218 +601,56 @@ export default function Widgets() {
                       Añade un nuevo widget a tu dashboard para personalizar tu experiencia.
                     </DialogDescription>
                   </DialogHeader>
-                  <Tabs defaultValue="config" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="config">Configuración Básica</TabsTrigger>
-                      <TabsTrigger value="api">APIs y Avanzado</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="config" className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Nombre del Widget</Label>
-                          <Input
-                            value={formData.name}
-                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                            placeholder="Mi widget personalizado"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Posición</Label>
-                          <Select value={formData.position} onValueChange={(value) => setFormData({...formData, position: value})}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="top-left">Superior Izquierda</SelectItem>
-                              <SelectItem value="top-right">Superior Derecha</SelectItem>
-                              <SelectItem value="bottom-left">Inferior Izquierda</SelectItem>
-                              <SelectItem value="bottom-right">Inferior Derecha</SelectItem>
-                              <SelectItem value="center">Centro</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Tipo de Widget</Label>
-                        <div className="grid grid-cols-2 gap-3">
-                          {widgetTypes.map((type) => (
-                            <div
-                              key={type.type}
-                              className={`p-4 border rounded-lg cursor-pointer transition-all hover:bg-accent ${
-                                selectedType === type.type ? 'border-primary bg-primary/5' : ''
-                              }`}
-                              onClick={() => setSelectedType(type.type)}
-                            >
-                              <div className="flex items-center gap-3">
-                                <type.icon className="h-6 w-6 text-primary" />
-                                <div>
-                                  <p className="font-medium">{type.name}</p>
-                                  <p className="text-xs text-muted-foreground">{type.description}</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        <Label>Nombre del Widget</Label>
+                        <Input
+                          value={formData.name}
+                          onChange={(e) => setFormData({...formData, name: e.target.value})}
+                          placeholder="Mi widget personalizado"
+                        />
                       </div>
-                    </TabsContent>
+                      <div className="space-y-2">
+                        <Label>Posición</Label>
+                        <Select value={formData.position} onValueChange={(value) => setFormData({...formData, position: value})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="top-left">Superior Izquierda</SelectItem>
+                            <SelectItem value="top-right">Superior Derecha</SelectItem>
+                            <SelectItem value="bottom-left">Inferior Izquierda</SelectItem>
+                            <SelectItem value="bottom-right">Inferior Derecha</SelectItem>
+                            <SelectItem value="center">Centro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-                    <TabsContent value="api" className="space-y-6">
-                      {selectedType && widgetTypes.find(t => t.type === selectedType)?.hasApiConfig && (
-                        <div className="space-y-6">
-                          <div className="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                            <div className="flex items-center gap-3 mb-3">
-                              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                                <Key className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                              </div>
+                    <div className="space-y-2">
+                      <Label>Tipo de Widget</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {widgetTypes.map((type) => (
+                          <div
+                            key={type.type}
+                            className={`p-4 border rounded-lg cursor-pointer transition-all hover:bg-accent ${
+                              selectedType === type.type ? 'border-primary bg-primary/5' : ''
+                            }`}
+                            onClick={() => setSelectedType(type.type)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <type.icon className="h-6 w-6 text-primary" />
                               <div>
-                                <h3 className="font-semibold text-blue-900 dark:text-blue-100">Configuración de API</h3>
-                                <p className="text-sm text-blue-700 dark:text-blue-300">
-                                  Configure las APIs para datos en tiempo real
-                                </p>
+                                <p className="font-medium">{type.name}</p>
+                                <p className="text-xs text-muted-foreground">{type.description}</p>
                               </div>
                             </div>
                           </div>
-
-                          <div className="grid grid-cols-1 gap-4">
-                            {widgetTypes.find(t => t.type === selectedType)?.apiFields?.map((field) => (
-                              <div key={field.key} className="space-y-2">
-                                <Label className="flex items-center gap-2 text-sm font-medium">
-                                  <Globe className="h-4 w-4 text-primary" />
-                                  {field.label}
-                                </Label>
-                                {field.type === 'select' ? (
-                                  <Select>
-                                    <SelectTrigger className="h-11">
-                                      <SelectValue placeholder={`Seleccionar ${field.label.toLowerCase()}`} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {field.options?.map((option) => (
-                                        <SelectItem key={option} value={option}>{option}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <Input
-                                    type={field.type}
-                                    className="h-11"
-                                    placeholder={field.type === 'password' ? '••••••••••••' : `Ingresa ${field.label.toLowerCase()}`}
-                                  />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-                              <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Configuración desde el Frontend</span>
-                            </div>
-                            <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                              Las configuraciones de API se pueden modificar directamente desde esta interfaz
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {selectedType && widgetTypes.find(t => t.type === selectedType)?.customFields && (
-                        <div className="space-y-4">
-                          <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Palette className="h-4 w-4 text-purple-600" />
-                              <span className="font-medium text-purple-900 dark:text-purple-100">Personalización</span>
-                            </div>
-                            <p className="text-sm text-purple-700 dark:text-purple-300">
-                              Personaliza la apariencia y contenido
-                            </p>
-                          </div>
-
-                          {widgetTypes.find(t => t.type === selectedType)?.customFields?.map((field) => (
-                            <div key={field.key} className="space-y-2">
-                              <Label>{field.label}</Label>
-                              {field.type === 'textarea' ? (
-                                <Textarea 
-                                  placeholder={`Ingresa ${field.label.toLowerCase()}`}
-                                  value={(() => {
-                                    try {
-                                      const config = JSON.parse(formData.config);
-                                      return config[field.key] || '';
-                                    } catch {
-                                      return '';
-                                    }
-                                  })()}
-                                  onChange={(e) => {
-                                    try {
-                                      const currentConfig = JSON.parse(formData.config);
-                                      const newConfig = { ...currentConfig, [field.key]: e.target.value };
-                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
-                                    } catch {
-                                      const newConfig = { [field.key]: e.target.value };
-                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
-                                    }
-                                  }}
-                                />
-                              ) : field.type === 'select' ? (
-                                <Select
-                                  value={(() => {
-                                    try {
-                                      const config = JSON.parse(formData.config);
-                                      return config[field.key] || '';
-                                    } catch {
-                                      return '';
-                                    }
-                                  })()}
-                                  onValueChange={(value) => {
-                                    try {
-                                      const currentConfig = JSON.parse(formData.config);
-                                      const newConfig = { ...currentConfig, [field.key]: value };
-                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
-                                    } catch {
-                                      const newConfig = { [field.key]: value };
-                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
-                                    }
-                                  }}
-                                >
-                                                                    <SelectTrigger>
-                                    <SelectValue placeholder={`Seleccionar ${field.label.toLowerCase()}`} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {field.options?.map((option) => (
-                                      <SelectItem key={option} value={option}>{option}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Input
-                                  type={field.type}
-                                  placeholder={`Ingresa ${field.label.toLowerCase()}`}
-                                  value={(() => {
-                                    try {
-                                      const config = JSON.parse(formData.config);
-                                      return config[field.key] || '';
-                                    } catch {
-                                      return '';
-                                    }
-                                  })()}
-                                  onChange={(e) => {
-                                    try {
-                                      const currentConfig = JSON.parse(formData.config);
-                                      const newConfig = { ...currentConfig, [field.key]: e.target.value };
-                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
-                                    } catch {
-                                      const newConfig = { [field.key]: e.target.value };
-                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
-                                    }
-                                  }}
-                                />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="flex justify-end gap-2 pt-4">
                     <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
@@ -891,7 +677,6 @@ export default function Widgets() {
                 </DialogContent>
               </Dialog>
 
-              {/* Edit Widget Modal */}
               <Dialog open={!!editingWidget} onOpenChange={() => setEditingWidget(null)}>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
@@ -919,8 +704,8 @@ export default function Widgets() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="top-left">Superior Izquierda</SelectItem>
-                              <SelectItem value="top-right">Superior Derecha</SelectItem>                          
-                                <SelectItem value="bottom-left">Inferior Izquierda</SelectItem>
+                              <SelectItem value="top-right">Superior Derecha</SelectItem>
+                              <SelectItem value="bottom-left">Inferior Izquierda</SelectItem>
                               <SelectItem value="bottom-right">Inferior Derecha</SelectItem>
                               <SelectItem value="center">Centro</SelectItem>
                             </SelectContent>
@@ -928,7 +713,6 @@ export default function Widgets() {
                         </div>
                       </div>
 
-                      {/* Widget-specific configuration */}
                       {editingWidget.type === 'text' && (
                         <div className="space-y-4">
                           <div className="space-y-2">
@@ -970,7 +754,7 @@ export default function Widgets() {
                               <Label>Color</Label>
                               <Input
                                 type="color"
-                                value={editFormData.config?.color || '#ffffff'}
+                                value={editFormData.config?.color || '#000000'}
                                 onChange={(e) => setEditFormData({
                                   ...editFormData,
                                   config: { ...editFormData.config, color: e.target.value }
@@ -1005,24 +789,6 @@ export default function Widgets() {
                               })}
                               placeholder="Tu API key de OpenWeatherMap"
                             />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Unidades</Label>
-                            <Select 
-                              value={editFormData.config?.units || 'metric'} 
-                              onValueChange={(value) => setEditFormData({
-                                ...editFormData,
-                                config: { ...editFormData.config, units: value }
-                              })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="metric">Métrico (°C)</SelectItem>
-                                <SelectItem value="imperial">Imperial (°F)</SelectItem>
-                              </SelectContent>
-                            </Select>
                           </div>
                         </div>
                       )}
@@ -1117,7 +883,6 @@ export default function Widgets() {
               </Dialog>
             </div>
 
-            {/* Widgets Grid */}
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[1, 2, 3, 4].map((i) => (
@@ -1133,7 +898,7 @@ export default function Widgets() {
                   try {
                     config = JSON.parse(widget.config || '{}');
                   } catch (error) {
-                    config = {};
+                    config = widgetType?.defaultConfig || {};
                   }
 
                   return (
@@ -1210,7 +975,6 @@ export default function Widgets() {
             )}
           </div>
 
-          {/* Widget Preview & Info */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -1265,25 +1029,6 @@ export default function Widgets() {
                       Los widgets se muestran automáticamente en todas las pantallas activas del usuario.
                     </p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="h-5 w-5" />
-                  Configuración de APIs
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm text-muted-foreground space-y-2">
-                  <p>Para habilitar todas las funcionalidades:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li><code>VITE_WEATHER_API_KEY</code> - OpenWeatherMap</li>
-                    <li><code>VITE_NEWS_API_KEY</code> - NewsAPI</li>
-                  </ul>
-                  <p>Los widgets funcionan con datos demo sin APIs.</p>
                 </div>
               </CardContent>
             </Card>
