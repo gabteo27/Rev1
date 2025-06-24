@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { wsManager } from "@/lib/websocket";
@@ -488,7 +487,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         return <VideoPlayer src={url} objectFit={objectFit} />;
       case 'pdf':
         return <PDFPlayer src={url} objectFit={objectFit} />;
-      
+
       case 'webpage': 
         return <WebpagePlayer src={url} />;
       default: 
@@ -573,11 +572,11 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   useEffect(() => {
     if (!isPreview && playlistId) {
       console.log('🔌 Setting up WebSocket for playlist updates...');
-      
+
       // Try to connect WebSocket
       wsManager.connect().then(() => {
         console.log('✅ WebSocket connected for ContentPlayer');
-        
+
         // Authenticate if we have a token
         const authToken = localStorage.getItem('authToken');
         if (authToken) {

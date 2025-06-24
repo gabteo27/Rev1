@@ -44,8 +44,18 @@ const PDFPlayer = memo(({ src, objectFit = 'contain' }: PDFPlayerProps) => {
   }
 
   return (
-    // Contenedor principal con clase dinámica para el object-fit
-    <div className={`pdf-container-fit-${objectFit}`} style={{ width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#000' }}>
+    <div 
+      className={`pdf-container-fit-${objectFit}`} 
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        overflow: 'hidden', 
+        backgroundColor: '#000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
       <Document
         file={src}
         onLoadSuccess={onDocumentLoadSuccess}
@@ -54,10 +64,10 @@ const PDFPlayer = memo(({ src, objectFit = 'contain' }: PDFPlayerProps) => {
       >
         <Page
           pageNumber={currentPage}
-          // Renderizamos a un ancho fijo y grande para tener buena calidad, CSS se encargará de escalarlo
-          width={1920} 
+          width={1200}
           renderTextLayer={false}
           renderAnnotationLayer={false}
+          className="pdf-page"
         />
       </Document>
     </div>
