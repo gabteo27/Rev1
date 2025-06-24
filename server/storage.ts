@@ -809,15 +809,25 @@ export class DatabaseStorage implements IStorage {
     updates: Partial<InsertWidget>,
     userId: string,
   ): Promise<Widget | undefined> {
-    // Remove timestamp fields from updates to avoid conflicts
-    const { createdAt, updatedAt, ...safeUpdates } = updates as any;
+    try {
+      // Remove timestamp fields from updates to avoid conflicts
+      const { createdAt, updatedAt, ...safeUpdates } = updates as any;
 
-    const [item] = await db
-      .update(widgets)
-      .set({ ...safeUpdates, updatedAt: new Date() })
-      .where(and(eq(widgets.id, id), eq(widgets.userId, userId)))
-      .returning();
-    return item;
+      // Ensure config is properly stringified if it's an object
+      if (safeUpdates.config && typeof safeUpdates.config === 'object') {
+        safeUpdates.config = JSON.stringify(safeUpdates.config);
+      }
+
+      const [item] = await db
+        .update(widgets)
+        .set({ ...safeUpdates, updatedAt: new Date() })
+        .where(and(eq(widgets.id, id), eq(widgets.userId, userId)))
+        .returning();
+      return item;
+    } catch (error) {
+      console.error('Error updating widget:', error);
+      throw error;
+    }
   }
 
   async getWidgetById(id: number): Promise<any> {
@@ -835,10 +845,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteWidget(id: number, userId: string): Promise<boolean> {
-    const result = await db
-      .delete(widgets)
-      .where(and(eq(widgets.id, id), eq(widgets.userId, userId)));
-    return (result.rowCount ?? 0) > 0;
+    try {
+      const result = await db
+        .delete(widgets)
+        .where(and(eq(widgets.id, id), eq(widgets.userId, userId)));
+      return (result.rowCount ?? 0) > 0;
+    } catch (error) {
+      console.error('Error deleting widget:', error);
+      throw error;
+    }
   }
 
     async getWidgetById(id: number) {

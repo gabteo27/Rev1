@@ -1633,7 +1633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Widget not found" });
       }
 
-      const success = await storage.deleteWidget(widgetId);
+      const success = await storage.deleteWidget(widgetId, userId);
       if (!success) {
         return res.status(404).json({ message: "Widget not found" });
       }

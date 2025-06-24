@@ -319,7 +319,7 @@ const widgetTypes = [
     icon: Type, 
     description: "Texto personalizable",
     component: TextWidget,
-    defaultConfig: { text: "Ingresa tu texto personalizado aquí", fontSize: "16px", color: "#ffffff" },
+    defaultConfig: { text: "Texto personalizado", fontSize: "16px", color: "#ffffff" },
     customFields: [
       { key: 'text', label: 'Texto', type: 'textarea' },
       { key: 'fontSize', label: 'Tamaño de letra', type: 'text' },
@@ -510,9 +510,17 @@ export default function Widgets() {
   };
 
   const toggleWidgetStatus = (widget: any) => {
+    const updatedWidget = {
+      name: widget.name,
+      type: widget.type,
+      position: widget.position,
+      config: widget.config,
+      isEnabled: !widget.isEnabled
+    };
+    
     updateWidgetMutation.mutate({
       id: widget.id,
-      data: { ...widget, isEnabled: !widget.isEnabled }
+      data: updatedWidget
     });
   };
 
@@ -535,15 +543,19 @@ export default function Widgets() {
   const saveWidgetEdit = () => {
     if (!editingWidget) return;
 
+    const updatedData = {
+      name: editFormData.name || editingWidget.name,
+      type: editingWidget.type,
+      position: editFormData.position || editingWidget.position,
+      isEnabled: editFormData.isEnabled !== undefined ? editFormData.isEnabled : editingWidget.isEnabled,
+      config: editFormData.config ? JSON.stringify(editFormData.config) : editingWidget.config
+    };
+
+    console.log('Saving widget with data:', updatedData);
+
     updateWidgetMutation.mutate({
       id: editingWidget.id,
-      data: {
-        ...editingWidget,
-        name: editFormData.name,
-        position: editFormData.position,
-        isEnabled: editFormData.isEnabled,
-        config: JSON.stringify(editFormData.config)
-      }
+      data: updatedData
     });
   };
 
@@ -867,31 +879,43 @@ export default function Widgets() {
                           <div className="space-y-2">
                             <Label>Texto</Label>
                             <Textarea
-                              value={editFormData.config?.text || ''}
+                              value={editFormData.config?.text || 'Texto personalizado'}
                               onChange={(e) => setEditFormData({
                                 ...editFormData, 
                                 config: { ...editFormData.config, text: e.target.value }
                               })}
                               placeholder="Ingresa el texto que quieres mostrar"
+                              rows={4}
                             />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label>Tamaño de letra</Label>
-                              <Input
+                              <Select
                                 value={editFormData.config?.fontSize || '16px'}
-                                onChange={(e) => setEditFormData({
+                                onValueChange={(value) => setEditFormData({
                                   ...editFormData,
-                                  config: { ...editFormData.config, fontSize: e.target.value }
+                                  config: { ...editFormData.config, fontSize: value }
                                 })}
-                                placeholder="16px"
-                              />
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="12px">12px - Pequeño</SelectItem>
+                                  <SelectItem value="14px">14px - Normal</SelectItem>
+                                  <SelectItem value="16px">16px - Mediano</SelectItem>
+                                  <SelectItem value="18px">18px - Grande</SelectItem>
+                                  <SelectItem value="20px">20px - Muy Grande</SelectItem>
+                                  <SelectItem value="24px">24px - Extra Grande</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div className="space-y-2">
                               <Label>Color</Label>
                               <Input
                                 type="color"
-                                value={editFormData.config?.color || '#000000'}
+                                value={editFormData.config?.color || '#ffffff'}
                                 onChange={(e) => setEditFormData({
                                   ...editFormData,
                                   config: { ...editFormData.config, color: e.target.value }
@@ -907,25 +931,43 @@ export default function Widgets() {
                           <div className="space-y-2">
                             <Label>Ciudad</Label>
                             <Input
-                              value={editFormData.config?.city || ''}
+                              value={editFormData.config?.city || 'Mexico City'}
                               onChange={(e) => setEditFormData({
                                 ...editFormData,
                                 config: { ...editFormData.config, city: e.target.value }
                               })}
-                              placeholder="Ciudad"
+                              placeholder="Mexico City"
                             />
                           </div>
                           <div className="space-y-2">
                             <Label>API Key de OpenWeatherMap</Label>
                             <Input
                               type="password"
-                              value={editFormData.config?.apiKey || ''}
+                              value={editFormData.config?.apiKey || 'e437ff7a677ba82390fcd98091006776'}
                               onChange={(e) => setEditFormData({
                                 ...editFormData,
                                 config: { ...editFormData.config, apiKey: e.target.value }
                               })}
-                              placeholder="Tu API key de OpenWeatherMap"
+                              placeholder="e437ff7a677ba82390fcd98091006776"
                             />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Unidades</Label>
+                            <Select 
+                              value={editFormData.config?.units || 'metric'} 
+                              onValueChange={(value) => setEditFormData({
+                                ...editFormData,
+                                config: { ...editFormData.config, units: value }
+                              })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="metric">Métrico (°C)</SelectItem>
+                                <SelectItem value="imperial">Imperial (°F)</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                       )}
