@@ -823,6 +823,20 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
+  async getWidgetById(id: number): Promise<any> {
+    try {
+      const result = await db
+        .select()
+        .from(widgets)
+        .where(eq(widgets.id, id))
+        .limit(1);
+      return result[0] || null;
+    } catch (error) {
+      console.error('Error getting widget by ID:', error);
+      return null;
+    }
+  }
+
   async deleteWidget(id: number, userId: string): Promise<boolean> {
     const result = await db
       .delete(widgets)
@@ -969,6 +983,8 @@ export class DatabaseStorage implements IStorage {
 
   async getScreenByAuthToken(token: string): Promise<Screen | undefined> {
     const [screen] = await db
+```tool_code
+// Adding the method to get widget by ID and adjusting deleteWidget method.
       .select()
       .from(screens)
       .where(eq(screens.authToken, token));

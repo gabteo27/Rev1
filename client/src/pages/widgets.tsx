@@ -85,8 +85,8 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
     };
 
     fetchWeather();
-    const interval = setInterval(fetchWeather, 10 * 60 * 1000);
-    return () => clearInterval(interval);
+      const interval = setInterval(fetchWeather, 5 * 60 * 1000); // 5 minutes
+      return () => clearInterval(interval);
   }, [config]);
 
   if (loading) {
@@ -152,8 +152,8 @@ const LiveNewsWidget = ({ config }: { config: any }) => {
     };
 
     fetchNews();
-    const interval = setInterval(fetchNews, 15 * 60 * 1000); // Update every 15 minutes
-    return () => clearInterval(interval);
+      const interval = setInterval(fetchNews, 5 * 60 * 1000); // Update every 5 minutes
+      return () => clearInterval(interval);
   }, [config]);
 
   // Rotate news items every 8 seconds
@@ -503,7 +503,7 @@ export default function Widgets() {
 
   const saveWidgetEdit = () => {
     if (!editingWidget) return;
-    
+
     updateWidgetMutation.mutate({
       id: editingWidget.id,
       data: {
@@ -821,8 +821,7 @@ export default function Widgets() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="top-left">Superior Izquierda</SelectItem>
-                              <SelectItem value="top-right">Superior Derecha</SelectItem>
-                              <SelectItem value="bottom-left">Inferior Izquierda</SelectItem>
+                              <SelectItem value="top-right">Superior Derecha                              <SelectItem value="bottom-left">Inferior Izquierda</SelectItem>
                               <SelectItem value="bottom-right">Inferior Derecha</SelectItem>
                               <SelectItem value="center">Centro</SelectItem>
                             </SelectContent>

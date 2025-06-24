@@ -652,17 +652,25 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         }
       };
 
+      // Handle widget updates
+      const handleWidgetUpdate = (data: any) => {
+        console.log('🔧 Widget update received:', data);
+        queryClient.invalidateQueries({ queryKey: ['user-widgets'] });
+      };
+
       // Subscribe to WebSocket events
       wsManager.on('playlist-content-updated', handlePlaylistUpdate);
       wsManager.on('playlist-change', handlePlaylistChange);
       wsManager.on('playlist-item-deleted', handlePlaylistUpdate);
       wsManager.on('playlist-item-added', handlePlaylistUpdate);
+      wsManager.on('widget-updated', handleWidgetUpdate);
 
       return () => {
         wsManager.off('playlist-content-updated', handlePlaylistUpdate);
         wsManager.off('playlist-change', handlePlaylistChange);
         wsManager.off('playlist-item-deleted', handlePlaylistUpdate);
         wsManager.off('playlist-item-added', handlePlaylistUpdate);
+        wsManager.off('widget-updated', handleWidgetUpdate);
       };
     }
   }, [isPreview, playlistId, queryClient]);
@@ -860,7 +868,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       };
 
       fetchWeather();
-      const interval = setInterval(fetchWeather, 10 * 60 * 1000);
+      const interval = setInterval(fetchWeather, 5 * 60 * 1000); // 5 minutes
       return () => clearInterval(interval);
     }, [apiKey, city]);
 
@@ -916,7 +924,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       };
 
       fetchNews();
-      const interval = setInterval(fetchNews, 15 * 60 * 1000);
+      const interval = setInterval(fetchNews, 5 * 60 * 1000); // 5 minutes
       return () => clearInterval(interval);
     }, [rssUrl, maxItems]);
 
