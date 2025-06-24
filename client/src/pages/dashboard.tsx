@@ -280,15 +280,7 @@ export default function Dashboard() {
     };
   }, [toast, selectedPlaylistId]);
 
-  // Fetch data with proper error handling and caching
-  const { data: screens = [] } = useQuery({
-    queryKey: ["/api/screens"],
-    queryFn: () => apiRequest("/api/screens").then(res => res.json()),
-    retry: 1,
-    staleTime: 60000, // 1 minute
-    gcTime: 300000, // 5 minutes
-    refetchOnWindowFocus: false,
-  });
+  // Screens data is already fetched above with refetch functionality
 
   const { data: playlists = [] } = useQuery({
     queryKey: ["/api/playlists"],
