@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import cors from "cors";
+import path from "path"; // <--- AÑADE ESTA LÍNEA
+
 
 const app = express();
 app.use(express.json());
@@ -15,6 +17,11 @@ app.use(
     optionsSuccessStatus: 204,
   }),
 );
+
+app.use(express.static(path.resolve(process.cwd(), "client", "public")));
+
+app.use('/uploads', express.static(path.resolve(process.cwd(), "uploads")));
+
 
 app.use((req, res, next) => {
   const start = Date.now();

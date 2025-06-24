@@ -28,11 +28,27 @@ import { buildApk } from "./apk-builder";
 import { eq, and, desc, asc, exists, inArray, lt } from "drizzle-orm";
 import { db } from "./db";
 
+fs.ensureDirSync("uploads/");
 // Configure multer for file uploads
+const storageConfig = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+
+    // Limpia el nombre original del archivo para que sea seguro para una URL
+    // Reemplaza los espacios (y otros espacios en blanco) por guiones
+    const safeOriginalName = file.originalname.replace(/\s+/g, '-');
+
+    cb(null, uniqueSuffix + '-' + safeOriginalName);
+  }
+});
+
 const upload = multer({
-  dest: "uploads/",
+  storage: storageConfig,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit
+    fileSize: 100 * 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = [

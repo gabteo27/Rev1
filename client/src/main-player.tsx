@@ -7,6 +7,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { queryClient } from "@/lib/queryClient";
 import PlayerPage from "./pages/player";
 import "./index.css";
+import { pdfjs } from 'react-pdf';
+
+
+pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.js`;
 
 // Renderiza únicamente la página del reproductor con todos los providers necesarios
 createRoot(document.getElementById("root")!).render(

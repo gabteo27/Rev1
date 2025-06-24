@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { wsManager } from "@/lib/websocket";
 import { AlertOverlay } from "@/components/player/AlertOverlay";
 import { apiRequest } from "@/lib/queryClient";
+import PDFPlayer from './PDFPlayer';
 
 // Estilos para el reproductor
 const styles = {
@@ -93,56 +94,6 @@ const WebpagePlayer = memo(({ src }: { src: string }) => {
   );
 });
 WebpagePlayer.displayName = 'WebpagePlayer';
-
-const PDFPlayer = memo(({ src }: { src: string }) => {
-  const [error, setError] = useState(false);
-
-  const handleError = useCallback(() => {
-    setError(true);
-  }, []);
-
-  const pdfViewerUrl = useMemo(() => {
-    return src.startsWith('http') 
-      ? `https://docs.google.com/viewer?url=${encodeURIComponent(src)}&embedded=true`
-      : `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + src)}&embedded=true`;
-  }, [src]);
-
-  if (error) {
-    return (
-      <div style={{ 
-        ...styles.media, 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        color: 'rgba(255,255,255,0.7)',
-        fontSize: '18px',
-        backgroundColor: '#1a1a1a'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📄</div>
-          <div>Error cargando PDF</div>
-          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{src}</div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <iframe
-      src={pdfViewerUrl}
-      style={{ 
-        ...styles.media, 
-        border: 'none',
-        background: '#f5f5f5'
-      }}
-      title="PDF document"
-      loading="eager"
-      sandbox="allow-scripts allow-same-origin"
-      onError={handleError}
-    />
-  );
-});
-PDFPlayer.displayName = 'PDFPlayer';
 
 // YouTube Player Component
 const YouTubePlayer = memo(({ url }: { url: string }) => {
@@ -250,7 +201,7 @@ const YouTubePlayer = memo(({ url }: { url: string }) => {
         </div>
       )}
       <iframe
-        key={`youtube-${videoId}-${Date.now()}`}
+        key={`youtube-${videoId}`}
         src={embedUrl}
         style={{ 
           ...styles.media, 
@@ -516,6 +467,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         return <VideoPlayer src={url} objectFit={objectFit} />;
       case 'pdf':
         return <PDFPlayer src={url} />;
+      
       case 'webpage': 
         return <WebpagePlayer src={url} />;
       default: 

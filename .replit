@@ -39,6 +39,7 @@ externalPort = 80
 
 [nix]
 channel = "stable-24_05"
+packages = ["imagemagick_light"]
 
 [deployment]
 deploymentTarget = "cloudrun"

@@ -2,9 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-
-
-
+import { viteStaticCopy } from 'vite-plugin-static-copy'; // <--- AÑADE ESTA LÍNEA
 
 export default defineConfig({
   plugins: [
@@ -18,6 +16,14 @@ export default defineConfig({
           ),
         ]
       : []),
+    viteStaticCopy({
+      targets: [
+        {
+          src: path.resolve(import.meta.dirname, 'node_modules/pdfjs-dist/build/pdf.worker.js'),
+          dest: ''
+        }
+      ]
+    })
   ],
   resolve: {
     alias: {
@@ -32,9 +38,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        // La app principal (Panel de Admin) se compila desde index.html
         main: path.resolve(import.meta.dirname, "client", "index.html"),
-        // La app secundaria (Reproductor) se compila desde player.html
         player: path.resolve(import.meta.dirname, "client", "player.html")
       },
     },
