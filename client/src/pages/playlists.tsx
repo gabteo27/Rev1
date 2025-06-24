@@ -836,9 +836,8 @@ export default function Playlists() {
       const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}`, {
         method: "PUT",
         body: JSON.stringify({ layout }),
-        headers:```tool_code
-
-{"Content-Type": "application/json",
+        headers: {
+          "Content-Type": "application/json",
         },
       });
       if (!response.ok) {
