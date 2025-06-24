@@ -29,7 +29,7 @@ import {
   Settings,
   MoreHorizontal,
   Trash2,
-  Edit,
+  Edit3,
   Monitor,
   Users,
   Activity,
@@ -48,7 +48,16 @@ import {
   PictureInPicture,
   AlignLeft,
   AlignRight,
-  Navigation
+  Navigation,
+  Type,
+  List,
+  Shuffle,
+  ScrollText,
+  SidebarOpen,
+  SidebarClose,
+  SplitSquareHorizontal,
+  SplitSquareVertical,
+  PictureInPicture as PiP
 } from "lucide-react";
 
 // Tipos para mayor claridad
@@ -1337,16 +1346,9 @@ export default function Playlists() {
     setSelectedContent(newSelection);
   };
 
-  const handlePreview = (playlistId: number) => {
-    // Open preview in new tab
-    window.open(`/screen-player/${playlistId}`, '_blank');
-  };
-
   const setLocation = (path: string) => {
     window.location.href = path;
   };
-
-  const [showEditModal, setShowEditModal] = useState(false);
 
   // WebSocket setup for real-time updates
   useEffect(() => {
@@ -1553,22 +1555,6 @@ export default function Playlists() {
                             <Eye className="w-4 h-4 mr-2" />
                             Ver Detalles
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePreview(playlist.id)}
-                          >
-                            <Play className="w-4 h-4 mr-2" />
-                            Preview
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setLocation(`/playlists/${playlist.id}#widgets`)}
-                          >
-                            <Settings className="w-4 h-4 mr-2" />
-                            Agregar Widget
-                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm">
@@ -1579,7 +1565,7 @@ export default function Playlists() {
                               <DropdownMenuItem
                                 onClick={() => {
                                   setEditingPlaylist(playlist);
-                                  setShowEditModal(true);
+                                  setEditModalOpen(true);
                                 }}
                               >
                                 <Edit3 className="w-4 h-4 mr-2" />

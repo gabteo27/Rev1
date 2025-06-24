@@ -1616,53 +1616,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Playlist widgets endpoints
-  app.get("/api/playlists/:id/widgets", isAuthenticated, async (req: any, res) => {
+  // Note: Playlist widgets functionality removed - widgets now load directly from screens
+
+  // Player endpoints for screen widgets
+  app.get("/api/player/widgets", isPlayerAuthenticated, async (req: any, res) => {
     try {
-      const playlistId = parseInt(req.params.id);
-      const widgets = await storage.getPlaylistWidgets(playlistId);
-      res.json(widgets);
+      // Get widgets from user account, not from playlist
+      const authToken = req.headers.authorization?.replace('Bearer ', '');
+      if (!authToken) {
+        return res.status(401).json({ message: "No auth token provided" });
+      }
+
+      // Find screen by auth token to get user ID
+      const screen = await storage.getScreenByAuthToken(authToken);
+      if (!screen) {
+        return res.status(404).json({ message: "Screen not found" });
+      }
+
+      const widgets = await storage.getWidgets(screen.userId);
+      res.json(widgets.filter((w: any) => w.isEnabled));
     } catch (error) {
-      console.error("Error fetching playlist widgets:", error);
-      res.status(500).json({ message: "Failed to fetch playlist widgets" });
-    }
-  });
-
-  app.post("/api/playlists/:id/widgets", isAuthenticated, async (req: any, res) => {
-    try {
-      const playlistId = parseInt(req.params.id);
-      const { widgetId, position } = req.body;
-
-      const playlistWidget = await storage.addWidgetToPlaylist(playlistId, widgetId, position);
-      res.json(playlistWidget);
-    } catch (error) {
-      console.error("Error adding widget to playlist:", error);
-      res.status(500).json({ message: "Failed to add widget to playlist" });
-    }
-  });
-
-  app.delete("/api/playlists/:playlistId/widgets/:widgetId", isAuthenticated, async (req: any, res) => {
-    try {
-      const playlistId = parseInt(req.params.playlistId);
-      const widgetId = parseInt(req.params.widgetId);
-
-      await storage.removeWidgetFromPlaylist(playlistId, widgetId);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error removing widget from playlist:", error);
-      res.status(500).json({ message: "Failed to remove widget from playlist" });
-    }
-  });
-
-  // Player endpoints for playlist widgets
-  app.get("/api/player/playlists/:id/widgets", isPlayerAuthenticated, async (req: any, res) => {
-    try {
-      const playlistId = parseInt(req.params.id);
-      const widgets = await storage.getPlaylistWidgets(playlistId);
-      res.json(widgets);
-    } catch (error) {
-      console.error("Error fetching playlist widgets for player:", error);
-      res.status(500).json({ message: "Failed to fetch playlist widgets" });
+      console.error("Error fetching widgets for player:", error);
+      res.status(500).json({ message: "Failed to fetch widgets" });
     }
   });
 

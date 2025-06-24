@@ -667,7 +667,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     };
   }, [zoneTrackers]);
 
-  
+
 
   // WebSocket connection and real-time updates
   useEffect(() => {
@@ -818,10 +818,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -845,10 +845,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -878,10 +878,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -896,7 +896,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       return (
         <div style={{ ...styles.container, display: 'grid', gridTemplate: '1fr 1fr 1fr / 1fr 1fr 1fr', gap: '2px' }}>
           {Array.from({length: 9}, (_, i) => {
-            
+
 const zoneId = `grid_${i + 1}`;
             return (
               <div key={zoneId} style={{ ...styles.zone, backgroundColor: '#111' }}>
@@ -908,10 +908,10 @@ const zoneId = `grid_${i + 1}`;
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -935,10 +935,10 @@ const zoneId = `grid_${i + 1}`;
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -962,10 +962,10 @@ const zoneId = `grid_${i + 1}`;
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -992,10 +992,10 @@ const zoneId = `grid_${i + 1}`;
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -1022,10 +1022,10 @@ const zoneId = `grid_${i + 1}`;
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -1051,10 +1051,10 @@ const zoneId = `grid_${i + 1}`;
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -1088,10 +1088,10 @@ const zoneId = `grid_${i + 1}`;
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -1113,10 +1113,10 @@ const zoneId = `grid_${i + 1}`;
             {widgets && widgets.length > 0 && (
               <div className="absolute inset-0 pointer-events-none z-20">
                 {widgets
-                  .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                  .map((playlistWidget: any) => (
-                    <div key={playlistWidget.id} className="pointer-events-auto">
-                      {renderWidget(playlistWidget)}
+                  .filter((widget: any) => widget.isEnabled)
+                  .map((widget: any) => (
+                    <div key={widget.id} className="pointer-events-auto">
+                      {renderWidget(widget)}
                     </div>
                   ))}
               </div>
@@ -1149,10 +1149,10 @@ const zoneId = `grid_${i + 1}`;
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>
@@ -1173,10 +1173,10 @@ const zoneId = `grid_${i + 1}`;
           {widgets && widgets.length > 0 && (
             <div className="absolute inset-0 pointer-events-none z-20">
               {widgets
-                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget && playlistWidget.widget.isEnabled)
-                .map((playlistWidget: any) => (
-                  <div key={playlistWidget.id} className="pointer-events-auto">
-                    {renderWidget(playlistWidget)}
+                .filter((widget: any) => widget.isEnabled)
+                .map((widget: any) => (
+                  <div key={widget.id} className="pointer-events-auto">
+                    {renderWidget(widget)}
                   </div>
                 ))}
             </div>

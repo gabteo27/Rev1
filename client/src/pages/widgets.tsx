@@ -299,7 +299,19 @@ export default function Widgets() {
   // Fetch widgets
   const { data: widgets = [], isLoading } = useQuery({
     queryKey: ["/api/widgets"],
-    queryFn: () => apiRequest("/api/widgets").then(res => res.json()),
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("/api/widgets");
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Error fetching widgets:', error);
+        return [];
+      }
+    },
     refetchOnWindowFocus: false,
     refetchOnMount: true,
   });
@@ -637,7 +649,7 @@ export default function Widgets() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {widgets.map((widget: any) => {
+                {Array.isArray(widgets) && widgets.map((widget: any) => {
                   const WidgetComponent = getWidgetComponent(widget);
                   const widgetType = widgetTypes.find(t => t.type === widget.type);
                   let config = {};
