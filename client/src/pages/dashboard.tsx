@@ -648,7 +648,9 @@ return (
                       La pantalla se actualiza automáticamente cuando cambias la playlist
                     </p>
                   </div>
-                )}</div></div>
+                )}
+              </CardContent>
+            </Card>
 
                 {/* Información de la playlist seleccionada */}
                 {selectedPlaylistData && (
