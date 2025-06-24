@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { wsManager } from "@/lib/websocket";
 import PDFPlayer from "./PDFPlayer";
-import AlertOverlay from "./AlertOverlay";
+import { AlertOverlay } from "./AlertOverlay";
 import { apiRequest } from "@/lib/queryClient";
 
 // Estilos para el reproductor
