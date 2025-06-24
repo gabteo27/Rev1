@@ -30,8 +30,8 @@ const PDFPlayer = memo(({ src, objectFit = 'contain' }: PDFPlayerProps) => {
     setError(null);
   }, []);
 
-  const onDocumentLoadError = useCallback((error: Error) => {
-    console.error('Error al cargar el PDF:', error.message);
+  const onDocumentLoadError = useCallback((error: any) => {
+    console.error('Error al cargar el PDF:', error);
     setError('No se pudo cargar el archivo PDF.');
   }, []);
 

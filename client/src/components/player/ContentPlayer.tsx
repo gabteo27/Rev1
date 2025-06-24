@@ -258,9 +258,34 @@ interface ZoneTracker {
 }
 
 export default function ContentPlayer({ playlistId, isPreview = false }: { playlistId?: number, isPreview?: boolean }) {
+  const queryClient = useQueryClient();
   const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
-  const queryClient = useQueryClient();
+
+  // Query para obtener widgets de la playlist - SIEMPRE debe estar aquí
+  const { data: widgets = [] } = useQuery<any[]>({
+    queryKey: [isPreview ? `/api/playlists/${playlistId}/widgets` : `/api/player/playlists/${playlistId}/widgets`],
+    queryFn: () => {
+      const endpoint = isPreview ? `/api/playlists/${playlistId}/widgets` : `/api/player/playlists/${playlistId}/widgets`;
+      if (isPreview) {
+        return apiRequest(endpoint).then(res => res.json());
+      } else {
+        const authToken = localStorage.getItem('authToken');
+        return fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }).then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to fetch playlist widgets');
+          }
+          return res.json();
+        });
+      }
+    },
+    refetchInterval: isPreview ? 10000 : 120000,
+    enabled: !!playlistId,
+  });
 
   const { data: playlist, isLoading } = useQuery<any & { items: any[] }>({
     queryKey: isPreview ? ['/api/playlists', playlistId] : ['/api/player/playlists', playlistId],
@@ -642,30 +667,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     };
   }, [zoneTrackers]);
 
-  // Query para obtener widgets de la playlist
-  const { data: widgets = [] } = useQuery<any[]>({
-    queryKey: [isPreview ? `/api/playlists/${playlistId}/widgets` : `/api/player/playlists/${playlistId}/widgets`],
-    queryFn: () => {
-      const endpoint = isPreview ? `/api/playlists/${playlistId}/widgets` : `/api/player/playlists/${playlistId}/widgets`;
-      if (isPreview) {
-        return apiRequest(endpoint).then(res => res.json());
-      } else {
-        const authToken = localStorage.getItem('authToken');
-        return fetch(endpoint, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
-        }).then(res => {
-          if (!res.ok) {
-            throw new Error('Failed to fetch playlist widgets');
-          }
-          return res.json();
-        });
-      }
-    },
-    refetchInterval: isPreview ? 10000 : 120000,
-    enabled: !!playlistId,
-  });
+  
 
   // WebSocket connection and real-time updates
   useEffect(() => {

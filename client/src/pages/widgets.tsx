@@ -300,6 +300,8 @@ export default function Widgets() {
   const { data: widgets = [], isLoading } = useQuery({
     queryKey: ["/api/widgets"],
     queryFn: () => apiRequest("/api/widgets").then(res => res.json()),
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
   });
 
   // Create widget mutation
