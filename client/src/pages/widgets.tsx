@@ -46,19 +46,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Real API widget components
 const LiveWeatherWidget = ({ config }: { config: any }) => {
   const [weather, setWeather] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchWeather = async () => {
       setLoading(true);
+      setError(null);
+      
       try {
-        const apiKey = config?.apiKey || 'e437ff7a677ba82390fcd98091006776';
+        const apiKey = config?.apiKey;
         const city = config?.city || 'Mexico City';
 
-        if (apiKey && apiKey !== 'e437ff7a677ba82390fcd98091006776') {
+        if (apiKey && apiKey.trim() && apiKey !== 'e437ff7a677ba82390fcd98091006776') {
           const response = await fetch(
-            `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=es`
+            `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric&lang=es`
           );
+          
           if (response.ok) {
             const data = await response.json();
             setWeather({
@@ -67,20 +71,39 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
                 temp_c: Math.round(data.main.temp), 
                 condition: { text: data.weather[0].description },
                 humidity: data.main.humidity,
-                feels_like: Math.round(data.main.feels_like)
+                feels_like: Math.round(data.main.feels_like),
+                icon: data.weather[0].icon
               }
             });
+          } else if (response.status === 401) {
+            setError('API key inválida');
+            setWeather({
+              location: { name: city },
+              current: { temp_c: 22, condition: { text: 'API key requerida' }, humidity: 65, feels_like: 24 }
+            });
           } else {
-            throw new Error('Weather API response not ok');
+            throw new Error(`Error ${response.status}`);
           }
         } else {
+          // Demo data when no API key
+          const demoTemps = [18, 20, 22, 24, 26, 28];
+          const demoConditions = ['Soleado', 'Parcialmente nublado', 'Despejado', 'Nubes dispersas'];
+          const randomTemp = demoTemps[Math.floor(Math.random() * demoTemps.length)];
+          const randomCondition = demoConditions[Math.floor(Math.random() * demoConditions.length)];
+          
           setWeather({
             location: { name: city },
-            current: { temp_c: 22, condition: { text: 'Soleado' }, humidity: 65, feels_like: 24 }
+            current: { 
+              temp_c: randomTemp, 
+              condition: { text: randomCondition }, 
+              humidity: Math.floor(Math.random() * 40) + 40, 
+              feels_like: randomTemp + Math.floor(Math.random() * 4) - 2 
+            }
           });
         }
       } catch (error) {
         console.error('Weather API error:', error);
+        setError('Error al obtener datos');
         setWeather({
           location: { name: config?.city || 'Ciudad' },
           current: { temp_c: 22, condition: { text: 'No disponible' }, humidity: 65, feels_like: 24 }
@@ -110,15 +133,18 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
   return (
     <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-lg">
       <Thermometer className="h-6 w-6 text-blue-600" />
-      <div>
+      <div className="flex-1">
         <p className="font-medium">{weather?.location?.name || 'Ciudad'}</p>
         <p className="text-sm text-muted-foreground">
           {weather?.current?.temp_c}°C - {weather?.current?.condition?.text || 'Sin datos'}
         </p>
         {weather?.current?.humidity && (
           <p className="text-xs text-muted-foreground">
-            Humedad: {weather.current.humidity}% • Se siente como {weather.current.feels_like}°C
+            Humedad: {weather.current.humidity}% • Sensación: {weather.current.feels_like}°C
           </p>
+        )}
+        {error && (
+          <p className="text-xs text-red-600 mt-1">{error}</p>
         )}
       </div>
     </div>
@@ -210,9 +236,16 @@ const LiveClockWidget = ({ config }: { config: any }) => {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
+    // Update immediately
+    setTime(new Date());
+    
+    // Set up interval for real-time updates
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+    
     return () => clearInterval(timer);
-  }, []);
+  }, [config?.timezone, config?.format]); // Re-run when config changes
 
   const format = config?.format || '24h';
   const timezone = config?.timezone || 'America/Mexico_City';
@@ -227,7 +260,12 @@ const LiveClockWidget = ({ config }: { config: any }) => {
         hour12: format === '12h'
       }).format(date);
     } catch (error) {
-      return date.toLocaleTimeString('es-ES');
+      return date.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: format === '12h'
+      });
     }
   };
 
@@ -241,7 +279,12 @@ const LiveClockWidget = ({ config }: { config: any }) => {
         day: 'numeric'
       }).format(date);
     } catch (error) {
-      return date.toLocaleDateString('es-ES');
+      return date.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
     }
   };
 
@@ -260,16 +303,52 @@ const TextWidget = ({ config }: { config: any }) => {
   const text = config?.text || 'Texto personalizado';
   const fontSize = config?.fontSize || '16px';
   const color = config?.color || '#000000';
+  const backgroundColor = config?.backgroundColor || 'transparent';
+  const fontWeight = config?.fontWeight || 'normal';
+  const textAlign = config?.textAlign || 'left';
+  const borderRadius = config?.borderRadius || '8px';
+  const padding = config?.padding || '12px';
+  const fontFamily = config?.fontFamily || 'inherit';
+  const textTransform = config?.textTransform || 'none';
+  const letterSpacing = config?.letterSpacing || 'normal';
+  const lineHeight = config?.lineHeight || 'normal';
+
+  const textStyle = {
+    fontSize,
+    color,
+    fontWeight,
+    textAlign: textAlign as 'left' | 'center' | 'right',
+    fontFamily,
+    textTransform: textTransform as 'none' | 'uppercase' | 'lowercase' | 'capitalize',
+    letterSpacing,
+    lineHeight,
+    margin: 0,
+    padding: 0
+  };
+
+  const containerStyle = {
+    backgroundColor: backgroundColor === 'transparent' ? 'transparent' : backgroundColor,
+    borderRadius,
+    padding
+  };
 
   return (
-    <div className="p-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-lg">
+    <div 
+      className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-lg"
+      style={containerStyle}
+    >
       <div className="flex items-center gap-2 mb-2">
         <Type className="h-4 w-4 text-gray-600" />
         <span className="text-sm font-medium">Texto Personalizado</span>
       </div>
-      <p style={{ fontSize, color }} className="font-medium">
-        {text}
-      </p>
+      <div style={textStyle}>
+        {text.split('\n').map((line: string, index: number) => (
+          <div key={index}>
+            {line}
+            {index < text.split('\n').length - 1 && <br />}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -307,9 +386,22 @@ const widgetTypes = [
     type: "text", 
     name: "Texto", 
     icon: Type, 
-    description: "Texto personalizable",
+    description: "Texto personalizable con opciones avanzadas",
     component: TextWidget,
-    defaultConfig: { text: "Texto personalizado", fontSize: "16px", color: "#000000" }
+    defaultConfig: { 
+      text: "Texto personalizado", 
+      fontSize: "16px", 
+      color: "#000000",
+      backgroundColor: "transparent",
+      fontWeight: "normal",
+      textAlign: "left",
+      borderRadius: "8px",
+      padding: "12px",
+      fontFamily: "inherit",
+      textTransform: "none",
+      letterSpacing: "normal",
+      lineHeight: "1.4"
+    }
   },
 ];
 
@@ -714,55 +806,286 @@ export default function Widgets() {
                       </div>
 
                       {editingWidget.type === 'text' && (
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Texto</Label>
-                            <Textarea
-                              value={editFormData.config?.text || 'Texto personalizado'}
-                              onChange={(e) => setEditFormData({
-                                ...editFormData, 
-                                config: { ...editFormData.config, text: e.target.value }
-                              })}
-                              placeholder="Ingresa el texto que quieres mostrar"
-                              rows={4}
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
+                        <Tabs defaultValue="content" className="space-y-4">
+                          <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="content">Contenido</TabsTrigger>
+                            <TabsTrigger value="style">Estilo</TabsTrigger>
+                            <TabsTrigger value="layout">Diseño</TabsTrigger>
+                          </TabsList>
+                          
+                          <TabsContent value="content" className="space-y-4">
                             <div className="space-y-2">
-                              <Label>Tamaño de letra</Label>
+                              <Label>Texto</Label>
+                              <Textarea
+                                value={editFormData.config?.text || 'Texto personalizado'}
+                                onChange={(e) => setEditFormData({
+                                  ...editFormData, 
+                                  config: { ...editFormData.config, text: e.target.value }
+                                })}
+                                placeholder="Ingresa el texto que quieres mostrar&#10;Puedes usar múltiples líneas"
+                                rows={6}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Tip: Presiona Enter para crear nuevas líneas
+                              </p>
+                            </div>
+                          </TabsContent>
+
+                          <TabsContent value="style" className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Tamaño de letra</Label>
+                                <Select
+                                  value={editFormData.config?.fontSize || '16px'}
+                                  onValueChange={(value) => setEditFormData({
+                                    ...editFormData,
+                                    config: { ...editFormData.config, fontSize: value }
+                                  })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="10px">10px - Muy Pequeño</SelectItem>
+                                    <SelectItem value="12px">12px - Pequeño</SelectItem>
+                                    <SelectItem value="14px">14px - Normal</SelectItem>
+                                    <SelectItem value="16px">16px - Mediano</SelectItem>
+                                    <SelectItem value="18px">18px - Grande</SelectItem>
+                                    <SelectItem value="20px">20px - Muy Grande</SelectItem>
+                                    <SelectItem value="24px">24px - Extra Grande</SelectItem>
+                                    <SelectItem value="28px">28px - Gigante</SelectItem>
+                                    <SelectItem value="32px">32px - Enorme</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Peso de fuente</Label>
+                                <Select
+                                  value={editFormData.config?.fontWeight || 'normal'}
+                                  onValueChange={(value) => setEditFormData({
+                                    ...editFormData,
+                                    config: { ...editFormData.config, fontWeight: value }
+                                  })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="100">100 - Ultra Ligero</SelectItem>
+                                    <SelectItem value="300">300 - Ligero</SelectItem>
+                                    <SelectItem value="normal">400 - Normal</SelectItem>
+                                    <SelectItem value="500">500 - Medio</SelectItem>
+                                    <SelectItem value="bold">700 - Negrita</SelectItem>
+                                    <SelectItem value="900">900 - Ultra Negrita</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Color del texto</Label>
+                                <Input
+                                  type="color"
+                                  value={editFormData.config?.color || '#000000'}
+                                  onChange={(e) => setEditFormData({
+                                    ...editFormData,
+                                    config: { ...editFormData.config, color: e.target.value }
+                                  })}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Color de fondo</Label>
+                                <div className="flex gap-2">
+                                  <Input
+                                    type="color"
+                                    value={editFormData.config?.backgroundColor === 'transparent' ? '#ffffff' : (editFormData.config?.backgroundColor || '#ffffff')}
+                                    onChange={(e) => setEditFormData({
+                                      ...editFormData,
+                                      config: { ...editFormData.config, backgroundColor: e.target.value }
+                                    })}
+                                    disabled={editFormData.config?.backgroundColor === 'transparent'}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setEditFormData({
+                                      ...editFormData,
+                                      config: { 
+                                        ...editFormData.config, 
+                                        backgroundColor: editFormData.config?.backgroundColor === 'transparent' ? '#ffffff' : 'transparent' 
+                                      }
+                                    })}
+                                  >
+                                    {editFormData.config?.backgroundColor === 'transparent' ? 'Con fondo' : 'Transparente'}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Transformación</Label>
+                                <Select
+                                  value={editFormData.config?.textTransform || 'none'}
+                                  onValueChange={(value) => setEditFormData({
+                                    ...editFormData,
+                                    config: { ...editFormData.config, textTransform: value }
+                                  })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Normal</SelectItem>
+                                    <SelectItem value="uppercase">MAYÚSCULAS</SelectItem>
+                                    <SelectItem value="lowercase">minúsculas</SelectItem>
+                                    <SelectItem value="capitalize">Primera Letra Mayúscula</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Familia de fuente</Label>
+                                <Select
+                                  value={editFormData.config?.fontFamily || 'inherit'}
+                                  onValueChange={(value) => setEditFormData({
+                                    ...editFormData,
+                                    config: { ...editFormData.config, fontFamily: value }
+                                  })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="inherit">Por defecto</SelectItem>
+                                    <SelectItem value="Arial, sans-serif">Arial</SelectItem>
+                                    <SelectItem value="'Times New Roman', serif">Times New Roman</SelectItem>
+                                    <SelectItem value="'Courier New', monospace">Courier New</SelectItem>
+                                    <SelectItem value="Georgia, serif">Georgia</SelectItem>
+                                    <SelectItem value="Verdana, sans-serif">Verdana</SelectItem>
+                                    <SelectItem value="'Comic Sans MS', cursive">Comic Sans MS</SelectItem>
+                                    <SelectItem value="Impact, sans-serif">Impact</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </TabsContent>
+
+                          <TabsContent value="layout" className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Alineación</Label>
+                                <Select
+                                  value={editFormData.config?.textAlign || 'left'}
+                                  onValueChange={(value) => setEditFormData({
+                                    ...editFormData,
+                                    config: { ...editFormData.config, textAlign: value }
+                                  })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="left">Izquierda</SelectItem>
+                                    <SelectItem value="center">Centro</SelectItem>
+                                    <SelectItem value="right">Derecha</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Espaciado entre letras</Label>
+                                <Select
+                                  value={editFormData.config?.letterSpacing || 'normal'}
+                                  onValueChange={(value) => setEditFormData({
+                                    ...editFormData,
+                                    config: { ...editFormData.config, letterSpacing: value }
+                                  })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="-1px">Compacto</SelectItem>
+                                    <SelectItem value="normal">Normal</SelectItem>
+                                    <SelectItem value="1px">Espaciado</SelectItem>
+                                    <SelectItem value="2px">Muy espaciado</SelectItem>
+                                    <SelectItem value="3px">Extra espaciado</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Altura de línea</Label>
+                                <Select
+                                  value={editFormData.config?.lineHeight || '1.4'}
+                                  onValueChange={(value) => setEditFormData({
+                                    ...editFormData,
+                                    config: { ...editFormData.config, lineHeight: value }
+                                  })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">Compacto (1.0)</SelectItem>
+                                    <SelectItem value="1.2">Ajustado (1.2)</SelectItem>
+                                    <SelectItem value="1.4">Normal (1.4)</SelectItem>
+                                    <SelectItem value="1.6">Espacioso (1.6)</SelectItem>
+                                    <SelectItem value="2">Muy espacioso (2.0)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Relleno interno</Label>
+                                <Select
+                                  value={editFormData.config?.padding || '12px'}
+                                  onValueChange={(value) => setEditFormData({
+                                    ...editFormData,
+                                    config: { ...editFormData.config, padding: value }
+                                  })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="0px">Sin relleno</SelectItem>
+                                    <SelectItem value="4px">Mínimo (4px)</SelectItem>
+                                    <SelectItem value="8px">Pequeño (8px)</SelectItem>
+                                    <SelectItem value="12px">Normal (12px)</SelectItem>
+                                    <SelectItem value="16px">Grande (16px)</SelectItem>
+                                    <SelectItem value="24px">Muy grande (24px)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Bordes redondeados</Label>
                               <Select
-                                value={editFormData.config?.fontSize || '16px'}
+                                value={editFormData.config?.borderRadius || '8px'}
                                 onValueChange={(value) => setEditFormData({
                                   ...editFormData,
-                                  config: { ...editFormData.config, fontSize: value }
+                                  config: { ...editFormData.config, borderRadius: value }
                                 })}
                               >
                                 <SelectTrigger>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="12px">12px - Pequeño</SelectItem>
-                                  <SelectItem value="14px">14px - Normal</SelectItem>
-                                  <SelectItem value="16px">16px - Mediano</SelectItem>
-                                  <SelectItem value="18px">18px - Grande</SelectItem>
-                                  <SelectItem value="20px">20px - Muy Grande</SelectItem>
-                                  <SelectItem value="24px">24px - Extra Grande</SelectItem>
+                                  <SelectItem value="0px">Sin redondeo</SelectItem>
+                                  <SelectItem value="4px">Ligero (4px)</SelectItem>
+                                  <SelectItem value="8px">Normal (8px)</SelectItem>
+                                  <SelectItem value="12px">Medio (12px)</SelectItem>
+                                  <SelectItem value="16px">Grande (16px)</SelectItem>
+                                  <SelectItem value="50%">Completamente redondeado</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="space-y-2">
-                              <Label>Color</Label>
-                              <Input
-                                type="color"
-                                value={editFormData.config?.color || '#000000'}
-                                onChange={(e) => setEditFormData({
-                                  ...editFormData,
-                                  config: { ...editFormData.config, color: e.target.value }
-                                })}
-                              />
-                            </div>
-                          </div>
-                        </div>
+                          </TabsContent>
+                        </Tabs>
                       )}
 
                       {editingWidget.type === 'weather' && (
