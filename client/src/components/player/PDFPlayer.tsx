@@ -1,79 +1,117 @@
-import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
 
-// Importa los estilos necesarios para que el visor funcione correctamente
-import 'pdfjs-dist/web/pdf_viewer.css';
+import React, { useState, useEffect, memo } from 'react';
 
-// Configura la ruta al "worker" que procesa el PDF en segundo plano.
-// Esta línea es crucial para que react-pdf funcione.
-pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.js`;
+interface PDFPlayerProps {
+  src: string;
+  objectFit?: string;
+}
 
-const PDFPlayer = memo(({ src }: { src: string }) => {
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [error, setError] = useState<string | null>(null);
+const PDFPlayer = memo(({ src, objectFit = 'contain' }: PDFPlayerProps) => {
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // (Opcional) Efecto para ciclar entre las páginas del PDF cada 10 segundos
-  useEffect(() => {
-    if (numPages && numPages > 1) {
-      const interval = setInterval(() => {
-        // Avanza a la siguiente página, y si llega al final, vuelve a la primera
-        setCurrentPage(prevPage => (prevPage % numPages) + 1);
-      }, 10000); 
+  const handleLoad = () => {
+    setLoading(false);
+  };
 
-      return () => clearInterval(interval); // Limpia el temporizador al desmontar
-    }
-  }, [numPages]);
+  const handleError = () => {
+    setError(true);
+    setLoading(false);
+  };
 
-  // Se ejecuta cuando el documento PDF se carga correctamente
-  const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setCurrentPage(1); // Siempre empieza en la primera página
-    setError(null);
-  }, []);
-
-  // Se ejecuta si hay un error al cargar el PDF
-  const onDocumentLoadError = useCallback((error: Error) => {
-    console.error('Error al cargar el PDF:', error.message);
-    setError('No se pudo cargar el archivo PDF.');
-  }, []);
-
-  // Si hay un error, muestra un mensaje
   if (error) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1a1a1a', color: 'white' }}>
-        <div>{error}</div>
+      <div style={{ 
+        width: '100%', 
+        height: '100%', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: '18px',
+        backgroundColor: '#1a1a1a'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📄</div>
+          <div>Error cargando PDF</div>
+          <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '5px' }}>{src}</div>
+        </div>
       </div>
     );
   }
 
+  // Configurar estilos según objectFit
+  const getContainerStyle = () => {
+    const baseStyle = {
+      width: '100%',
+      height: '100%',
+      position: 'relative' as const,
+      overflow: 'hidden' as const,
+      backgroundColor: '#1a1a1a'
+    };
+
+    return baseStyle;
+  };
+
+  const getIframeStyle = () => {
+    const baseStyle = {
+      width: '100%',
+      height: '100%',
+      border: 'none',
+      background: '#fff'
+    };
+
+    // Aplicar transformaciones según objectFit
+    switch (objectFit) {
+      case 'cover':
+        return {
+          ...baseStyle,
+          transform: 'scale(1.1)',
+          transformOrigin: 'center center'
+        };
+      case 'fill':
+        return {
+          ...baseStyle,
+          width: '100%',
+          height: '100%'
+        };
+      case 'contain':
+      default:
+        return baseStyle;
+    }
+  };
+
   return (
-    // Contenedor principal con estilos para centrar y ajustar el PDF
-    <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#555' }}>
-      <Document
-        file={src}
-        onLoadSuccess={onDocumentLoadSuccess}
-        onLoadError={onDocumentLoadError}
-        loading={<div style={{ color: 'white' }}>Cargando PDF...</div>}
-        // Este div contenedor asegura que el PDF no se desborde
-        className="pdf-container" 
-        style={{maxWidth: '100%', maxHeight: '100%', overflow: 'hidden', display: 'flex', justifyContent: 'center'}}
-      >
-        <Page
-          pageNumber={currentPage}
-          // Hace la página responsiva usando el ancho de la ventana como referencia
-          // y limita el tamaño para que no sea excesivamente grande.
-          width={Math.min(window.innerWidth, 1200)} 
-          // Estas props mejoran el rendimiento al no renderizar capas innecesarias
-          renderTextLayer={false}
-          renderAnnotationLayer={false}
-        />
-      </Document>
+    <div style={getContainerStyle()}>
+      {loading && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#1a1a1a',
+          color: 'white',
+          zIndex: 1
+        }}>
+          <div>Cargando PDF...</div>
+        </div>
+      )}
+      <iframe
+        src={`${src}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
+        style={getIframeStyle()}
+        title="PDF viewer"
+        onLoad={handleLoad}
+        onError={handleError}
+        allowFullScreen
+      />
     </div>
   );
 });
 
 PDFPlayer.displayName = 'PDFPlayer';
 
-// Exporta el componente para poder importarlo desde otras páginas
 export default PDFPlayer;

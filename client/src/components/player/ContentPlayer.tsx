@@ -14,11 +14,32 @@ const styles = {
 };
 
 // Función para obtener el estilo de media con objectFit personalizado
-const getMediaStyle = (objectFit: string = 'contain') => ({
-  width: '100%',
-  height: '100%',
-  objectFit: objectFit as any
-} as React.CSSProperties);
+const getMediaStyle = (objectFit: string = 'contain') => {
+  const baseStyle = {
+    width: '100%',
+    height: '100%',
+    objectFit: objectFit as any,
+    backgroundColor: '#000'
+  } as React.CSSProperties;
+
+  // Aplicar estilos adicionales según el tipo de objectFit
+  if (objectFit === 'fill') {
+    return {
+      ...baseStyle,
+      objectFit: 'fill' as any
+    };
+  } else if (objectFit === 'cover') {
+    return {
+      ...baseStyle,
+      objectFit: 'cover' as any
+    };
+  } else {
+    return {
+      ...baseStyle,
+      objectFit: 'contain' as any
+    };
+  }
+};
 
 // Componentes memoizados para renderizar cada tipo de contenido
 const ImagePlayer = memo(({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => 
@@ -466,7 +487,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       case 'video': 
         return <VideoPlayer src={url} objectFit={objectFit} />;
       case 'pdf':
-        return <PDFPlayer src={url} />;
+        return <PDFPlayer src={url} objectFit={objectFit} />;
       
       case 'webpage': 
         return <WebpagePlayer src={url} />;
