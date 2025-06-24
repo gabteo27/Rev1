@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -68,7 +69,8 @@ import {
   ScrollText,
   SidebarOpen,
   SidebarClose,
-  Widget
+  Widget,
+  MoreHorizontal
 } from "lucide-react";
 
 // Tipos para mayor claridad
@@ -1357,6 +1359,17 @@ export default function Playlists() {
     setSelectedContent(newSelection);
   };
 
+  const handlePreview = (playlistId: number) => {
+    // Open preview in new tab
+    window.open(`/screen-player/${playlistId}`, '_blank');
+  };
+
+  const setLocation = (path: string) => {
+    window.location.href = path;
+  };
+
+  const [showEditModal, setShowEditModal] = useState(false);
+
   // WebSocket setup for real-time updates
   useEffect(() => {
     console.log('🔌 Setting up WebSocket for playlists page...');
@@ -1605,6 +1618,7 @@ export default function Playlists() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
+                      </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
