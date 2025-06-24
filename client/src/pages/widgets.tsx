@@ -45,40 +45,37 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
     const fetchWeather = async () => {
       setLoading(true);
       try {
-        // Using OpenWeatherMap API
+        // Using OpenWeatherMap API with provided API key
         const apiKey = config?.apiKey || 'e437ff7a677ba82390fcd98091006776';
         const city = config?.city || 'Mexico City';
 
-        if (apiKey && apiKey !== 'e437ff7a677ba82390fcd98091006776') {
-          const response = await fetch(
-            `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=es`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            setWeather({
-              location: { name: data.name },
-              current: { 
-                temp_c: Math.round(data.main.temp), 
-                condition: { text: data.weather[0].description },
-                humidity: data.main.humidity,
-                feels_like: Math.round(data.main.feels_like)
-              }
-            });
-          } else {
-            throw new Error('Weather API response not ok');
-          }
-        } else {
-          // Fallback to demo data when no API key
+        console.log('Fetching weather for:', city, 'with API key:', apiKey?.substring(0, 8) + '...');
+
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=es`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Weather API response:', data);
           setWeather({
-            location: { name: city },
-            current: { temp_c: 22, condition: { text: 'Soleado' }, humidity: 65, feels_like: 24 }
+            location: { name: data.name },
+            current: { 
+              temp_c: Math.round(data.main.temp), 
+              condition: { text: data.weather[0].description },
+              humidity: data.main.humidity,
+              feels_like: Math.round(data.main.feels_like)
+            }
           });
+        } else {
+          console.error('Weather API error:', response.status, response.statusText);
+          throw new Error(`Weather API error: ${response.status}`);
         }
       } catch (error) {
         console.error('Weather API error:', error);
         setWeather({
           location: { name: config?.city || 'Ciudad' },
-          current: { temp_c: 22, condition: { text: 'No disponible' }, humidity: 65, feels_like: 24 }
+          current: { temp_c: 22, condition: { text: 'Error de conexión' }, humidity: 65, feels_like: 24 }
         });
       } finally {
         setLoading(false);
@@ -585,15 +582,22 @@ export default function Widgets() {
   const saveWidgetEdit = () => {
     if (!editingWidget) return;
 
+    // Ensure config is properly handled
+    let configToSave = editingWidget.config;
+    if (editFormData.config && Object.keys(editFormData.config).length > 0) {
+      configToSave = JSON.stringify(editFormData.config);
+    }
+
     const updatedData = {
       name: editFormData.name || editingWidget.name,
       type: editingWidget.type,
       position: editFormData.position || editingWidget.position,
       isEnabled: editFormData.isEnabled !== undefined ? editFormData.isEnabled : editingWidget.isEnabled,
-      config: editFormData.config ? JSON.stringify(editFormData.config) : editingWidget.config
+      config: configToSave
     };
 
     console.log('Saving widget with data:', updatedData);
+    console.log('Config being saved:', configToSave);
 
     updateWidgetMutation.mutate({
       id: editingWidget.id,
@@ -609,7 +613,8 @@ export default function Widgets() {
     try {
       config = JSON.parse(widget.config || '{}');
     } catch (error) {
-      config = {};
+      console.error('Error parsing widget config:', error, 'for widget:', widget.id);
+      config = widgetType.defaultConfig || {};
     }
 
     return widgetType.component;
@@ -970,10 +975,16 @@ export default function Widgets() {
 
                       {editingWidget.type === 'weather' && (
                         <div className="space-y-4">
+                          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                              Para obtener datos reales del clima, necesitas una API key de OpenWeatherMap.
+                              Visita <a href="https://openweathermap.org/api" target="_blank" className="underline">openweathermap.org</a> para obtener una gratuita.
+                            </p>
+                          </div>
                           <div className="space-y-2">
                             <Label>Ciudad</Label>
                             <Input
-                              value={editFormData.config?.city || ''}
+                              value={editFormData.config?.city || 'Mexico City'}
                               onChange={(e) => setEditFormData({
                                 ...editFormData,
                                 config: { ...editFormData.config, city: e.target.value }
@@ -985,13 +996,16 @@ export default function Widgets() {
                             <Label>API Key de OpenWeatherMap</Label>
                             <Input
                               type="text"
-                              value={editFormData.config?.apiKey || ''}
+                              value={editFormData.config?.apiKey || 'e437ff7a677ba82390fcd98091006776'}
                               onChange={(e) => setEditFormData({
                                 ...editFormData,
                                 config: { ...editFormData.config, apiKey: e.target.value }
                               })}
                               placeholder="Tu API key de OpenWeatherMap"
                             />
+                            <p className="text-xs text-muted-foreground">
+                              Actualmente usando API key por defecto (datos limitados)
+                            </p>
                           </div>
                           <div className="space-y-2">
                             <Label>Unidades</Label>
