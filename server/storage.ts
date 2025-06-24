@@ -781,9 +781,17 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(widgets.createdAt));
   }
 
-  async createWidget(widget: InsertWidget): Promise<Widget> {
-    const [item] = await db.insert(widgets).values(widget).returning();
-    return item;
+  async createWidget(widgetData: any) {
+    // Ensure config is properly stringified if it's an object
+    const processedData = {
+      ...widgetData,
+      config: typeof widgetData.config === 'object' 
+        ? JSON.stringify(widgetData.config) 
+        : widgetData.config || '{}'
+    };
+
+    const [widget] = await db.insert(widgets).values(processedData).returning();
+    return widget;
   }
 
   async updateWidget(
@@ -796,7 +804,7 @@ export class DatabaseStorage implements IStorage {
     if (updateData.config && typeof updateData.config !== 'string') {
       updateData.config = JSON.stringify(updateData.config);
     }
-    
+
     const [item] = await db
       .update(widgets)
       .set(updateData)
@@ -817,7 +825,7 @@ export class DatabaseStorage implements IStorage {
     return widget;
   }
 
-  
+
 
   // Schedule operations
   async getSchedules(userId: string): Promise<Schedule[]> {

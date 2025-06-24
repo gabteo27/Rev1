@@ -14,11 +14,8 @@ const styles = {
 
 // Función para obtener el estilo de media con objectFit personalizado
 const getMediaStyle = (objectFit: string = 'contain'): React.CSSProperties => {
-  // Validar que objectFit sea un valor válido
   const validObjectFitValues = ['contain', 'cover', 'fill', 'none', 'scale-down'];
   const finalObjectFit = validObjectFitValues.includes(objectFit) ? objectFit : 'contain';
-
-  console.log(`📐 getMediaStyle called with objectFit: ${objectFit} -> ${finalObjectFit}`);
 
   return {
     width: '100%',
@@ -26,14 +23,12 @@ const getMediaStyle = (objectFit: string = 'contain'): React.CSSProperties => {
     objectFit: finalObjectFit as any,
     backgroundColor: '#000',
     display: 'block',
-    // Asegurar que el elemento se centre cuando sea necesario
     margin: 'auto'
   };
 };
 
 // Componentes memoizados para renderizar cada tipo de contenido
 const ImagePlayer = memo(({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => {
-  console.log(`🖼️ ImagePlayer rendering with objectFit: ${objectFit}`);
   return (
     <img 
       src={src} 
@@ -47,7 +42,6 @@ const ImagePlayer = memo(({ src, objectFit = 'contain' }: { src: string, objectF
 ImagePlayer.displayName = 'ImagePlayer';
 
 const VideoPlayer = memo(({ src, objectFit = 'contain' }: { src: string, objectFit?: string }) => {
-  console.log(`🎥 VideoPlayer rendering with objectFit: ${objectFit}`);
   return (
     <video 
       src={src} 
@@ -313,7 +307,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     return {};
   }, [playlistData?.customLayoutConfig]);
 
-    // Determinar el layout
+  // Determinar el layout
   const layout = useMemo(() => {
     return playlistData?.layout || 'single_zone';
   }, [playlistData?.layout]);
@@ -408,37 +402,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       Object.values(intervals).forEach(interval => clearInterval(interval));
     };
   }, [shouldProceed, zones, advanceZone, playlistData?.items]);
-  const renderContentItem = useCallback((item: any, zoneId?: string) => {
-    // Validación inicial del item
-    if (!item?.contentItem) {
-      return (
-        <div style={{ 
-          ...styles.media, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          color: 'rgba(255,255,255,0.5)',
-          backgroundColor: '#1a1a1a'
-        }}>
-          Sin contenido disponible
-        </div>
-      );
-    }
-  const renderZone = useCallback((zoneName: string, zoneStyles?: any) => {
-    const zoneItems = zones[zoneName];
-    if (!zoneItems || zoneItems.length === 0) {
-      return <div style={{ ...styles.zone, ...zoneStyles }}>No items in zone {zoneName}</div>;
-    }
-
-    const currentItemIndex = currentItems[zoneName] || 0;
-    const item = zoneItems[currentItemIndex];
-
-    if (!item) {
-      return <div style={{ ...styles.zone, ...zoneStyles }}>No item to display in zone {zoneName}</div>;
-    }
-
-    return renderContentItem(item);
-  }, [zones, currentItems, renderContentItem]);
 
   // Memoizar la configuración de zone settings
   const zoneSettings = useMemo(() => {
@@ -455,7 +418,22 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   }, [playlistData?.zoneSettings]);
 
   // Función memoizada para renderizar el contenido de un item
-  
+  const renderContentItem = useCallback((item: any, zoneId?: string) => {
+    // Validación inicial del item
+    if (!item?.contentItem) {
+      return (
+        <div style={{ 
+          ...styles.media, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          color: 'rgba(255,255,255,0.5)',
+          backgroundColor: '#1a1a1a'
+        }}>
+          Sin contenido disponible
+        </div>
+      );
+    }
 
     const { type, url, title } = item.contentItem;
 
@@ -595,7 +573,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     }
   }, [zoneSettings]);
 
+  const renderZone = useCallback((zoneName: string, zoneStyles?: any) => {
+    const zoneItems = zones[zoneName];
+    if (!zoneItems || zoneItems.length === 0) {
+      return <div style={{ ...styles.zone, ...zoneStyles }}>No items in zone {zoneName}</div>;
+    }
 
+    const currentItemIndex = currentItems[zoneName] || 0;
+    const item = zoneItems[currentItemIndex];
+
+    if (!item) {
+      return <div style={{ ...styles.zone, ...zoneStyles }}>No item to display in zone {zoneName}</div>;
+    }
+
+    return renderContentItem(item, zoneName);
+  }, [zones, currentItems, renderContentItem]);
 
   // Optimizar lógica de temporizadores para cada zona
   useEffect(() => {
@@ -631,8 +623,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       timers.forEach(clearTimeout);
     };
   }, [zoneTrackers]);
-
-
 
   // WebSocket connection and real-time updates
   useEffect(() => {
