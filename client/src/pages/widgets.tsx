@@ -7,7 +7,14 @@ import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -347,7 +354,7 @@ export default function Widgets() {
     const handleWidgetUpdate = (data: any) => {
       console.log('🔧 Real-time widget update received:', data);
       queryClient.invalidateQueries({ queryKey: ["/api/widgets"] });
-      
+
       // Show appropriate toast based on action
       if (data.action === 'updated') {
         toast({
@@ -455,12 +462,12 @@ export default function Widgets() {
   const deleteWidgetMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await apiRequest(`/api/widgets/${id}`, { method: "DELETE" });
-      
+
       // Si el widget ya fue eliminado (404), consideramos esto como éxito
       if (response.status === 404) {
         return { success: true, message: "Widget ya eliminado" };
       }
-      
+
       if (!response.ok) throw new Error("Error al eliminar widget");
       return response.json();
     },
@@ -470,10 +477,10 @@ export default function Widgets() {
         if (!oldData) return [];
         return oldData.filter(widget => widget.id !== parseInt(variables));
       });
-      
+
       // Invalidar después para asegurar sincronización
       queryClient.invalidateQueries({ queryKey: ["/api/widgets"] });
-      
+
       toast({ 
         title: "Widget eliminado", 
         description: data?.message || "El widget se ha eliminado correctamente." 
@@ -535,7 +542,7 @@ export default function Widgets() {
       config: widget.config,
       isEnabled: !widget.isEnabled
     };
-    
+
     updateWidgetMutation.mutate({
       id: widget.id,
       data: updatedWidget
@@ -550,7 +557,7 @@ export default function Widgets() {
     } catch (error) {
       config = {};
     }
-    
+
     // Asegurar que el config tenga valores por defecto según el tipo
     if (widget.type === 'weather') {
       config = {
@@ -573,7 +580,7 @@ export default function Widgets() {
         ...config
       };
     }
-    
+
     setEditFormData({
       name: widget.name,
       position: widget.position,
@@ -642,6 +649,9 @@ export default function Widgets() {
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Crear Nuevo Widget</DialogTitle>
+                    <DialogDescription>
+                      Añade un nuevo widget a tu dashboard para personalizar tu experiencia.
+                    </DialogDescription>
                   </DialogHeader>
                   <Tabs defaultValue="config" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
@@ -816,7 +826,7 @@ export default function Widgets() {
                                     }
                                   }}
                                 >
-                                  <SelectTrigger>
+                                                                    <SelectTrigger>
                                     <SelectValue placeholder={`Seleccionar ${field.label.toLowerCase()}`} />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -886,6 +896,9 @@ export default function Widgets() {
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Editar Widget</DialogTitle>
+                    <DialogDescription>
+                      Edita la configuración de tu widget.
+                    </DialogDescription>
                   </DialogHeader>
                   {editingWidget && (
                     <div className="space-y-4">

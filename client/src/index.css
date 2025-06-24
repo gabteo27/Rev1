@@ -256,6 +256,17 @@ input:checked + .slider:before {
   @apply w-8 h-8 rounded flex items-center justify-center text-sm;
 }
 
+/* Widget text styles */
+.widget-text {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.widget-text * {
+  max-width: 100%;
+}
+
 .content-icon.image {
   @apply bg-blue-100 text-blue-600;
 }
