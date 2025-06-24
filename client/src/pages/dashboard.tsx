@@ -632,35 +632,23 @@ return (
                   </div>
                 </div>
 
-                {/* Controles de reproducción */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={togglePreview}
-                    disabled={!selectedScreen || !selectedPlaylist || playbackMutation.isPending}
-                    className="flex-1"
-                  >
-                    {isPreviewPlaying ? (
-                      <>
-                        <Pause className="w-4 h-4 mr-2" />
-                        Pausar
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-4 h-4 mr-2" />
-                        Reproducir
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={stopPreview}
-                    disabled={!selectedScreen || playbackMutation.isPending}
-                  >
-                    <Square className="w-4 h-4 mr-2" />
-                    Detener
-                  </Button>
-                </div>
+                {/* Estado de reproducción */}
+                {selectedScreen && selectedPlaylist && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        <span className="text-sm font-medium">Control automático activo</span>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        En sincronización
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      La pantalla se actualiza automáticamente cuando cambias la playlist
+                    </p>
+                  </div>
+                )}</div>
 
                 {/* Información de la playlist seleccionada */}
                 {selectedPlaylistData && (
@@ -700,33 +688,63 @@ return (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+                <Activity className="h-5 w-5" />
                 Actividad del Sistema
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
-                <div>
-                  <p className="text-sm">Sistema operativo</p>
-                  <p className="text-xs text-muted-foreground">Todas las pantallas sincronizadas</p>
-                </div>
-              </div>
-              {activeAlertsCount > 0 && (
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full mt-2" />
-                  <div>
-                    <p className="text-sm">{activeAlertsCount} alerta{activeAlertsCount > 1 ? 's' : ''} activa{activeAlertsCount > 1 ? 's' : ''}</p>
-                    <p className="text-xs text-muted-foreground">Requieren atención</p>
+            <CardContent>
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                <div className="flex items-start gap-3 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-500">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Broadcast enviado</p>
+                    <p className="text-xs text-muted-foreground">Todas las pantallas sincronizadas - {new Date().toLocaleTimeString('es-ES')}</p>
                   </div>
                 </div>
-              )}
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
-                <div>
-                  <p className="text-sm">Última sincronización</p>
-                  <p className="text-xs text-muted-foreground">{new Date().toLocaleTimeString('es-ES')}</p>
+                
+                <div className="flex items-start gap-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border-l-2 border-blue-500">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Playlist actualizada</p>
+                    <p className="text-xs text-muted-foreground">Cambios aplicados a {totalScreens} pantalla{totalScreens !== 1 ? 's' : ''}</p>
+                  </div>
                 </div>
+
+                <div className="flex items-start gap-3 p-2 bg-purple-50 dark:bg-purple-900/20 rounded border-l-2 border-purple-500">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Nueva pantalla conectada</p>
+                    <p className="text-xs text-muted-foreground">Pantalla registrada y configurada</p>
+                  </div>
+                </div>
+
+                {activeAlertsCount > 0 && (
+                  <div className="flex items-start gap-3 p-2 bg-orange-50 dark:bg-orange-900/20 rounded border-l-2 border-orange-500">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full mt-2" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{activeAlertsCount} alerta{activeAlertsCount > 1 ? 's' : ''} activa{activeAlertsCount > 1 ? 's' : ''}</p>
+                      <p className="text-xs text-muted-foreground">Requieren atención inmediata</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-start gap-3 p-2 bg-gray-50 dark:bg-gray-900/20 rounded border-l-2 border-gray-500">
+                  <div className="w-2 h-2 bg-gray-500 rounded-full mt-2" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Contenido sincronizado</p>
+                    <p className="text-xs text-muted-foreground">{totalFiles} archivos disponibles</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between pt-3 mt-3 border-t">
+                <span className="text-xs text-muted-foreground">
+                  Última actividad: {new Date().toLocaleTimeString('es-ES')}
+                </span>
+                <Button size="sm" variant="ghost" className="text-xs h-6">
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Actualizar
+                </Button>
               </div>
             </CardContent>
           </Card>
