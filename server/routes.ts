@@ -1621,19 +1621,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Player endpoints for screen widgets
   app.get("/api/player/widgets", isPlayerAuthenticated, async (req: any, res) => {
     try {
-      // Get widgets from user account, not from playlist
-      const authToken = req.headers.authorization?.replace('Bearer ', '');
-      if (!authToken) {
-        return res.status(401).json({ message: "No auth token provided" });
+      const userId = req.screen.userId;
+
+      if (!userId) {
+        return res.status(403).json({ message: "Screen is not associated with a user." });
       }
 
-      // Find screen by auth token to get user ID
-      const screen = await storage.getScreenByAuthToken(authToken);
-      if (!screen) {
-        return res.status(404).json({ message: "Screen not found" });
-      }
-
-      const widgets = await storage.getWidgets(screen.userId);
+      const widgets = await storage.getWidgets(userId);
       res.json(widgets.filter((w: any) => w.isEnabled));
     } catch (error) {
       console.error("Error fetching widgets for player:", error);
@@ -2712,16 +2706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/player/playlists/:id/widgets", isPlayerAuthenticated, async (req: any, res) => {
-    try {
-      const playlistId = parseInt(req.params.id);
-      const widgets = await storage.getPlaylistWidgets(playlistId);
-      res.json(widgets);
-    } catch (error) {
-      console.error("Error fetching player playlist widgets:", error);
-      res.status(500).json({ message: "Failed to fetch playlist widgets" });
-    }
-  });
+  
 
   return httpServer;
 }

@@ -316,6 +316,23 @@ export default function Widgets() {
     refetchOnMount: true,
   });
 
+  // Fetch screens to show widget usage
+  const { data: screens = [] } = useQuery({
+    queryKey: ["/api/screens"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("/api/screens");
+        if (!response.ok) {
+          throw new Error('Failed to fetch screens');
+        }
+        return response.json();
+      } catch (error) {
+        console.error('Error fetching screens:', error);
+        return [];
+      }
+    },
+  });
+
   // Create widget mutation
   const createWidgetMutation = useMutation({
     mutationFn: async (widgetData: any) => {
@@ -700,6 +717,12 @@ export default function Widgets() {
                         </div>
                         <CardDescription>
                           Posición: {widget.position} • Tipo: {widget.type}
+                          <br />
+                          <span className="text-xs text-blue-600">
+                            Se muestra en: {screens.filter(s => s.isOnline).length > 0 ? 
+                              `${screens.filter(s => s.isOnline).length} pantalla(s) activa(s)` : 
+                              'Ninguna pantalla activa'}
+                          </span>
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
@@ -745,6 +768,39 @@ export default function Widgets() {
                     </div>
                   );
                 })}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Monitor className="h-5 w-5" />
+                  Estado de Pantallas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {screens.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No hay pantallas configuradas</p>
+                  ) : (
+                    screens.map((screen) => (
+                      <div key={screen.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                        <div>
+                          <p className="font-medium text-sm">{screen.name}</p>
+                          <p className="text-xs text-muted-foreground">{screen.location || 'Sin ubicación'}</p>
+                        </div>
+                        <Badge variant={screen.isOnline ? "default" : "secondary"}>
+                          {screen.isOnline ? "En línea" : "Desconectada"}
+                        </Badge>
+                      </div>
+                    ))
+                  )}
+                  <div className="pt-2 border-t">
+                    <p className="text-xs text-muted-foreground">
+                      Los widgets se muestran automáticamente en todas las pantallas activas del usuario.
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

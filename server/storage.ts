@@ -811,46 +811,7 @@ export class DatabaseStorage implements IStorage {
     return widget;
   }
 
-  async getPlaylistWidgets(playlistId: number) {
-    return await db
-      .select({
-        id: playlistWidgets.id,
-        position: playlistWidgets.position,
-        isEnabled: playlistWidgets.isEnabled,
-        widget: widgets
-      })
-      .from(playlistWidgets)
-      .innerJoin(widgets, eq(playlistWidgets.widgetId, widgets.id))
-      .where(eq(playlistWidgets.playlistId, playlistId));
-  }
-
-  async addWidgetToPlaylist(playlistId: number, widgetId: number, position: string = 'top-right') {
-    const [playlistWidget] = await db
-      .insert(playlistWidgets)
-      .values({ playlistId, widgetId, position })
-      .returning();
-    return playlistWidget;
-  }
-
-  async removeWidgetFromPlaylist(playlistId: number, widgetId: number) {
-    await db
-      .delete(playlistWidgets)
-      .where(
-        and(
-          eq(playlistWidgets.playlistId, playlistId),
-          eq(playlistWidgets.widgetId, widgetId)
-        )
-      );
-  }
-
-  async updatePlaylistWidget(id: number, data: { position?: string; isEnabled?: boolean }) {
-    const [playlistWidget] = await db
-      .update(playlistWidgets)
-      .set(data)
-      .where(eq(playlistWidgets.id, id))
-      .returning();
-    return playlistWidget;
-  }
+  
 
   // Schedule operations
   async getSchedules(userId: string): Promise<Schedule[]> {

@@ -262,11 +262,11 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 
-  // Query para obtener widgets de la playlist - SIEMPRE debe estar aquí
+  // Query para obtener widgets del usuario - siempre debe estar aquí
   const { data: widgets = [] } = useQuery<any[]>({
-    queryKey: [isPreview ? `/api/playlists/${playlistId}/widgets` : `/api/player/playlists/${playlistId}/widgets`],
+    queryKey: [isPreview ? '/api/widgets' : '/api/player/widgets'],
     queryFn: () => {
-      const endpoint = isPreview ? `/api/playlists/${playlistId}/widgets` : `/api/player/playlists/${playlistId}/widgets`;
+      const endpoint = isPreview ? '/api/widgets' : '/api/player/widgets';
       if (isPreview) {
         return apiRequest(endpoint).then(res => res.json());
       } else {
@@ -277,7 +277,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           }
         }).then(res => {
           if (!res.ok) {
-            throw new Error('Failed to fetch playlist widgets');
+            throw new Error('Failed to fetch widgets');
           }
           return res.json();
         });
@@ -767,38 +767,110 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   );
 
   const renderWidget = useCallback((widget: any) => {
-    if (!widget) return null;
+    if (!widget || !widget.isEnabled) return null;
+
+    // Determinar posición basada en el campo position
+    let positionStyle: React.CSSProperties = {};
+    
+    switch (widget.position) {
+      case 'top-left':
+        positionStyle = { top: '20px', left: '20px' };
+        break;
+      case 'top-right':
+        positionStyle = { top: '20px', right: '20px' };
+        break;
+      case 'bottom-left':
+        positionStyle = { bottom: '20px', left: '20px' };
+        break;
+      case 'bottom-right':
+        positionStyle = { bottom: '20px', right: '20px' };
+        break;
+      case 'center':
+        positionStyle = { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+        break;
+      default:
+        positionStyle = { top: '20px', right: '20px' };
+    }
 
     const widgetStyle: React.CSSProperties = {
       position: 'absolute',
-      top: `${widget.position?.top || 0}%`,
-      left: `${widget.position?.left || 0}%`,
-      width: `${widget.width}%`,
-      height: `${widget.height}%`,
-      zIndex: 100, // Asegura que el widget esté siempre al frente
-      pointerEvents: 'auto', // Permite la interacción con el widget
+      ...positionStyle,
+      zIndex: 100,
+      pointerEvents: 'auto',
+      padding: '12px',
+      borderRadius: '8px',
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      color: 'white',
+      fontSize: '14px',
+      minWidth: '200px',
     };
 
-    switch (widget.type) {
-      case 'clock':
-        return (
-          <div style={widgetStyle}>
-            Clock Widget
-          </div>
-        );
-      case 'text':
-        return (
-          <div style={widgetStyle}>
-            Text Widget
-          </div>
-        );
-      default:
-        return (
-          <div style={widgetStyle}>
-            Unknown Widget
-          </div>
-        );
+    // Renderizar según el tipo de widget
+    let content = null;
+    try {
+      const config = JSON.parse(widget.config || '{}');
+      
+      switch (widget.type) {
+        case 'clock':
+          const now = new Date();
+          content = (
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+                {now.toLocaleTimeString()}
+              </div>
+              <div style={{ fontSize: '12px', opacity: 0.8 }}>
+                {now.toLocaleDateString()}
+              </div>
+            </div>
+          );
+          break;
+        case 'text':
+          content = (
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{widget.name}</div>
+              <div>{config.text || 'Texto personalizado'}</div>
+            </div>
+          );
+          break;
+        case 'weather':
+          content = (
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Clima</div>
+              <div>{config.city || 'Ciudad'} - 22°C</div>
+            </div>
+          );
+          break;
+        case 'news':
+          content = (
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Noticias</div>
+              <div>Últimas noticias disponibles</div>
+            </div>
+          );
+          break;
+        default:
+          content = (
+            <div>
+              <div style={{ fontWeight: 'bold' }}>{widget.name}</div>
+              <div style={{ fontSize: '12px', opacity: 0.8 }}>Widget {widget.type}</div>
+            </div>
+          );
+      }
+    } catch (error) {
+      console.error('Error rendering widget:', error);
+      content = (
+        <div>
+          <div style={{ fontWeight: 'bold' }}>{widget.name}</div>
+          <div style={{ fontSize: '12px', opacity: 0.8 }}>Error de configuración</div>
+        </div>
+      );
     }
+
+    return (
+      <div key={widget.id} style={widgetStyle}>
+        {content}
+      </div>
+    );
   }, []);
 
   // Renderizado del Layout
