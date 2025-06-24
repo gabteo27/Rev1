@@ -117,9 +117,19 @@ export const widgets = pgTable("widgets", {
   name: varchar("name").notNull(),
   isEnabled: boolean("is_enabled").default(true),
   position: varchar("position").default("top-right"), // Widget position on screen
-  settings: jsonb("settings"), // Widget-specific settings
+  config: text("config"), // Widget configuration as JSON string
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Playlist widgets - many to many relationship
+export const playlistWidgets = pgTable("playlist_widgets", {
+  id: serial("id").primaryKey(),
+  playlistId: integer("playlist_id").notNull().references(() => playlists.id, { onDelete: "cascade" }),
+  widgetId: integer("widget_id").notNull().references(() => widgets.id, { onDelete: "cascade" }),
+  position: varchar("position").default("top-right"),
+  isEnabled: boolean("is_enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Advanced scheduling system

@@ -169,8 +169,8 @@ export class DatabaseStorage implements IStorage {
   }
 
 
-  
-  
+
+
   async findScreenByPairingCode(code: string): Promise<Screen | undefined> {
     const [screen] = await db
       .select()
@@ -520,7 +520,7 @@ export class DatabaseStorage implements IStorage {
 
     try {
       let playlistId: number | null = null;
-      
+
       // First, get the playlist item to verify it exists and get playlist ID
       const [existingItem] = await db
         .select({ 
@@ -803,6 +803,52 @@ export class DatabaseStorage implements IStorage {
       .delete(widgets)
       .where(and(eq(widgets.id, id), eq(widgets.userId, userId)));
     return (result.rowCount ?? 0) > 0;
+  }
+
+    async getWidgetById(id: number) {
+    const [widget] = await db.select().from(widgets).where(eq(widgets.id, id));
+    return widget;
+  }
+
+  async getPlaylistWidgets(playlistId: number) {
+    return await db
+      .select({
+        id: playlistWidgets.id,
+        position: playlistWidgets.position,
+        isEnabled: playlistWidgets.isEnabled,
+        widget: widgets
+      })
+      .from(playlistWidgets)
+      .innerJoin(widgets, eq(playlistWidgets.widgetId, widgets.id))
+      .where(eq(playlistWidgets.playlistId, playlistId));
+  }
+
+  async addWidgetToPlaylist(playlistId: number, widgetId: number, position: string = 'top-right') {
+    const [playlistWidget] = await db
+      .insert(playlistWidgets)
+      .values({ playlistId, widgetId, position })
+      .returning();
+    return playlistWidget;
+  }
+
+  async removeWidgetFromPlaylist(playlistId: number, widgetId: number) {
+    await db
+      .delete(playlistWidgets)
+      .where(
+        and(
+          eq(playlistWidgets.playlistId, playlistId),
+          eq(playlistWidgets.widgetId, widgetId)
+        )
+      );
+  }
+
+  async updatePlaylistWidget(id: number, data: { position?: string; isEnabled?: boolean }) {
+    const [playlistWidget] = await db
+      .update(playlistWidgets)
+      .set(data)
+      .where(eq(playlistWidgets.id, id))
+      .returning();
+    return playlistWidget;
   }
 
   // Schedule operations

@@ -26,6 +26,10 @@ import {
   Globe,
   Type,
   Layout,
+  Widget as WidgetIcon,
+  Settings,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 export default function PlaylistDetail() {
@@ -35,6 +39,7 @@ export default function PlaylistDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [playlistData, setPlaylistData] = useState<any>(null);
   const [showAddContentModal, setShowAddContentModal] = useState(false);
+  const [showAddWidgetModal, setShowAddWidgetModal] = useState(false);
 
   const playlistId = parseInt(params.id || "0");
 
@@ -46,6 +51,19 @@ export default function PlaylistDetail() {
 
   const { data: availableContent, error: contentError } = useQuery({
     queryKey: ["/api/content"],
+    retry: false,
+  });
+
+  const { data: allWidgets = [] } = useQuery({
+    queryKey: ["/api/widgets"],
+    queryFn: () => apiRequest("/api/widgets").then(res => res.json()),
+    retry: false,
+  });
+
+  const { data: playlistWidgets = [] } = useQuery({
+    queryKey: ["/api/playlists", playlistId, "widgets"],
+    queryFn: () => apiRequest(`/api/playlists/${playlistId}/widgets`).then(res => res.json()),
+    enabled: !!playlistId,
     retry: false,
   });
 
@@ -151,6 +169,39 @@ export default function PlaylistDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId] });
+    },
+  });
+
+  const addWidgetMutation = useMutation({
+    mutationFn: async ({ widgetId, position }: { widgetId: number; position: string }) => {
+      const response = await apiRequest(`/api/playlists/${playlistId}/widgets`, {
+        method: "POST",
+        body: JSON.stringify({ widgetId, position })
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Widget agregado",
+        description: "El widget ha sido agregado a la playlist.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId, "widgets"] });
+      setShowAddWidgetModal(false);
+    },
+  });
+
+  const removeWidgetMutation = useMutation({
+    mutationFn: async (widgetId: number) => {
+      await apiRequest(`/api/playlists/${playlistId}/widgets/${widgetId}`, {
+        method: "DELETE"
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Widget eliminado",
+        description: "El widget ha sido eliminado de la playlist.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/playlists", playlistId, "widgets"] });
     },
   });
 
@@ -615,6 +666,132 @@ export default function PlaylistDetail() {
                     )}
                   </Droppable>
                 </DragDropContext>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Widgets Section */}
+          <Card>
+            <div className="p-6 border-b border-slate-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-900">Widgets de la Playlist</h3>
+                <Dialog open={showAddWidgetModal} onOpenChange={setShowAddWidgetModal}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <WidgetIcon className="w-4 h-4 mr-2" />
+                      Agregar Widget
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Agregar Widget a la Playlist</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {allWidgets
+                        .filter((widget: any) => !playlistWidgets.some((pw: any) => pw.widget.id === widget.id))
+                        .map((widget: any) => (
+                          <div
+                            key={widget.id}
+                            className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:border-slate-300"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <WidgetIcon className="w-5 h-5 text-blue-600" />
+                              <div>
+                                <h4 className="font-medium text-slate-900">{widget.name}</h4>
+                                <p className="text-sm text-slate-500">{widget.type}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Select
+                                onValueChange={(position) => {
+                                  addWidgetMutation.mutate({ widgetId: widget.id, position });
+                                }}
+                              >
+                                <SelectTrigger className="w-40">
+                                  <SelectValue placeholder="Posición" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="top-left">Superior Izquierda</SelectItem>
+                                  <SelectItem value="top-right">Superior Derecha</SelectItem>
+                                  <SelectItem value="bottom-left">Inferior Izquierda</SelectItem>
+                                  <SelectItem value="bottom-right">Inferior Derecha</SelectItem>
+                                  <SelectItem value="center">Centro</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        ))}
+                      {allWidgets.filter((widget: any) => !playlistWidgets.some((pw: any) => pw.widget.id === widget.id)).length === 0 && (
+                        <p className="text-center text-slate-500 py-8">
+                          Todos los widgets disponibles ya están agregados a esta playlist
+                        </p>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+
+            <CardContent className="p-6">
+              {playlistWidgets.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <WidgetIcon className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h4 className="text-lg font-medium text-slate-900 mb-2">
+                    Sin widgets
+                  </h4>
+                  <p className="text-slate-600 mb-6">
+                    Esta playlist no tiene widgets configurados. Agrega widgets para mejorar la experiencia.
+                  </p>
+                  <Button onClick={() => setShowAddWidgetModal(true)}>
+                    <WidgetIcon className="w-4 h-4 mr-2" />
+                    Agregar Widget
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {playlistWidgets.map((playlistWidget: any) => (
+                    <div
+                      key={playlistWidget.id}
+                      className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <WidgetIcon className="w-5 h-5 text-blue-600" />
+                        <div>
+                          <h4 className="font-medium text-slate-900">{playlistWidget.widget.name}</h4>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {playlistWidget.widget.type}
+                            </Badge>
+                            <span className="text-sm text-slate-500">
+                              {playlistWidget.position}
+                            </span>
+                            {playlistWidget.isEnabled ? (
+                              <Badge variant="default" className="text-xs">
+                                Activo
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">
+                                Inactivo
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeWidgetMutation.mutate(playlistWidget.widget.id)}
+                          disabled={removeWidgetMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>

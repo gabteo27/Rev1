@@ -642,6 +642,31 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     };
   }, [zoneTrackers]);
 
+  // Query para obtener widgets de la playlist
+  const { data: widgets = [] } = useQuery<any[]>({
+    queryKey: [isPreview ? `/api/playlists/${playlistId}/widgets` : `/api/player/playlists/${playlistId}/widgets`],
+    queryFn: () => {
+      const endpoint = isPreview ? `/api/playlists/${playlistId}/widgets` : `/api/player/playlists/${playlistId}/widgets`;
+      if (isPreview) {
+        return apiRequest(endpoint).then(res => res.json());
+      } else {
+        const authToken = localStorage.getItem('authToken');
+        return fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }).then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to fetch playlist widgets');
+          }
+          return res.json();
+        });
+      }
+    },
+    refetchInterval: isPreview ? 10000 : 120000,
+    enabled: !!playlistId,
+  });
+
   // WebSocket connection and real-time updates
   useEffect(() => {
     if (!isPreview && playlistId) {
@@ -739,6 +764,41 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     </div>
   );
 
+  const renderWidget = useCallback((widget: any) => {
+    if (!widget) return null;
+
+    const widgetStyle: React.CSSProperties = {
+      position: 'absolute',
+      top: `${widget.position?.top || 0}%`,
+      left: `${widget.position?.left || 0}%`,
+      width: `${widget.width}%`,
+      height: `${widget.height}%`,
+      zIndex: 100, // Asegura que el widget esté siempre al frente
+      pointerEvents: 'auto', // Permite la interacción con el widget
+    };
+
+    switch (widget.type) {
+      case 'clock':
+        return (
+          <div style={widgetStyle}>
+            Clock Widget
+          </div>
+        );
+      case 'text':
+        return (
+          <div style={widgetStyle}>
+            Text Widget
+          </div>
+        );
+      default:
+        return (
+          <div style={widgetStyle}>
+            Unknown Widget
+          </div>
+        );
+    }
+  }, []);
+
   // Renderizado del Layout
   const layout = playlist?.layout || 'single_zone';
 
@@ -752,6 +812,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           <div style={{ ...styles.zone, width: '50%' }}>
             {renderZone('right')}
           </div>
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
@@ -767,6 +842,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           <div style={{ ...styles.zone, height: '50%' }}>
             {renderZone('bottom')}
           </div>
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
@@ -788,6 +878,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           <div key="bottom_right" style={{ ...styles.zone, backgroundColor: '#111' }}>
             {renderZone('bottom_right')}
           </div>
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
@@ -798,13 +903,28 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       return (
         <div style={{ ...styles.container, display: 'grid', gridTemplate: '1fr 1fr 1fr / 1fr 1fr 1fr', gap: '2px' }}>
           {Array.from({length: 9}, (_, i) => {
-            const zoneId = `grid_${i + 1}`;
+            const zoneId = `grid_${{i + 1}`;
             return (
               <div key={zoneId} style={{ ...styles.zone, backgroundColor: '#111' }}>
                 {renderZone(zoneId)}
               </div>
             );
           })}
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
@@ -820,6 +940,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           <div style={{ ...styles.zone, width: '75%' }}>
             {renderZone('main')}
           </div>
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
@@ -835,6 +970,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           <div style={{ ...styles.zone, width: '25%' }}>
             {renderZone('sidebar')}
           </div>
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
@@ -853,6 +1003,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           <div style={{ ...styles.zone, height: '15%', borderTop: '2px solid rgba(255,255,255,0.1)' }}>
             {renderZone('footer')}
           </div>
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
@@ -871,6 +1036,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           <div style={{ ...styles.zone, width: '33.33%' }}>
             {renderZone('right')}
           </div>
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}        </div>
@@ -888,6 +1068,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           <div style={{ ...styles.zone, height: '33.33%' }}>
             {renderZone('bottom')}
           </div>
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
@@ -913,6 +1108,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           }}>
             {renderZone('pip')}
           </div>
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
@@ -926,6 +1136,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         return (
           <div style={styles.container}>
             {renderZone('main')}
+            {/* Widgets overlay */}
+            {widgets && widgets.length > 0 && (
+              <div className="absolute inset-0 pointer-events-none z-20">
+                {widgets
+                  .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                  .map((playlistWidget: any) => (
+                    <div key={playlistWidget.id}>
+                      {renderWidget({
+                        ...playlistWidget.widget,
+                        position: playlistWidget.position
+                      })}
+                    </div>
+                  ))}
+              </div>
+            )}
             {activeAlerts.map((alert) => (
               <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
             ))}
@@ -950,6 +1175,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               {renderZone(zone.id)}
             </div>
           ))}
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
@@ -962,6 +1202,21 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       return (
         <div style={styles.container}>
           {renderZone('main')}
+          {/* Widgets overlay */}
+          {widgets && widgets.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              {widgets
+                .filter((playlistWidget: any) => playlistWidget.isEnabled && playlistWidget.widget.isEnabled)
+                .map((playlistWidget: any) => (
+                  <div key={playlistWidget.id}>
+                    {renderWidget({
+                      ...playlistWidget.widget,
+                      position: playlistWidget.position
+                    })}
+                  </div>
+                ))}
+            </div>
+          )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
           ))}
