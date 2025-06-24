@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { wsManager } from "@/lib/websocket";
-import { AlertOverlay } from "@/components/player/AlertOverlay";
+import PDFPlayer from "./PDFPlayer";
+import AlertOverlay from "./AlertOverlay";
 import { apiRequest } from "@/lib/queryClient";
-import PDFPlayer from './PDFPlayer';
 
 // Estilos para el reproductor
 const styles = {
@@ -509,17 +509,17 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       switch (type) {
         case 'image': 
           return <ImagePlayer src={url} objectFit={objectFit} />;
-        
+
         case 'video': 
           return <VideoPlayer src={url} objectFit={objectFit} />;
-        
+
         case 'pdf':
           // Mantener la lógica existente de renderizado de PDFs
           return <PDFPlayer src={url} objectFit={objectFit} />;
-        
+
         case 'webpage': 
           return <WebpagePlayer src={url} />;
-        
+
         case 'text':
           return (
             <div style={{ 
@@ -538,7 +538,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
               </div>
             </div>
           );
-        
+
         default: 
           console.warn(`Unsupported content type: ${type}`);
           return (
@@ -873,8 +873,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
           </div>
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
-          ))}
-        </div>
+          ))}        </div>
       );
 
     case 'triple_horizontal':

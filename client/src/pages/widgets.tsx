@@ -501,44 +501,61 @@ export default function Widgets() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="api" className="space-y-4">
+                    <TabsContent value="api" className="space-y-6">
                       {selectedType && widgetTypes.find(t => t.type === selectedType)?.hasApiConfig && (
-                        <div className="space-y-4">
-                          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Key className="h-4 w-4 text-blue-600" />
-                              <span className="font-medium text-blue-900 dark:text-blue-100">Configuración de API</span>
+                        <div className="space-y-6">
+                          <div className="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                                <Key className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-blue-900 dark:text-blue-100">Configuración de API</h3>
+                                <p className="text-sm text-blue-700 dark:text-blue-300">
+                                  Configure las APIs para datos en tiempo real
+                                </p>
+                              </div>
                             </div>
-                            <p className="text-sm text-blue-700 dark:text-blue-300">
-                              Configure las APIs necesarias para este widget
-                            </p>
                           </div>
 
-                          {widgetTypes.find(t => t.type === selectedType)?.apiFields?.map((field) => (
-                            <div key={field.key} className="space-y-2">
-                              <Label className="flex items-center gap-2">
-                                <Globe className="h-4 w-4" />
-                                {field.label}
-                              </Label>
-                              {field.type === 'select' ? (
-                                <Select>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder={`Seleccionar ${field.label.toLowerCase()}`} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {field.options?.map((option) => (
-                                      <SelectItem key={option} value={option}>{option}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Input
-                                  type={field.type}
-                                  placeholder={field.type === 'password' ? '••••••••••••' : `Ingresa ${field.label.toLowerCase()}`}
-                                />
-                              )}
+                          <div className="grid grid-cols-1 gap-4">
+                            {widgetTypes.find(t => t.type === selectedType)?.apiFields?.map((field) => (
+                              <div key={field.key} className="space-y-2">
+                                <Label className="flex items-center gap-2 text-sm font-medium">
+                                  <Globe className="h-4 w-4 text-primary" />
+                                  {field.label}
+                                </Label>
+                                {field.type === 'select' ? (
+                                  <Select>
+                                    <SelectTrigger className="h-11">
+                                      <SelectValue placeholder={`Seleccionar ${field.label.toLowerCase()}`} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {field.options?.map((option) => (
+                                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <Input
+                                    type={field.type}
+                                    className="h-11"
+                                    placeholder={field.type === 'password' ? '••••••••••••' : `Ingresa ${field.label.toLowerCase()}`}
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                              <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Configuración desde el Frontend</span>
                             </div>
-                          ))}
+                            <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                              Las configuraciones de API se pueden modificar directamente desde esta interfaz
+                            </p>
+                          </div>
                         </div>
                       )}
 

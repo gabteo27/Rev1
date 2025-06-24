@@ -638,17 +638,17 @@ return (
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-sm font-medium">Control automático activo</span>
+                        <span className="text-sm font-medium">Sincronización automática</span>
                       </div>
-                      <Badge variant="secondary" className="text-xs">
-                        En sincronización
+                      <Badge variant="default" className="text-xs">
+                        Activa
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       La pantalla se actualiza automáticamente cuando cambias la playlist
                     </p>
                   </div>
-                )}</div>
+                )}</div></div>
 
                 {/* Información de la playlist seleccionada */}
                 {selectedPlaylistData && (
@@ -697,15 +697,15 @@ return (
                 <div className="flex items-start gap-3 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-500">
                   <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Broadcast enviado</p>
-                    <p className="text-xs text-muted-foreground">Todas las pantallas sincronizadas - {new Date().toLocaleTimeString('es-ES')}</p>
+                    <p className="text-sm font-medium">🔄 Broadcast sincronizado</p>
+                    <p className="text-xs text-muted-foreground">Todas las pantallas actualizadas - {new Date().toLocaleTimeString('es-ES')}</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start gap-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border-l-2 border-blue-500">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Playlist actualizada</p>
+                    <p className="text-sm font-medium">📝 Playlist actualizada</p>
                     <p className="text-xs text-muted-foreground">Cambios aplicados a {totalScreens} pantalla{totalScreens !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
@@ -713,8 +713,16 @@ return (
                 <div className="flex items-start gap-3 p-2 bg-purple-50 dark:bg-purple-900/20 rounded border-l-2 border-purple-500">
                   <div className="w-2 h-2 bg-purple-500 rounded-full mt-2" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Nueva pantalla conectada</p>
-                    <p className="text-xs text-muted-foreground">Pantalla registrada y configurada</p>
+                    <p className="text-sm font-medium">📺 Nueva pantalla agregada</p>
+                    <p className="text-xs text-muted-foreground">Pantalla registrada y configurada automáticamente</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded border-l-2 border-indigo-500">
+                  <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">🔧 Widget configurado</p>
+                    <p className="text-xs text-muted-foreground">Widgets dinámicos actualizados en pantallas</p>
                   </div>
                 </div>
 
@@ -722,17 +730,25 @@ return (
                   <div className="flex items-start gap-3 p-2 bg-orange-50 dark:bg-orange-900/20 rounded border-l-2 border-orange-500">
                     <div className="w-2 h-2 bg-orange-500 rounded-full mt-2" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{activeAlertsCount} alerta{activeAlertsCount > 1 ? 's' : ''} activa{activeAlertsCount > 1 ? 's' : ''}</p>
+                      <p className="text-sm font-medium">⚠️ {activeAlertsCount} alerta{activeAlertsCount > 1 ? 's' : ''} activa{activeAlertsCount > 1 ? 's' : ''}</p>
                       <p className="text-xs text-muted-foreground">Requieren atención inmediata</p>
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-start gap-3 p-2 bg-gray-50 dark:bg-gray-900/20 rounded border-l-2 border-gray-500">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full mt-2" />
+                <div className="flex items-start gap-3 p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded border-l-2 border-emerald-500">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Contenido sincronizado</p>
-                    <p className="text-xs text-muted-foreground">{totalFiles} archivos disponibles</p>
+                    <p className="text-sm font-medium">📁 Contenido disponible</p>
+                    <p className="text-xs text-muted-foreground">{totalFiles} archivos sincronizados y listos</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded border-l-2 border-cyan-500">
+                  <div className="w-2 h-2 bg-cyan-500 rounded-full mt-2" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">🌐 WebSocket conectado</p>
+                    <p className="text-xs text-muted-foreground">Comunicación en tiempo real activa</p>
                   </div>
                 </div>
               </div>
