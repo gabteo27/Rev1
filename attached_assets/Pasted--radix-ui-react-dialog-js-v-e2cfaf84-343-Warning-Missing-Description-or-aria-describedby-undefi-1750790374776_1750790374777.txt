@@ -1,0 +1,53 @@
+@radix-ui_react-dialog.js?v=e2cfaf84:343 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ @radix-ui_react-dialog.js?v=e2cfaf84:343Understand this warning
+widgets.tsx:596 Saving widget with data: Object
+@radix-ui_react-dialog.js?v=e2cfaf84:343 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ @radix-ui_react-dialog.js?v=e2cfaf84:343Understand this warning
+widgets.tsx:596 Saving widget with data: Object
+@radix-ui_react-dialog.js?v=e2cfaf84:343 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ @radix-ui_react-dialog.js?v=e2cfaf84:343Understand this warning
+widgets.tsx:596 Saving widget with data: Object
+websocket.ts:47 🔌 WebSocket disconnected 1006 
+websocket.ts:113 🔄 Attempting reconnect 1/5 in 1000ms
+websocket.ts:20 WebSocket connection to 'wss://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/ws' failed: 
+(anonymous) @ websocket.ts:20Understand this error
+websocket.ts:56 WebSocket error: Event
+ws.onerror @ websocket.ts:56Understand this error
+websocket.ts:47 🔌 WebSocket disconnected 1006 
+websocket.ts:113 🔄 Attempting reconnect 2/5 in 2000ms
+websocket.ts:31 🔌 WebSocket connected successfully
+websocket.ts:118 ✅ Reconnection successful
+websocket.ts:47 🔌 WebSocket disconnected 1006 
+websocket.ts:113 🔄 Attempting reconnect 1/5 in 1000ms
+websocket.ts:20 WebSocket connection to 'wss://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/ws' failed: 
+(anonymous) @ websocket.ts:20Understand this error
+websocket.ts:56 WebSocket error: Event
+ws.onerror @ websocket.ts:56Understand this error
+websocket.ts:47 🔌 WebSocket disconnected 1006 
+websocket.ts:113 🔄 Attempting reconnect 2/5 in 2000ms
+websocket.ts:20 WebSocket connection to 'wss://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/ws' failed: 
+(anonymous) @ websocket.ts:20Understand this error
+websocket.ts:56 WebSocket error: Event
+ws.onerror @ websocket.ts:56Understand this error
+websocket.ts:47 🔌 WebSocket disconnected 1006 
+websocket.ts:113 🔄 Attempting reconnect 3/5 in 4000ms
+websocket.ts:20 WebSocket connection to 'wss://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/ws' failed: 
+(anonymous) @ websocket.ts:20Understand this error
+websocket.ts:56 WebSocket error: Event
+ws.onerror @ websocket.ts:56Understand this error
+websocket.ts:47 🔌 WebSocket disconnected 1006 
+websocket.ts:113 🔄 Attempting reconnect 4/5 in 8000ms
+websocket.ts:20 WebSocket connection to 'wss://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/ws' failed: 
+(anonymous) @ websocket.ts:20Understand this error
+websocket.ts:56 WebSocket error: Event
+ws.onerror @ websocket.ts:56Understand this error
+websocket.ts:47 🔌 WebSocket disconnected 1006 
+websocket.ts:113 🔄 Attempting reconnect 5/5 in 16000ms
+websocket.ts:20 WebSocket connection to 'wss://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/ws' failed: 
+(anonymous) @ websocket.ts:20Understand this error
+websocket.ts:56 WebSocket error: Event
+ws.onerror @ websocket.ts:56Understand this error
+websocket.ts:47 🔌 WebSocket disconnected 1006 
+websocket.ts:125 ❌ Max reconnection attempts reached
+attemptReconnect @ websocket.ts:125Understand this error
+websocket.ts:129 🔄 Reset reconnection attempts, will try again if needed
