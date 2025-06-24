@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
+import React, { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { wsManager } from "@/lib/websocket";
 import PDFPlayer from "./PDFPlayer";
@@ -251,6 +251,423 @@ interface ZoneTracker {
   items: any[];
 }
 
+interface ContentItem {
+  id: number;
+  name: string;
+  type: string;
+  filePath: string;
+  duration: number;
+}
+
+interface Widget {
+  id: number;
+  name: string;
+  type: string;
+  position: string;
+  config: string;
+  isEnabled: boolean;
+}
+
+interface ContentPlayerProps {
+  playlistId?: number;
+  isPreview?: boolean;
+}
+
+// Memoized Clock Widget Component
+const ClockWidget = memo(({ config, position }: { config: any, position: string }) => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    // Update immediately
+    setTime(new Date());
+
+    // Set up interval for real-time updates
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [config?.timezone, config?.format]); // Re-run when config changes
+
+  const memoizedFormatters = useMemo(() => {
+    const format = config?.format || '24h';
+    const timezone = config?.timezone || 'America/Mexico_City';
+
+    const formatTime = (date: Date) => {
+      try {
+        return new Intl.DateTimeFormat('es-ES', {
+          timeZone: timezone,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: format === '12h'
+        }).format(date);
+      } catch (error) {
+        return date.toLocaleTimeString('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: format === '12h'
+        });
+      }
+    };
+
+    const formatDate = (date: Date) => {
+      try {
+        return new Intl.DateTimeFormat('es-ES', {
+          timeZone: timezone,
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }).format(date);
+      } catch (error) {
+        return date.toLocaleDateString('es-ES', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+    };
+
+    return { formatTime, formatDate };
+  }, [config?.format, config?.timezone]);
+
+  return (
+    <div style={{
+      position: 'absolute',
+      ...getPositionStyles(position),
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      color: 'white',
+      padding: '15px 20px',
+      borderRadius: '8px',
+      zIndex: 1000,
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '5px' }}>
+        {memoizedFormatters.formatTime(time)}
+      </div>
+      <div style={{ fontSize: '14px', opacity: 0.8 }}>
+        {memoizedFormatters.formatDate(time)}
+      </div>
+    </div>
+  );
+});
+
+ClockWidget.displayName = 'ClockWidget';
+
+// Memoized Weather Widget Component
+const WeatherWidget = memo(({ config, position }: { config: any, position: string }) => {
+  const [weather, setWeather] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const apiKey = config?.apiKey;
+        const city = config?.city || 'Mexico City';
+
+        if (apiKey && apiKey.trim() && apiKey !== 'e437ff7a677ba82390fcd98091006776') {
+          const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric&lang=es`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            setWeather({
+              location: { name: data.name },
+              current: { 
+                temp_c: Math.round(data.main.temp), 
+                condition: { text: data.weather[0].description },
+                humidity: data.main.humidity,
+                feels_like: Math.round(data.main.feels_like),
+                icon: data.weather[0].icon
+              }
+            });
+          } else if (response.status === 401) {
+            setError('API key inválida');
+            setWeather({
+              location: { name: city },
+              current: { temp_c: 22, condition: { text: 'API key requerida' }, humidity: 65, feels_like: 24 }
+            });
+          } else {
+            throw new Error(`Error ${response.status}`);
+          }
+        } else {
+          // Demo data when no API key
+          const demoTemps = [18, 20, 22, 24, 26, 28];
+          const demoConditions = ['Soleado', 'Parcialmente nublado', 'Despejado', 'Nubes dispersas'];
+          const randomTemp = demoTemps[Math.floor(Math.random() * demoTemps.length)];
+          const randomCondition = demoConditions[Math.floor(Math.random() * demoConditions.length)];
+
+          setWeather({
+            location: { name: city },
+            current: { 
+              temp_c: randomTemp, 
+              condition: { text: randomCondition }, 
+              humidity: Math.floor(Math.random() * 40) + 40, 
+              feels_like: randomTemp + Math.floor(Math.random() * 4) - 2 
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Weather API error:', error);
+        setError('Error al obtener datos');
+        setWeather({
+          location: { name: config?.city || 'Ciudad' },
+          current: { temp_c: 22, condition: { text: 'No disponible' }, humidity: 65, feels_like: 24 }
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWeather();
+    const interval = setInterval(fetchWeather, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [config?.apiKey, config?.city]);
+
+  if (loading) {
+    return (
+      <div style={{
+        position: 'absolute',
+        ...getPositionStyles(position),
+        backgroundColor: 'rgba(59, 130, 246, 0.9)',
+        color: 'white',
+        padding: '15px 20px',
+        borderRadius: '8px',
+        zIndex: 1000,
+        fontFamily: 'Arial, sans-serif'
+      }}>
+        <div style={{ fontSize: '18px', fontWeight: 'bold' }}>Cargando clima...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      position: 'absolute',
+      ...getPositionStyles(position),
+      backgroundColor: 'rgba(59, 130, 246, 0.9)',
+      color: 'white',
+      padding: '15px 20px',
+      borderRadius: '8px',
+      zIndex: 1000,
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '5px' }}>
+        {weather?.location?.name || 'Ciudad'}
+      </div>
+      <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '5px' }}>
+        {weather?.current?.temp_c}°C
+      </div>
+      <div style={{ fontSize: '14px', opacity: 0.9 }}>
+        {weather?.current?.condition?.text || 'Sin datos'}
+      </div>
+      {weather?.current?.humidity && (
+        <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
+          Humedad: {weather.current.humidity}% • Sensación: {weather.current.feels_like}°C
+        </div>
+      )}
+      {error && (
+        <div style={{ fontSize: '11px', color: '#ffcccc', marginTop: '3px' }}>{error}</div>
+      )}
+    </div>
+  );
+});
+
+WeatherWidget.displayName = 'WeatherWidget';
+
+// Memoized News Widget Component
+const NewsWidget = memo(({ config, position }: { config: any, position: string }) => {
+  const [news, setNews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      setLoading(true);
+      try {
+        const rssUrl = config?.rssUrl || 'https://feeds.bbci.co.uk/mundo/rss.xml';
+        const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+
+        const response = await fetch(proxyUrl);
+        if (response.ok) {
+          const data = await response.json();
+          setNews(data.items?.slice(0, config?.maxItems || 5) || []);
+        }
+      } catch (error) {
+        console.error('News API error:', error);
+        setNews([
+          { title: 'Noticias en tiempo real', description: 'Configure la URL RSS para mostrar noticias actualizadas' },
+          { title: 'Widget de noticias configurado', description: 'Edita este widget para cambiar la fuente RSS' },
+          { title: 'Actualizaciones automáticas', description: 'Las noticias se actualizan cada 15 minutos' }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNews();
+    const interval = setInterval(fetchNews, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [config?.rssUrl, config?.maxItems]);
+
+  useEffect(() => {
+    if (news.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % news.length);
+      }, 8000);
+      return () => clearInterval(interval);
+    }
+  }, [news.length]);
+
+  if (loading) {
+    return (
+      <div style={{
+        position: 'absolute',
+        ...getPositionStyles(position),
+        backgroundColor: 'rgba(251, 146, 60, 0.9)',
+        color: 'white',
+        padding: '15px 20px',
+        borderRadius: '8px',
+        zIndex: 1000,
+        fontFamily: 'Arial, sans-serif',
+        minWidth: '300px'
+      }}>
+        <div style={{ fontSize: '14px' }}>Cargando noticias...</div>
+      </div>
+    );
+  }
+
+  const currentNews = news[currentIndex];
+
+  return (
+    <div style={{
+      position: 'absolute',
+      ...getPositionStyles(position),
+      backgroundColor: 'rgba(251, 146, 60, 0.9)',
+      color: 'white',
+      padding: '15px 20px',
+      borderRadius: '8px',
+      zIndex: 1000,
+      fontFamily: 'Arial, sans-serif',
+      minWidth: '300px',
+      maxWidth: '400px'
+    }}>
+      <div style={{ fontSize: '12px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>📰 Últimas Noticias</span>
+        {news.length > 1 && (
+          <span style={{ fontSize: '10px' }}>
+            {currentIndex + 1}/{news.length}
+          </span>
+        )}
+      </div>
+      {currentNews && (
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '5px', lineHeight: 1.3 }}>
+            {currentNews.title}
+          </div>
+          {currentNews.description && (
+            <div style={{ fontSize: '12px', opacity: 0.9, lineHeight: 1.2 }}>
+              {currentNews.description.replace(/<[^>]*>/g, '').substring(0, 120)}...
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
+
+NewsWidget.displayName = 'NewsWidget';
+
+// Memoized Text Widget Component
+const TextWidget = memo(({ config, position }: { config: any, position: string }) => {
+  const memoizedConfig = useMemo(() => {
+    const text = config?.text || 'Texto personalizado';
+    const fontSize = config?.fontSize || '16px';
+    const color = config?.color || '#ffffff';
+    const backgroundColor = config?.backgroundColor || 'rgba(0, 0, 0, 0.8)';
+    const fontWeight = config?.fontWeight || 'normal';
+    const textAlign = config?.textAlign || 'left';
+    const borderRadius = config?.borderRadius || '8px';
+    const padding = config?.padding || '15px 20px';
+    const fontFamily = config?.fontFamily || 'Arial, sans-serif';
+    const textTransform = config?.textTransform || 'none';
+    const letterSpacing = config?.letterSpacing || 'normal';
+    const lineHeight = config?.lineHeight || '1.4';
+
+    return {
+      text,
+      textStyle: {
+        fontSize,
+        color,
+        fontWeight,
+        textAlign: textAlign as 'left' | 'center' | 'right',
+        fontFamily,
+        textTransform: textTransform as 'none' | 'uppercase' | 'lowercase' | 'capitalize',
+        letterSpacing,
+        lineHeight,
+        margin: 0,
+        padding: 0
+      },
+      containerStyle: {
+        position: 'absolute' as const,
+        ...getPositionStyles(position),
+        backgroundColor: backgroundColor === 'transparent' ? 'transparent' : backgroundColor,
+        borderRadius,
+        padding,
+        zIndex: 1000,
+        maxWidth: '400px'
+      }
+    };
+  }, [config, position]);
+
+  return (
+    <div style={memoizedConfig.containerStyle}>
+      <div style={memoizedConfig.textStyle}>
+        {memoizedConfig.text.split('\n').map((line: string, index: number) => (
+          <div key={index}>
+            {line}
+            {index < memoizedConfig.text.split('\n').length - 1 && <br />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+TextWidget.displayName = 'TextWidget';
+
+// Position calculation helper (memoized)
+const getPositionStyles = (position: string) => {
+  const positions: Record<string, React.CSSProperties> = {
+    'top-left': { top: '20px', left: '20px' },
+    'top-right': { top: '20px', right: '20px' },
+    'bottom-left': { bottom: '20px', left: '20px' },
+    'bottom-right': { bottom: '20px', right: '20px' },
+    'center': { 
+      top: '50%', 
+      left: '50%', 
+      transform: 'translate(-50%, -50%)' 
+    }
+  };
+  return positions[position] || positions['top-right'];
+};
+
+// Widget type mapping (memoized)
+const widgetComponents = {
+  clock: ClockWidget,
+  weather: WeatherWidget,
+  news: NewsWidget,
+  text: TextWidget
+} as const;
+
 export default function ContentPlayer({ playlistId, isPreview = false }: { playlistId?: number, isPreview?: boolean }) {
   const queryClient = useQueryClient();
   const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
@@ -473,7 +890,8 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
             <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚠️</div>
             <div>URL no encontrada</div>
             <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
-              {title || 'Sin título'}
+              ```
+{title || 'Sin título'}
             </div>
           </div>
         </div>
