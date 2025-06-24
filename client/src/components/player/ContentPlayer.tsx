@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { wsManager } from "@/lib/websocket";
@@ -256,6 +257,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 
+  // Siempre renderizar todos los hooks en el mismo orden
   const { data: playlistData, isLoading } = useQuery<any & { items: any[] }>({
     queryKey: isPreview ? ['/api/playlists', playlistId] : ['/api/player/playlists', playlistId],
     queryFn: async () => {
@@ -270,6 +272,9 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         return response.json();
       } else {
         const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+          throw new Error('No auth token found');
+        }
         const response = await fetch(endpoint, {
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -289,6 +294,40 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+  });
+
+  // Fetch widgets - SIEMPRE renderizar este hook
+  const { data: widgets = [] } = useQuery({
+    queryKey: ['user-widgets'],
+    queryFn: async () => {
+      console.log(`🔄 Fetching widgets for user`);
+      if (isPreview) {
+        const response = await apiRequest('/api/widgets');
+        const data = await response.json();
+        return data.filter((w: any) => w.isEnabled);
+      } else {
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+          console.warn('No auth token found for widgets');
+          return [];
+        }
+        const response = await fetch('/api/player/widgets', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          console.error('Failed to fetch widgets:', response.status);
+          return [];
+        }
+        const data = await response.json();
+        console.log(`✅ Fetched ${data.length} widgets for user`);
+        return data;
+      }
+    },
+    enabled: true, // Siempre habilitado
+    retry: 1,
   });
 
   // Memoizar el parsing del custom layout config
@@ -312,38 +351,9 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     return playlistData?.layout || 'single_zone';
   }, [playlistData?.layout]);
 
-  // Only proceed with hooks if we have valid data
-  const shouldProceed = !!playlistId && !!playlistData;
-
-  // Fetch widgets for the current user (not playlist-specific)
-  const { data: widgets = [] } = useQuery({
-    queryKey: ['user-widgets'],
-    queryFn: async () => {
-      console.log(`🔄 Fetching widgets for user`);
-      if (isPreview) {
-        const response = await apiRequest('/api/widgets');
-        const data = await response.json();
-        return data.filter((w: any) => w.isEnabled);
-      } else {
-        const authToken = localStorage.getItem('authToken');
-        const response = await fetch('/api/player/widgets', {
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (!response.ok) throw new Error('Failed to fetch widgets');
-        const data = await response.json();
-        console.log(`✅ Fetched ${data.length} widgets for user`);
-        return data;
-      }
-    },
-    enabled: !!playlistId,
-  });
-
   // Process items into zones based on layout
   const zones = useMemo(() => {
-    if (!shouldProceed || !playlistData?.items || !layout) return {};
+    if (!playlistData?.items || !layout) return {};
 
     console.log('Processing zones for playlist:', playlistData.items);
     const zoneMap: { [key: string]: any[] } = {};
@@ -357,33 +367,31 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     });
 
     return zoneMap;
-  }, [shouldProceed, playlistData?.items, layout]);
+  }, [playlistData?.items, layout]);
 
   // Get unique zone names from the playlist items
   const zoneNames = useMemo(() => {
-    if (!shouldProceed || !playlistData?.items) return ['main'];
+    if (!playlistData?.items) return ['main'];
     const uniqueZones = new Set(playlistData.items.map((item: any) => item.zone || 'main'));
     return Array.from(uniqueZones);
-  }, [shouldProceed, playlistData?.items]);
+  }, [playlistData?.items]);
 
   // Create current item state for each zone
   const [currentItems, setCurrentItems] = useState<{ [key: string]: number }>({});
 
   // Initialize current items for all zones
   useEffect(() => {
-    if (shouldProceed && zoneNames.length > 0) {
+    if (playlistData && zoneNames.length > 0) {
       const initialItems: { [key: string]: number } = {};
       zoneNames.forEach(zone => {
         initialItems[zone] = 0;
       });
       setCurrentItems(initialItems);
     }
-  }, [shouldProceed, zoneNames]);
+  }, [playlistData, zoneNames]);
 
   // Zone advancement function
   const advanceZone = useCallback((zoneName: string) => {
-    if (!shouldProceed) return;
-
     const zoneItems = zones[zoneName];
     if (zoneItems && zoneItems.length > 0) {
       setCurrentItems(prev => ({
@@ -391,11 +399,11 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         [zoneName]: (prev[zoneName] + 1) % zoneItems.length
       }));
     }
-  }, [shouldProceed, zones]);
+  }, [zones]);
 
   // Enhanced timer with zone management
   useEffect(() => {
-    if (!shouldProceed || !playlistData?.items || playlistData.items.length === 0) return;
+    if (!playlistData?.items || playlistData.items.length === 0) return;
 
     const intervals: { [key: string]: NodeJS.Timeout } = {};
 
@@ -412,7 +420,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     return () => {
       Object.values(intervals).forEach(interval => clearInterval(interval));
     };
-  }, [shouldProceed, zones, advanceZone, playlistData?.items]);
+  }, [zones, advanceZone, playlistData?.items]);
 
   // Memoizar la configuración de zone settings
   const zoneSettings = useMemo(() => {
@@ -600,41 +608,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     return renderContentItem(item, zoneName);
   }, [zones, currentItems, renderContentItem]);
 
-  // Optimizar lógica de temporizadores para cada zona
-  useEffect(() => {
-    const timers: NodeJS.Timeout[] = [];
-
-    // Crear una representación estable de los ítems actuales
-    const currentItems = Object.entries(zoneTrackers).map(([zoneId, tracker]) => ({
-      zoneId,
-      currentIndex: tracker.currentIndex,
-      itemCount: tracker.items.length,
-      currentItem: tracker.items[tracker.currentIndex]
-    }));
-
-    for (const { zoneId, currentIndex, itemCount, currentItem } of currentItems) {
-      if (itemCount > 0 && currentItem) {
-        const duration = (currentItem.customDuration || currentItem.contentItem?.duration || 10) * 1000;
-
-        const timer = setTimeout(() => {
-          setZoneTrackers(prev => ({
-            ...prev,
-            [zoneId]: {
-              ...prev[zoneId],
-              currentIndex: (prev[zoneId].currentIndex + 1) % prev[zoneId].items.length,
-            },
-          }));
-        }, duration);
-
-        timers.push(timer);
-      }
-    }
-
-    return () => {
-      timers.forEach(clearTimeout);
-    };
-  }, [zoneTrackers]);
-
   // WebSocket connection and real-time updates
   useEffect(() => {
     if (!isPreview && playlistId) {
@@ -691,46 +664,6 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       };
     }
   }, [isPreview, playlistId, queryClient]);
-
-  // Si no hay playlistId, mostrar mensaje de espera
-  if (!playlistId) {
-    return (
-      <div style={styles.container}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', marginBottom: '15px' }}>⏳ Esperando configuración</div>
-            <div style={{ fontSize: '16px', opacity: 0.8, maxWidth: '600px', lineHeight: '1.5' }}>
-              Esta pantalla está emparejada pero no tiene una playlist asignada.
-              <br />
-              Asigna una playlist desde el panel de administración para comenzar la reproducción.
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) return (
-    <div style={styles.container}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '20px', marginBottom: '10px' }}>Cargando Playlist...</div>
-          <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {playlistId}</div>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (!playlistData) return (
-    <div style={styles.container}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '20px', marginBottom: '10px' }}>Playlist no encontrada</div>
-          <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {playlistId}</div>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderWidget = useCallback((widget: any) => {
     if (!widget || !widget.isEnabled) return null;
@@ -839,6 +772,46 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     );
   }, []);
 
+  // Si no hay playlistId, mostrar mensaje de espera
+  if (!playlistId) {
+    return (
+      <div style={styles.container}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', marginBottom: '15px' }}>⏳ Esperando configuración</div>
+            <div style={{ fontSize: '16px', opacity: 0.8, maxWidth: '600px', lineHeight: '1.5' }}>
+              Esta pantalla está emparejada pero no tiene una playlist asignada.
+              <br />
+              Asigna una playlist desde el panel de administración para comenzar la reproducción.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) return (
+    <div style={styles.container}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '20px', marginBottom: '10px' }}>Cargando Playlist...</div>
+          <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {playlistId}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!playlistData) return (
+    <div style={styles.container}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '20px', marginBottom: '10px' }}>Playlist no encontrada</div>
+          <div style={{ fontSize: '14px', opacity: 0.7 }}>ID: {playlistId}</div>
+        </div>
+      </div>
+    </div>
+  );
+
   // Renderizado del Layout
   const layoutType = playlistData?.layout || 'single_zone';
 
@@ -934,8 +907,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       return (
         <div style={{ ...styles.container, display: 'grid', gridTemplate: '1fr 1fr 1fr / 1fr 1fr 1fr', gap: '2px' }}>
           {Array.from({length: 9}, (_, i) => {
-
-const zoneId = `grid_${i + 1}`;
+            const zoneId = `grid_${i + 1}`;
             return (
               <div key={zoneId} style={{ ...styles.zone, backgroundColor: '#111' }}>
                 {renderZone(zoneId)}
@@ -1070,7 +1042,8 @@ const zoneId = `grid_${i + 1}`;
           )}
           {activeAlerts.map((alert) => (
             <AlertOverlay key={alert.id} alert={alert} onAlertExpired={() => {}} />
-          ))}        </div>
+          ))}        
+        </div>
       );
 
     case 'triple_horizontal':
