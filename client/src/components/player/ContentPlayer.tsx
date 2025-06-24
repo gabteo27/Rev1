@@ -262,32 +262,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
   const [zoneTrackers, setZoneTrackers] = useState<Record<string, ZoneTracker>>({});
 
-  // Query para obtener widgets del usuario - siempre debe estar aquí
-  const { data: widgets = [] } = useQuery<any[]>({
-    queryKey: [isPreview ? '/api/widgets' : '/api/player/widgets'],
-    queryFn: () => {
-      const endpoint = isPreview ? '/api/widgets' : '/api/player/widgets';
-      if (isPreview) {
-        return apiRequest(endpoint).then(res => res.json());
-      } else {
-        const authToken = localStorage.getItem('authToken');
-        return fetch(endpoint, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
-        }).then(res => {
-          if (!res.ok) {
-            throw new Error('Failed to fetch widgets');
-          }
-          return res.json();
-        });
-      }
-    },
-    refetchInterval: isPreview ? 10000 : 120000,
-    enabled: !!playlistId,
-  });
-
-  const { data: playlist, isLoading } = useQuery<any & { items: any[] }>({
+  const { data: playlistData, isLoading } = useQuery<any & { items: any[] }>({
     queryKey: isPreview ? ['/api/playlists', playlistId] : ['/api/player/playlists', playlistId],
     queryFn: async () => {
       const endpoint = isPreview ? `/api/playlists/${playlistId}` : `/api/player/playlists/${playlistId}`;
@@ -324,133 +299,145 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
   // Memoizar el parsing del custom layout config
   const customLayoutConfig = useMemo(() => {
-    if (!playlist?.customLayoutConfig) return {};
+    if (!playlistData?.customLayoutConfig) return {};
 
     try {
-      if (typeof playlist.customLayoutConfig === 'string') {
-        return JSON.parse(playlist.customLayoutConfig);
-      } else if (typeof playlist.customLayoutConfig === 'object' && playlist.customLayoutConfig !== null) {
-        return playlist.customLayoutConfig;
+      if (typeof playlistData.customLayoutConfig === 'string') {
+        return JSON.parse(playlistData.customLayoutConfig);
+      } else if (typeof playlistData.customLayoutConfig === 'object' && playlistData.customLayoutConfig !== null) {
+        return playlistData.customLayoutConfig;
       }
     } catch (e) {
       console.error('Error parsing custom layout config:', e);
     }
     return {};
-  }, [playlist?.customLayoutConfig]);
+  }, [playlistData?.customLayoutConfig]);
 
-  // Memoizar el procesamiento de zones - optimización costosa
-  const processedZones = useMemo(() => {
-    if (!playlist?.items || !Array.isArray(playlist.items)) {
-      return {};
-    }
+    // Determinar el layout
+  const layout = useMemo(() => {
+    return playlistData?.layout || 'single_zone';
+  }, [playlistData?.layout]);
 
-    console.log('Processing zones for playlist:', playlist.items);
+  // Only proceed with hooks if we have valid data
+  const shouldProceed = !!playlistId && !!playlistData;
 
-    const zones: Record<string, any[]> = {};
-    const layout = playlist.layout || 'single_zone';
+  // Fetch widgets for the current playlist
+  const { data: widgets = [] } = useQuery({
+    queryKey: ['playlist-widgets', playlistId],
+    queryFn: async () => {
+      if (!playlistId) return [];
+      console.log(`🔄 Fetching widgets for playlist ${playlistId}`);
+      const response = await fetch(`/api/player/playlists/${playlistId}/widgets`);
+      if (!response.ok) throw new Error('Failed to fetch widgets');
+      const data = await response.json();
+      console.log(`✅ Fetched ${data.length} widgets for playlist ${playlistId}`);
+      return data;
+    },
+    enabled: !!playlistId,
+  });
 
-    switch (layout) {
-      case 'split_vertical':
-        zones['left'] = [];
-        zones['right'] = [];
-        break;
-      case 'split_horizontal':
-        zones['top'] = [];
-        zones['bottom'] = [];
-        break;
-      case 'pip_bottom_right':
-        zones['main'] = [];
-        zones['pip'] = [];
-        break;
-      case 'grid_2x2':
-        zones['top_left'] = [];
-        zones['top_right'] = [];
-        zones['bottom_left'] = [];
-        zones['bottom_right'] = [];
-        break;
-      case 'grid_3x3':
-        for (let i = 1; i <= 9; i++) {
-          zones[`grid_${i}`] = [];
-        }
-        break;
-      case 'sidebar_left':
-        zones['sidebar'] = [];
-        zones['main'] = [];
-        break;
-      case 'sidebar_right':
-        zones['main'] = [];
-        zones['sidebar'] = [];
-        break;
-      case 'header_footer':
-        zones['header'] = [];
-        zones['main'] = [];
-        zones['footer'] = [];
-        break;
-      case 'triple_vertical':
-        zones['left'] = [];
-        zones['center'] = [];
-        zones['right'] = [];
-        break;
-      case 'triple_horizontal':
-        zones['top'] = [];
-        zones['middle'] = [];
-        zones['bottom'] = [];
-        break;
-      case 'custom_layout':
-        if (customLayoutConfig.zones) {
-          customLayoutConfig.zones.forEach((zone: any) => {
-            zones[zone.id] = [];
-          });
-        } else {
-          zones['main'] = [];
-        }
-        break;
-      case 'single_zone':
-      default:
-        zones['main'] = [];
-        break;
-    }
+  // Process items into zones based on layout
+  const zones = useMemo(() => {
+    if (!shouldProceed || !playlistData?.items || !layout) return {};
 
-    for (const item of playlist.items) {
+    console.log('Processing zones for playlist:', playlistData.items);
+    const zoneMap: { [key: string]: any[] } = {};
+
+    playlistData.items.forEach((item: any) => {
       const zone = item.zone || 'main';
-      if (!zones[zone]) {
-        zones[zone] = [];
+      if (!zoneMap[zone]) {
+        zoneMap[zone] = [];
       }
-      zones[zone].push(item);
-    }
+      zoneMap[zone].push(item);
+    });
 
-    for (const zone in zones) {
-      zones[zone].sort((a, b) => (a.order || 0) - (b.order || 0));
-    }
+    return zoneMap;
+  }, [shouldProceed, playlistData?.items, layout]);
 
-    return zones;
-  }, [playlist?.items, playlist?.layout, customLayoutConfig]);
+  // Get unique zone names from the playlist items
+  const zoneNames = useMemo(() => {
+    if (!shouldProceed || !playlistData?.items) return ['main'];
+    const uniqueZones = new Set(playlistData.items.map((item: any) => item.zone || 'main'));
+    return Array.from(uniqueZones);
+  }, [shouldProceed, playlistData?.items]);
 
-  // Inicializa o actualiza los trackers cuando las zones cambian
+  // Create current item state for each zone
+  const [currentItems, setCurrentItems] = useState<{ [key: string]: number }>({});
+
+  // Initialize current items for all zones
   useEffect(() => {
-    const newTrackers: Record<string, ZoneTracker> = {};
-    for (const zoneId in processedZones) {
-      newTrackers[zoneId] = {
-        currentIndex: 0,
-        items: processedZones[zoneId],
-      };
+    if (shouldProceed && zoneNames.length > 0) {
+      const initialItems: { [key: string]: number } = {};
+      zoneNames.forEach(zone => {
+        initialItems[zone] = 0;
+      });
+      setCurrentItems(initialItems);
     }
-    setZoneTrackers(newTrackers);
-  }, [processedZones]);
+  }, [shouldProceed, zoneNames]);
+
+  // Zone advancement function
+  const advanceZone = useCallback((zoneName: string) => {
+    if (!shouldProceed) return;
+
+    const zoneItems = zones[zoneName];
+    if (zoneItems && zoneItems.length > 0) {
+      setCurrentItems(prev => ({
+        ...prev,
+        [zoneName]: (prev[zoneName] + 1) % zoneItems.length
+      }));
+    }
+  }, [shouldProceed, zones]);
+
+  // Enhanced timer with zone management
+  useEffect(() => {
+    if (!shouldProceed || !playlistData?.items || playlistData.items.length === 0) return;
+
+    const intervals: { [key: string]: NodeJS.Timeout } = {};
+
+    // Create timers for each zone
+    Object.keys(zones).forEach(zoneName => {
+      const zoneItems = zones[zoneName];
+      if (zoneItems && zoneItems.length > 1) {
+        intervals[zoneName] = setInterval(() => {
+          advanceZone(zoneName);
+        }, 5000); // 5 seconds per item
+      }
+    });
+
+    return () => {
+      Object.values(intervals).forEach(interval => clearInterval(interval));
+    };
+  }, [shouldProceed, zones, advanceZone, playlistData?.items]);
+
+  const renderZone = useCallback((zoneName: string, zoneStyles?: any) => {
+    const zoneItems = zones[zoneName];
+    if (!zoneItems || zoneItems.length === 0) {
+      return <div style={{ ...styles.zone, ...zoneStyles }}>No items in zone {zoneName}</div>;
+    }
+
+    const currentItemIndex = currentItems[zoneName] || 0;
+    const item = zoneItems[currentItemIndex];
+
+    if (!item) {
+      return <div style={{ ...styles.zone, ...zoneStyles }}>No item to display in zone {zoneName}</div>;
+    }
+
+    return renderContentItem(item);
+  }, [zones, currentItems, renderContentItem]);
 
   // Memoizar la configuración de zone settings
   const zoneSettings = useMemo(() => {
     try {
-      if (playlist?.zoneSettings && typeof playlist.zoneSettings === 'string') {
-        return JSON.parse(playlist.zoneSettings);
-      } else if (playlist?.zoneSettings && typeof playlist.zoneSettings === 'object') {
-        return playlist.zoneSettings;
+      if (playlistData?.zoneSettings && typeof playlistData.zoneSettings === 'string') {
+        return JSON.parse(playlistData.zoneSettings);
+      } else if (playlistData?.zoneSettings && typeof playlistData.zoneSettings === 'object') {
+        return playlistData.zoneSettings;
       }
     } catch (e) {
       console.warn('Error parsing zone settings:', e);
     }
     return {};
-  }, [playlist?.zoneSettings]);
+  }, [playlistData?.zoneSettings]);
 
   // Función memoizada para renderizar el contenido de un item
   const renderContentItem = useCallback((item: any, zoneId?: string) => {
@@ -608,29 +595,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     }
   }, [zoneSettings]);
 
-  // Función memoizada para renderizar una zona específica
-  const renderZone = useCallback((zoneId: string) => {
-    const tracker = zoneTrackers[zoneId];
-    if (!tracker || tracker.items.length === 0) {
-      return (
-        <div style={{ 
-          ...styles.zone, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          color: 'rgba(255,255,255,0.5)',
-          backgroundColor: '#1a1a1a'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '16px', marginBottom: '5px' }}>{zoneId}</div>
-            <div style={{ fontSize: '12px', opacity: 0.7 }}>Sin contenido</div>
-          </div>
-        </div>
-      );
-    }
-    const currentItem = tracker.items[tracker.currentIndex];
-    return renderContentItem(currentItem, zoneId);
-  }, [zoneTrackers, renderContentItem]);
+
 
   // Optimizar lógica de temporizadores para cada zona
   useEffect(() => {
@@ -755,7 +720,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     </div>
   );
 
-  if (!playlist) return (
+  if (!playlistData) return (
     <div style={styles.container}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'white' }}>
         <div style={{ textAlign: 'center' }}>
@@ -771,7 +736,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
 
     // Determinar posición basada en el campo position
     let positionStyle: React.CSSProperties = {};
-    
+
     switch (widget.position) {
       case 'top-left':
         positionStyle = { top: '20px', left: '20px' };
@@ -809,7 +774,7 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
     let content = null;
     try {
       const config = JSON.parse(widget.config || '{}');
-      
+
       switch (widget.type) {
         case 'clock':
           const now = new Date();
@@ -874,9 +839,9 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
   }, []);
 
   // Renderizado del Layout
-  const layout = playlist?.layout || 'single_zone';
+  const layoutType = playlistData?.layout || 'single_zone';
 
-  switch (layout) {
+  switch (layoutType) {
     case 'split_vertical':
       return (
         <div style={{ ...styles.container, display: 'flex' }}>

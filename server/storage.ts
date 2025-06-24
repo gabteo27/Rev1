@@ -791,9 +791,15 @@ export class DatabaseStorage implements IStorage {
     widget: Partial<InsertWidget>,
     userId: string,
   ): Promise<Widget | undefined> {
+    // Ensure config is properly handled
+    const updateData = { ...widget, updatedAt: new Date() };
+    if (updateData.config && typeof updateData.config !== 'string') {
+      updateData.config = JSON.stringify(updateData.config);
+    }
+    
     const [item] = await db
       .update(widgets)
-      .set({ ...widget, updatedAt: new Date() })
+      .set(updateData)
       .where(and(eq(widgets.id, id), eq(widgets.userId, userId)))
       .returning();
     return item;

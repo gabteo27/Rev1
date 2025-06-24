@@ -952,7 +952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(screen);
     } catch (error) {
       console.error("Error fetching single screen:", error);
-      res
+<previous_generation>      res
         .status(500)
         .json({ message: "Error al obtener la información de la pantalla." });
     }
@@ -1931,7 +1931,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }),
               );
             } else {
-              console.log(
+              console<previous_generation>
+.log(
                 `❌ Player auth failed: screen not found or no userId. Screen:`,
                 screen,
               );
@@ -2600,6 +2601,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/playlist-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+
+      const playlistItem = await storage.getPlaylistItem(id);
+
+      if (!playlistItem) {
+        return res.status(404).json({ message: "Playlist item not found" });
+      }
+      res.json(playlistItem);
+    } catch (error) {
+      console.error("Error fetching playlist item:", error);
+      res.status(500).json({ message: "Failed to fetch playlist item" });
+    }
+  });
+
   // Update playlist item (custom duration, zone, etc.)
   app.put("/api/playlist-items/:id", isAuthenticated, async (req: any, res) => {
     try {
@@ -2690,6 +2708,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Player-specific endpoints (authenticated with player token)
+  app.get('/api/player/playlists/:id/widgets', async (req, res) => {
+    try {
+      const playlistId = parseInt(req.params.id);
+
+      // Get playlist widgets
+      // const playlistWidgets = await storage.getPlaylistWidgets(playlistId);
+      const playlistWidgets = await db
+        .select({
+          widget: widgets,
+          position: playlistItems.zone,
+          isEnabled: eq(widgets.isEnabled, true),
+        })
+        .from(playlistItems)
+        .innerJoin(widgets, eq(playlistItems.contentItemId, widgets.id))
+        .where(eq(playlistItems.playlistId, playlistId));
+      // .where(
+      //   and(
+      //     eq(playlistItems.playlistId, playlistId),
+      //     eq(playlistItems.isEnabled, true),
+      //     eq(widgets.isEnabled, true)
+      //   )
+      // );
+
+      const formattedWidgets = playlistWidgets.map(({ widget, position, isEnabled }) => ({
+        ...widget,
+        position,
+        isEnabled,
+        config: typeof widget.config === 'string' ? JSON.parse(widget.config || '{}') : widget.config
+      }));
+
+      res.json(formattedWidgets);
+    } catch (error) {
+      console.error('Error fetching playlist widgets:', error);
+      res.status(500).json({ message: 'Failed to fetch playlist widgets' });
+    }
+  });
+
+  // Player specific routes (no authentication required, uses screen token)
   app.get("/api/player/playlists/:id", isPlayerAuthenticated, async (req: any, res) => {
     try {
       const playlistId = parseInt(req.params.id);
@@ -2706,7 +2762,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  
+  // Widget routes
+  app.get('/api/widgets', async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      const widgets = await storage.getWidgets(userId);
+      res.json(widgets);
+    } catch (error) {
+      console.error('Error fetching widgets:', error);
+      res.status(500).json({ message: 'Failed to fetch widgets' });
+    }
+  });
+
+  app.post('/api/widgets', async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      const { type, name, isEnabled = true, position = 'top-right', config } = req.body;
+
+      if (!type || !name) {
+        return res.status(400).json({ message: 'Type and name are required' });
+      }
+
+      const widget = await storage.createWidget({
+        userId,
+        type,
+        name,
+        isEnabled,
+        position,
+        config: typeof config === 'string' ? config : JSON.stringify(config || {})
+      });
+
+      res.status(201).json(widget);
+    } catch (error) {
+      console.error('Error creating widget:', error);
+      res.status(500).json({ message: 'Failed to create widget' });
+    }
+  });
+
+app.put('/api/widgets/:id', async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      const id = parseInt(req.params.id);
+      const { type, name, isEnabled, position, config } = req.body;
+
+      const widget = await storage.updateWidget(id, {
+        type,
+        name,
+        isEnabled,
+        position,
+        config: typeof config === 'string' ? config : JSON.stringify(config || {})
+      }, userId);
+
+      if (!widget) {
+        return res.status(404).json({ message: 'Widget not found' });
+      }
+
+      res.json(widget);
+    } catch (error) {
+      console.error('Error updating widget:', error);
+      res.status(500).json({ message: 'Failed to update widget' });
+    }
+  });
+
 
   return httpServer;
 }
