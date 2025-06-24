@@ -102,8 +102,43 @@ const ClockWidget = () => {
 };
 
 export default function Dashboard() {
-  const [selectedScreen, setSelectedScreen] = useState("");
-  const [selectedPlaylist, setSelectedPlaylist] = useState("");
+  const [selectedScreen, setSelectedScreen] = useState<any>(null);
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | null>(null);
+
+  // Queries
+  const { data: screens = [], refetch: refetchScreens } = useQuery({
+    queryKey: ["/api/screens"],
+    queryFn: () => apiRequest("/api/screens").then(res => res.json()),
+    refetchInterval: 30000,
+  });
+
+  console.log("🖥️ Fetched screens for preview:", screens);
+
+  useEffect(() => {
+    if (screens.length > 0) {
+      // Si no hay pantalla seleccionada, seleccionar la primera disponible
+      if (!selectedScreen) {
+        const firstActiveScreen = screens.find((s: any) => s.isOnline && s.playlistId) || screens[0];
+        if (firstActiveScreen) {
+          setSelectedScreen(firstActiveScreen);
+          setSelectedPlaylistId(firstActiveScreen.playlistId || null);
+          console.log("🖥️ Auto-selected screen:", firstActiveScreen);
+        }
+      } else {
+        // Actualizar la pantalla seleccionada si ya existe
+        const updatedScreen = screens.find((s: any) => s.id === selectedScreen.id);
+        if (updatedScreen) {
+          setSelectedScreen(updatedScreen);
+          setSelectedPlaylistId(updatedScreen.playlistId || null);
+        }
+      }
+    }
+  }, [screens]);
+
+  useEffect(() => {
+    console.log("🖥️ Selected screen:", selectedScreen);
+    console.log("🎵 Playlist ID:", selectedPlaylistId);
+  }, [selectedScreen, selectedPlaylistId]);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [alertsList, setAlertsList] = useState<any[]>([]);
   const { toast } = useToast();
@@ -166,8 +201,8 @@ export default function Dashboard() {
       // Subscribe to playlist updates
       const playlistUpdateHandler = () => {
         queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-        if (selectedPlaylist) {
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+        if (selectedPlaylistId) {
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
         }
       };
       wsManager.on('playlists-updated', playlistUpdateHandler);
@@ -181,8 +216,8 @@ export default function Dashboard() {
         if (data?.playlistId) {
           queryClient.invalidateQueries({ queryKey: ["/api/playlists", data.playlistId.toString()] });
         }
-        if (selectedPlaylist && data?.playlistId === parseInt(selectedPlaylist)) {
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+        if (selectedPlaylistId && data?.playlistId === parseInt(selectedPlaylistId)) {
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
         }
         // Force refetch to get immediate updates
         queryClient.refetchQueries({ queryKey: ["/api/playlists"] });
@@ -194,7 +229,7 @@ export default function Dashboard() {
       const contentDeleteHandler = (data) => {
         console.log('Content deletion received:', data);
         const { contentTitle, affectedPlaylists } = data;
-        
+
         // Show notification
         if (contentTitle && affectedPlaylists?.length > 0) {
           toast({
@@ -202,11 +237,11 @@ export default function Dashboard() {
             description: `"${contentTitle}" ha sido eliminado de ${affectedPlaylists.length} playlist(s)`,
           });
         }
-        
+
         queryClient.invalidateQueries({ queryKey: ["/api/content"] });
         queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-        if (selectedPlaylist) {
-          queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+        if (selectedPlaylistId) {
+          queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
         }
       };
       wsManager.on('content-deleted', contentDeleteHandler);
@@ -223,7 +258,7 @@ export default function Dashboard() {
       };
       wsManager.on('widget-updated', widgetUpdateHandler);
       unsubscribeFunctions.push(() => wsManager.off('widget-updated', widgetUpdateHandler));
-      
+
       } catch (error) {
         console.error('Error setting up subscriptions:', error);
         // Retry setup after a delay
@@ -243,7 +278,7 @@ export default function Dashboard() {
         }
       });
     };
-  }, [toast, selectedPlaylist]);
+  }, [toast, selectedPlaylistId]);
 
   // Fetch data with proper error handling and caching
   const { data: screens = [] } = useQuery({
@@ -317,8 +352,8 @@ export default function Dashboard() {
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
       queryClient.invalidateQueries({ queryKey: ["/api/playlists"] });
-      if (selectedPlaylist) {
-        queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylist] });
+      if (selectedPlaylistId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/playlists", selectedPlaylistId] });
       }
 
       // Broadcast update via WebSocket to connected screens
@@ -365,7 +400,7 @@ export default function Dashboard() {
       });
 
       // Update local state immediately
-      setSelectedPlaylist(variables.playlistId);
+      setSelectedPlaylistId(variables.playlistId);
 
       // Invalidate and refresh all relevant queries
       queryClient.invalidateQueries({ queryKey: ["/api/screens"] });
@@ -397,12 +432,12 @@ export default function Dashboard() {
   });
 
   const togglePreview = () => {
-    if (!selectedScreen || !selectedPlaylist) return;
+    if (!selectedScreen || !selectedPlaylistId) return;
 
     const action = isPreviewPlaying ? 'pause' : 'play';
     playbackMutation.mutate({
       screenId: selectedScreen,
-      playlistId: selectedPlaylist,
+      playlistId: selectedPlaylistId,
       action
     });
 
@@ -414,7 +449,7 @@ export default function Dashboard() {
 
     playbackMutation.mutate({
       screenId: selectedScreen,
-      playlistId: selectedPlaylist,
+      playlistId: selectedPlaylistId,
       action: 'stop'
     });
 
@@ -424,9 +459,9 @@ export default function Dashboard() {
   // Sync selected playlist with selected screen
   useEffect(() => {
     if (selectedScreen && Array.isArray(screens)) {
-      const screen = screens.find((s: any) => s.id.toString() === selectedScreen);
-      if (screen && screen.playlistId && screen.playlistId.toString() !== selectedPlaylist) {
-        setSelectedPlaylist(screen.playlistId.toString());
+      const screen = screens.find((s: any) => s.id.toString() === selectedScreen.id);
+      if (screen && screen.playlistId && screen.playlistId.toString() !== selectedPlaylistId) {
+        setSelectedPlaylistId(screen.playlistId.toString());
       }
     }
   }, [selectedScreen, screens]);
@@ -447,7 +482,7 @@ const formatDuration = (seconds: number) => {
 };
 
   const selectedScreenData = Array.isArray(screens) ? screens.find((s: any) => s.id.toString() === selectedScreen) : null;
-  const selectedPlaylistData = Array.isArray(playlists) ? playlists.find((p: any) => p.id.toString() === selectedPlaylist) : null;
+  const selectedPlaylistData = Array.isArray(playlists) ? playlists.find((p: any) => p.id.toString() === selectedPlaylistId) : null;
 
   const handleAlertDismiss = async (alertId: number) => {
     try {
@@ -472,15 +507,15 @@ const formatDuration = (seconds: number) => {
 
   // Query for detailed playlist data when a playlist is selected
   const { data: playlistDetails } = useQuery({
-    queryKey: ["/api/playlists", selectedPlaylist],
+    queryKey: ["/api/playlists", selectedPlaylistId],
     queryFn: async () => {
-      const response = await apiRequest(`/api/playlists/${selectedPlaylist}`);
+      const response = await apiRequest(`/api/playlists/${selectedPlaylistId}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch playlist details: ${response.status}`);
       }
       return response.json();
     },
-    enabled: !!selectedPlaylist,
+    enabled: !!selectedPlaylistId,
     retry: 1,
     staleTime: 60000,
   });
@@ -572,7 +607,17 @@ return (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="screen-select">Pantalla</Label>
-                    <Select value={selectedScreen} onValueChange={setSelectedScreen}>
+                    <Select 
+                  value={selectedScreen?.id?.toString() || ""} 
+                  onValueChange={(value) => {
+                    const screen = screens.find((s: any) => s.id.toString() === value);
+                    if (screen) {
+                      setSelectedScreen(screen);
+                      setSelectedPlaylistId(screen.playlistId || null);
+                      console.log("🖥️ Manually selected screen:", screen);
+                    }
+                  }}
+                >
                       <SelectTrigger id="screen-select">
                         <SelectValue placeholder="Seleccionar pantalla..." />
                       </SelectTrigger>
@@ -596,15 +641,15 @@ return (
                   <div className="space-y-2">
                     <Label htmlFor="playlist-select">Playlist</Label>
                     <Select 
-                      value={selectedPlaylist} 
+                      value={selectedPlaylistId} 
                       onValueChange={(value) => {
-                        if (selectedScreen && value !== selectedPlaylist) {
+                        if (selectedScreen && value !== selectedPlaylistId) {
                           updateScreenPlaylistMutation.mutate({
                             screenId: selectedScreen,
                             playlistId: value
                           });
                         } else {
-                          setSelectedPlaylist(value);
+                          setSelectedPlaylistId(value);
                         }
                       }}
                     >
@@ -633,7 +678,7 @@ return (
                 </div>
 
                 {/* Estado de reproducción */}
-                {selectedScreen && selectedPlaylist && (
+                {selectedScreen && selectedPlaylistId && (
                   <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -700,7 +745,7 @@ return (
                     <p className="text-xs text-muted-foreground">Todas las pantallas actualizadas - {new Date().toLocaleTimeString('es-ES')}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start gap-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border-l-2 border-blue-500">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
                   <div className="flex-1">
@@ -751,7 +796,7 @@ return (
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between pt-3 mt-3 border-t">
                 <span className="text-xs text-muted-foreground">
                   Última actividad: {new Date().toLocaleTimeString('es-ES')}

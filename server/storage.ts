@@ -6,6 +6,7 @@ import {
   screens,
   alertsTable,
   widgets,
+  playlistWidgets,
   schedules,
   deployments,
   screenGroups,

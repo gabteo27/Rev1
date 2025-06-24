@@ -67,7 +67,8 @@ import {
   Shuffle,
   ScrollText,
   SidebarOpen,
-  SidebarClose
+  SidebarClose,
+  Widget
 } from "lucide-react";
 
 // Tipos para mayor claridad
@@ -835,8 +836,9 @@ export default function Playlists() {
       const response = await apiRequest(`/api/playlists/${selectedPlaylistForLayout.id}`, {
         method: "PUT",
         body: JSON.stringify({ layout }),
-        headers: {
-          'Content-Type': 'application/json',
+        headers:```tool_code
+
+{"Content-Type": "application/json",
         },
       });
       if (!response.ok) {
@@ -875,7 +877,7 @@ export default function Playlists() {
             zone: zone || 'main'
           }),
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         });
         if (!response.ok) {
@@ -953,7 +955,7 @@ export default function Playlists() {
         method: "PUT",
         body: JSON.stringify({ zone: newZone, order: newOrder }),
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
       if (!response.ok) {
@@ -985,7 +987,7 @@ export default function Playlists() {
         method: "PUT",
         body: JSON.stringify({ customDuration: duration }),
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
       if (!response.ok) {
@@ -1015,7 +1017,7 @@ export default function Playlists() {
   // Track items being deleted to prevent duplicates
   const [deletingItems, setDeletingItems] = useState<Set<number>>(new Set());
   const [deletionPromises, setDeletionPromises] = useState<Map<number, Promise<any>>>(new Map());
-  
+
   // Track playlists being deleted to prevent duplicates
   const [deletingPlaylists, setDeletingPlaylists] = useState<Set<number>>(new Set());
   const [playlistDeletionPromises, setPlaylistDeletionPromises] = useState<Map<number, Promise<any>>>(new Map());
@@ -1552,30 +1554,58 @@ export default function Playlists() {
                           {playlist.description || "Sin descripción"}
                         </CardDescription>
                       </div>
-                      <div className="flex gap-1 ml-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditPlaylist(playlist)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeletePlaylist(playlist.id)}
-                          disabled={deletingPlaylists.has(playlist.id) || deletePlaylistMutation.isPending}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
-                        >
-                          {deletingPlaylists.has(playlist.id) ? (
-                            <div className="w-4 h-4 animate-spin rounded-full border border-red-500 border-t-transparent" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+                      <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setLocation(`/playlists/${playlist.id}`)}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            Ver Detalles
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePreview(playlist.id)}
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            Preview
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setLocation(`/playlists/${playlist.id}#widgets`)}
+                          >
+                            <Widget className="w-4 h-4 mr-2" />
+                            Agregar Widget
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingPlaylist(playlist);
+                                  setShowEditModal(true);
+                                }}
+                              >
+                                <Edit3 className="w-4 h-4 mr-2" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => handleDeletePlaylist(playlist.id)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -1742,7 +1772,7 @@ export default function Playlists() {
                         </div>
                       </SelectItem>
                       <SelectItem value="header_footer">
-                        <div className="flex items-center gap-2">
+<div className="flex items-center gap-2">
                           <Rows className="h-4 w-4" />
                           Cabecera y Pie
                         </div>
@@ -2299,3 +2329,5 @@ export default function Playlists() {
     </div>
   );
 }
+
+// This file contains the Playlists component, handling playlist management, layout editing, and content selection with real-time updates via WebSocket.
