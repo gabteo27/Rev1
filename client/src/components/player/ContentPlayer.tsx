@@ -326,8 +326,10 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
         return data;
       }
     },
-    enabled: true, // Siempre habilitado
+    enabled: !!playlistId, // Solo cuando hay playlist
     retry: 1,
+    refetchInterval: isPreview ? 120000 : false, // 2 minutos en preview, nunca en player
+    staleTime: 60000, // 1 minuto
   });
 
   // Memoizar el parsing del custom layout config

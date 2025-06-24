@@ -117,7 +117,7 @@ export const widgets = pgTable("widgets", {
   name: varchar("name").notNull(),
   isEnabled: boolean("is_enabled").default(true),
   position: varchar("position").default("top-right"), // Widget position on screen
-  config: text("config"), // Widget configuration as JSON string
+  config: text("config").default("{}"), // Widget configuration as JSON string
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -322,6 +322,13 @@ export const insertWidgetSchema = createInsertSchema(widgets).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).pick({
+  userId: true,
+  name: true,
+  type: true,
+  position: true,
+  config: true,
+  isEnabled: true,
 });
 
 export const insertScheduleSchema = createInsertSchema(schedules).omit({

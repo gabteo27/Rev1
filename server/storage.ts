@@ -775,7 +775,17 @@ export class DatabaseStorage implements IStorage {
   // Widget operations
   async getWidgets(userId: string): Promise<Widget[]> {
     return await db
-      .select()
+      .select({
+        id: widgets.id,
+        userId: widgets.userId,
+        name: widgets.name,
+        type: widgets.type,
+        position: widgets.position,
+        config: widgets.config,
+        isEnabled: widgets.isEnabled,
+        createdAt: widgets.createdAt,
+        updatedAt: widgets.updatedAt,
+      })
       .from(widgets)
       .where(eq(widgets.userId, userId))
       .orderBy(desc(widgets.createdAt));

@@ -106,10 +106,11 @@ export default function Dashboard() {
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<number | null>(null);
 
   // Queries
-  const { data: screens = [], refetch: refetchScreens } = useQuery({
+  const { data: screens = [] } = useQuery({
     queryKey: ["/api/screens"],
     queryFn: () => apiRequest("/api/screens").then(res => res.json()),
-    refetchInterval: 30000,
+    refetchInterval: 30000, // Cambiar de 5s a 30s
+    staleTime: 15000, // 15 segundos
   });
 
   console.log("🖥️ Fetched screens for preview:", screens);
@@ -780,7 +781,8 @@ return (
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded border-l-2 border-cyan-500">
+                <```
+div className="flex items-start gap-3 p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded border-l-2 border-cyan-500">
                   <div className="w-2 h-2 bg-cyan-500 rounded-full mt-2" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">🌐 WebSocket conectado</p>
