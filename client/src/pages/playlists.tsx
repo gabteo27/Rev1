@@ -69,7 +69,6 @@ import {
   ScrollText,
   SidebarOpen,
   SidebarClose,
-  Settings,
   MoreHorizontal
 } from "lucide-react";
 
