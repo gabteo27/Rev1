@@ -49,7 +49,7 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
         const apiKey = config?.apiKey || 'e437ff7a677ba82390fcd98091006776';
         const city = config?.city || 'Mexico City';
 
-        if (apiKey) {
+        if (apiKey && apiKey !== 'e437ff7a677ba82390fcd98091006776') {
           const response = await fetch(
             `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=es`
           );
@@ -86,9 +86,9 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
     };
 
     fetchWeather();
-      const interval = setInterval(fetchWeather, 5 * 60 * 1000); // 5 minutes
-      return () => clearInterval(interval);
-  }, [config]);
+    const interval = setInterval(fetchWeather, 5 * 60 * 1000); // 5 minutes
+    return () => clearInterval(interval);
+  }, [config?.apiKey, config?.city]); // Solo refetch cuando cambien estos valores específicos
 
   if (loading) {
     return (
@@ -455,17 +455,35 @@ export default function Widgets() {
   const deleteWidgetMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await apiRequest(`/api/widgets/${id}`, { method: "DELETE" });
+      
+      // Si el widget ya fue eliminado (404), consideramos esto como éxito
+      if (response.status === 404) {
+        return { success: true, message: "Widget ya eliminado" };
+      }
+      
       if (!response.ok) throw new Error("Error al eliminar widget");
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      // Actualizar inmediatamente el estado local
+      queryClient.setQueryData(["/api/widgets"], (oldData: any[]) => {
+        if (!oldData) return [];
+        return oldData.filter(widget => widget.id !== parseInt(variables));
+      });
+      
+      // Invalidar después para asegurar sincronización
       queryClient.invalidateQueries({ queryKey: ["/api/widgets"] });
-      toast({ title: "Widget eliminado", description: "El widget se ha eliminado correctamente." });
+      
+      toast({ 
+        title: "Widget eliminado", 
+        description: data?.message || "El widget se ha eliminado correctamente." 
+      });
     },
     onError: (error: any) => {
+      console.error('Error deleting widget:', error);
       toast({ 
         title: "Error", 
-        description: error.message || "No se pudo eliminar el widget",
+        description: "No se pudo eliminar el widget",
         variant: "destructive" 
       });
     }
@@ -532,6 +550,30 @@ export default function Widgets() {
     } catch (error) {
       config = {};
     }
+    
+    // Asegurar que el config tenga valores por defecto según el tipo
+    if (widget.type === 'weather') {
+      config = {
+        city: config.city || 'Mexico City',
+        apiKey: config.apiKey || 'e437ff7a677ba82390fcd98091006776',
+        units: config.units || 'metric',
+        ...config
+      };
+    } else if (widget.type === 'text') {
+      config = {
+        text: config.text || 'Texto personalizado',
+        fontSize: config.fontSize || '16px',
+        color: config.color || '#ffffff',
+        ...config
+      };
+    } else if (widget.type === 'clock') {
+      config = {
+        format: config.format || '24h',
+        timezone: config.timezone || 'America/Mexico_City',
+        ...config
+      };
+    }
+    
     setEditFormData({
       name: widget.name,
       position: widget.position,
@@ -931,24 +973,24 @@ export default function Widgets() {
                           <div className="space-y-2">
                             <Label>Ciudad</Label>
                             <Input
-                              value={editFormData.config?.city || 'Mexico City'}
+                              value={editFormData.config?.city || ''}
                               onChange={(e) => setEditFormData({
                                 ...editFormData,
                                 config: { ...editFormData.config, city: e.target.value }
                               })}
-                              placeholder="Mexico City"
+                              placeholder="Ciudad, País (ej: Madrid, ES)"
                             />
                           </div>
                           <div className="space-y-2">
                             <Label>API Key de OpenWeatherMap</Label>
                             <Input
-                              type="password"
-                              value={editFormData.config?.apiKey || 'e437ff7a677ba82390fcd98091006776'}
+                              type="text"
+                              value={editFormData.config?.apiKey || ''}
                               onChange={(e) => setEditFormData({
                                 ...editFormData,
                                 config: { ...editFormData.config, apiKey: e.target.value }
                               })}
-                              placeholder="e437ff7a677ba82390fcd98091006776"
+                              placeholder="Tu API key de OpenWeatherMap"
                             />
                           </div>
                           <div className="space-y-2">

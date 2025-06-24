@@ -1627,18 +1627,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🗑️ Deleting widget ${widgetId} for user ${userId}`);
 
+      if (isNaN(widgetId)) {
+        return res.status(400).json({ message: "Invalid widget ID" });
+      }
+
       // Verify widget belongs to user
       const widget = await storage.getWidgetById(widgetId);
-      if (!widget || widget.userId !== userId) {
-        return res.status(404).json({ message: "Widget not found" });
+      if (!widget) {
+        console.log(`Widget ${widgetId} not found, considering as already deleted`);
+        // Responder exitosamente si ya fue eliminado
+        return res.json({ success: true, message: "Widget already deleted" });
+      }
+
+      if (widget.userId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
       }
 
       const success = await storage.deleteWidget(widgetId, userId);
-      if (!success) {
-        return res.status(404).json({ message: "Widget not found" });
-      }
-
-      console.log(`✅ Widget ${widgetId} deleted successfully`);
+      console.log(`✅ Widget ${widgetId} deletion result: ${success}`);
 
       // Broadcast widget deletion to all user's clients
       broadcastToUser(userId, "widget-updated", { action: "deleted", widgetId });

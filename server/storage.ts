@@ -846,10 +846,25 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWidget(id: number, userId: string): Promise<boolean> {
     try {
+      // Primero verificar si el widget existe
+      const existing = await db
+        .select()
+        .from(widgets)
+        .where(and(eq(widgets.id, id), eq(widgets.userId, userId)))
+        .limit(1);
+
+      if (existing.length === 0) {
+        console.log(`Widget ${id} not found for user ${userId}, considering as already deleted`);
+        return true; // Consideramos esto como éxito
+      }
+
       const result = await db
         .delete(widgets)
         .where(and(eq(widgets.id, id), eq(widgets.userId, userId)));
-      return (result.rowCount ?? 0) > 0;
+      
+      const success = (result.rowCount ?? 0) > 0;
+      console.log(`Widget ${id} deletion result: ${success}`);
+      return success;
     } catch (error) {
       console.error('Error deleting widget:', error);
       throw error;
