@@ -1,0 +1,65 @@
+﻿
+chunk-H343HIDT.js?v=e2cfaf84:521 Warning: React has detected a change in the order of Hooks called by ContentPlayer. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://reactjs.org/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+1. useState                   useState
+2. useState                   useState
+3. useContext                 useContext
+4. useContext                 useContext
+5. useContext                 useContext
+6. useContext                 useContext
+7. useEffect                  useEffect
+8. useState                   useState
+9. useCallback                useCallback
+10. useSyncExternalStore      useSyncExternalStore
+11. useEffect                 useEffect
+12. useMemo                   useMemo
+13. useMemo                   useMemo
+14. useEffect                 useEffect
+15. useMemo                   useMemo
+16. useCallback               useCallback
+17. useCallback               useCallback
+18. useEffect                 useEffect
+19. useContext                useContext
+20. useContext                useContext
+21. useContext                useContext
+22. useEffect                 useEffect
+23. useState                  useState
+24. useCallback               useCallback
+25. useSyncExternalStore      useSyncExternalStore
+26. useEffect                 useEffect
+27. useEffect                 useEffect
+28. undefined                 useCallback
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    at ContentPlayer (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/player/ContentPlayer.tsx:343:41)
+    at PlayerPage (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/player.tsx:57:31)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…unner/workspace/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=e2cfaf84:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=e2cfaf84:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=e2cfaf84:2933:3)
+ContentPlayer.tsx:322 Processing zones for playlist: 
+Array(9)
+chunk-H343HIDT.js?v=e2cfaf84:11726 Uncaught Error: Rendered more hooks than during the previous render.
+    at ContentPlayer (ContentPlayer.tsx:767:24)
+ContentPlayer.tsx:322 Processing zones for playlist: 
+Array(9)
+ContentPlayer.tsx:322 Processing zones for playlist: 
+Array(9)
+chunk-H343HIDT.js?v=e2cfaf84:11726 Uncaught Error: Rendered more hooks than during the previous render.
+    at ContentPlayer (ContentPlayer.tsx:767:24)
+chunk-H343HIDT.js?v=e2cfaf84:14080 The above error occurred in the <ContentPlayer> component:
+
+    at ContentPlayer (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/player/ContentPlayer.tsx:343:41)
+    at PlayerPage (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/pages/player.tsx:57:31)
+    at Provider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…unner/workspace/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=e2cfaf84:38:15)
+    at TooltipProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=e2cfaf84:64:5)
+    at ThemeProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.dev/src/components/theme-provider.tsx:25:3)
+    at QueryClientProvider (https://dd03958b-2938-4ef5-be37-02c8b5334717-00-34er19bljl4vr.spock.replit.…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=e2cfaf84:2933:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+chunk-H343HIDT.js?v=e2cfaf84:9176 Uncaught Error: Rendered more hooks than during the previous render.
+    at ContentPlayer (ContentPlayer.tsx:767:24)
