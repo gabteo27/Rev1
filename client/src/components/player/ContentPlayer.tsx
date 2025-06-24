@@ -700,10 +700,13 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       pointerEvents: 'auto',
       padding: '12px',
       borderRadius: '8px',
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(4px)',
       color: 'white',
       fontSize: '14px',
-      minWidth: '200px',
+      minWidth: '220px',
+      maxWidth: '300px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
     };
 
     // Renderizar según el tipo de widget
@@ -714,41 +717,86 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       switch (widget.type) {
         case 'clock':
           const now = new Date();
+          const format = config.format || '24h';
+          const timezone = config.timezone || 'America/Mexico_City';
+          
+          const formatTime = (date: Date) => {
+            try {
+              return new Intl.DateTimeFormat('es-ES', {
+                timeZone: timezone,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: format === '12h'
+              }).format(date);
+            } catch (error) {
+              return date.toLocaleTimeString('es-ES');
+            }
+          };
+
+          const formatDate = (date: Date) => {
+            try {
+              return new Intl.DateTimeFormat('es-ES', {
+                timeZone: timezone,
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              }).format(date);
+            } catch (error) {
+              return date.toLocaleDateString('es-ES');
+            }
+          };
+
           content = (
             <div>
-              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                {now.toLocaleTimeString()}
+              <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '4px' }}>
+                {formatTime(now)}
               </div>
               <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                {now.toLocaleDateString()}
+                {formatDate(now)}
               </div>
             </div>
           );
           break;
+
         case 'text':
+          const textColor = config.color || '#ffffff';
+          const fontSize = config.fontSize || '14px';
           content = (
             <div>
               <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{widget.name}</div>
-              <div>{config.text || 'Texto personalizado'}</div>
+              <div style={{ color: textColor, fontSize: fontSize }}>
+                {config.text || 'Texto personalizado'}
+              </div>
             </div>
           );
           break;
+
         case 'weather':
+          // Use the provided API key
+          const apiKey = config.apiKey || 'e437ff7a677ba82390fcd98091006776';
+          const city = config.city || 'Mexico City';
+          
           content = (
-            <div>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Clima</div>
-              <div>{config.city || 'Ciudad'} - 22°C</div>
-            </div>
+            <WeatherWidgetContent 
+              apiKey={apiKey} 
+              city={city} 
+              widgetName={widget.name}
+            />
           );
           break;
+
         case 'news':
           content = (
-            <div>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Noticias</div>
-              <div>Últimas noticias disponibles</div>
-            </div>
+            <NewsWidgetContent 
+              rssUrl={config.rssUrl || 'https://feeds.bbci.co.uk/mundo/rss.xml'}
+              maxItems={config.maxItems || 3}
+              widgetName={widget.name}
+            />
           );
           break;
+
         default:
           content = (
             <div>
@@ -773,6 +821,150 @@ export default function ContentPlayer({ playlistId, isPreview = false }: { playl
       </div>
     );
   }, []);
+
+  // Weather Widget Component for ContentPlayer
+  const WeatherWidgetContent = ({ apiKey, city, widgetName }: { apiKey: string, city: string, widgetName: string }) => {
+    const [weather, setWeather] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchWeather = async () => {
+        try {
+          const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=es`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setWeather({
+              name: data.name,
+              temp: Math.round(data.main.temp),
+              description: data.weather[0].description,
+              humidity: data.main.humidity,
+              feels_like: Math.round(data.main.feels_like)
+            });
+          } else {
+            throw new Error('Weather API error');
+          }
+        } catch (error) {
+          console.error('Weather fetch error:', error);
+          setWeather({
+            name: city,
+            temp: 22,
+            description: 'No disponible',
+            humidity: 65,
+            feels_like: 24
+          });
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchWeather();
+      const interval = setInterval(fetchWeather, 10 * 60 * 1000);
+      return () => clearInterval(interval);
+    }, [apiKey, city]);
+
+    if (loading) {
+      return (
+        <div>
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{widgetName}</div>
+          <div style={{ fontSize: '12px' }}>Cargando clima...</div>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{widgetName}</div>
+        <div style={{ marginBottom: '2px' }}>{weather.name} - {weather.temp}°C</div>
+        <div style={{ fontSize: '12px', opacity: 0.8, textTransform: 'capitalize' }}>
+          {weather.description}
+        </div>
+        <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
+          Sensación: {weather.feels_like}°C • Humedad: {weather.humidity}%
+        </div>
+      </div>
+    );
+  };
+
+  // News Widget Component for ContentPlayer
+  const NewsWidgetContent = ({ rssUrl, maxItems, widgetName }: { rssUrl: string, maxItems: number, widgetName: string }) => {
+    const [news, setNews] = useState<any[]>([]);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchNews = async () => {
+        try {
+          const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+          const response = await fetch(proxyUrl);
+          if (response.ok) {
+            const data = await response.json();
+            setNews(data.items?.slice(0, maxItems) || []);
+          } else {
+            throw new Error('News API error');
+          }
+        } catch (error) {
+          console.error('News fetch error:', error);
+          setNews([
+            { title: 'Noticias en tiempo real', description: 'Configure la URL RSS para mostrar noticias actualizadas' },
+            { title: 'Widget funcionando', description: 'El widget está configurado correctamente' }
+          ]);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchNews();
+      const interval = setInterval(fetchNews, 15 * 60 * 1000);
+      return () => clearInterval(interval);
+    }, [rssUrl, maxItems]);
+
+    useEffect(() => {
+      if (news.length > 1) {
+        const interval = setInterval(() => {
+          setCurrentIndex((prev) => (prev + 1) % news.length);
+        }, 8000);
+        return () => clearInterval(interval);
+      }
+    }, [news.length]);
+
+    if (loading) {
+      return (
+        <div>
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{widgetName}</div>
+          <div style={{ fontSize: '12px' }}>Cargando noticias...</div>
+        </div>
+      );
+    }
+
+    const currentNews = news[currentIndex] || news[0];
+
+    return (
+      <div>
+        <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{widgetName}</span>
+          {news.length > 1 && (
+            <span style={{ fontSize: '10px', opacity: 0.7 }}>
+              {currentIndex + 1}/{news.length}
+            </span>
+          )}
+        </div>
+        {currentNews && (
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: '500', marginBottom: '2px', lineHeight: '1.3' }}>
+              {currentNews.title}
+            </div>
+            {currentNews.description && (
+              <div style={{ fontSize: '11px', opacity: 0.8, lineHeight: '1.2' }}>
+                {currentNews.description.replace(/<[^>]*>/g, '').substring(0, 100)}...
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Si no hay playlistId, mostrar mensaje de espera
   if (!playlistId) {

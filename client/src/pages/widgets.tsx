@@ -44,30 +44,40 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
     const fetchWeather = async () => {
       setLoading(true);
       try {
-        // Using free weather API from weatherapi.com
-        const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
+        // Using OpenWeatherMap API
+        const apiKey = config?.apiKey || 'e437ff7a677ba82390fcd98091006776';
         const city = config?.city || 'Mexico City';
 
         if (apiKey) {
           const response = await fetch(
-            `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}&aqi=no`
+            `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=es`
           );
           if (response.ok) {
             const data = await response.json();
-            setWeather(data);
+            setWeather({
+              location: { name: data.name },
+              current: { 
+                temp_c: Math.round(data.main.temp), 
+                condition: { text: data.weather[0].description },
+                humidity: data.main.humidity,
+                feels_like: Math.round(data.main.feels_like)
+              }
+            });
+          } else {
+            throw new Error('Weather API response not ok');
           }
         } else {
           // Fallback to demo data when no API key
           setWeather({
             location: { name: city },
-            current: { temp_c: 22, condition: { text: 'Soleado' } }
+            current: { temp_c: 22, condition: { text: 'Soleado' }, humidity: 65, feels_like: 24 }
           });
         }
       } catch (error) {
         console.error('Weather API error:', error);
         setWeather({
           location: { name: config?.city || 'Ciudad' },
-          current: { temp_c: 22, condition: { text: 'No disponible' } }
+          current: { temp_c: 22, condition: { text: 'No disponible' }, humidity: 65, feels_like: 24 }
         });
       } finally {
         setLoading(false);
@@ -99,6 +109,11 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
         <p className="text-sm text-muted-foreground">
           {weather?.current?.temp_c}°C - {weather?.current?.condition?.text || 'Sin datos'}
         </p>
+        {weather?.current?.humidity && (
+          <p className="text-xs text-muted-foreground">
+            Humedad: {weather.current.humidity}% • Se siente como {weather.current.feels_like}°C
+          </p>
+        )}
       </div>
     </div>
   );
@@ -107,6 +122,7 @@ const LiveWeatherWidget = ({ config }: { config: any }) => {
 const LiveNewsWidget = ({ config }: { config: any }) => {
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -121,12 +137,14 @@ const LiveNewsWidget = ({ config }: { config: any }) => {
         const response = await fetch(proxyUrl);
         if (response.ok) {
           const data = await response.json();
-          setNews(data.items?.slice(0, config?.maxItems || 3) || []);
+          setNews(data.items?.slice(0, config?.maxItems || 5) || []);
         }
       } catch (error) {
         console.error('News API error:', error);
         setNews([
-          { title: 'Noticias en tiempo real', description: 'Configure la URL RSS para mostrar noticias actualizadas' }
+          { title: 'Noticias en tiempo real', description: 'Configure la URL RSS para mostrar noticias actualizadas' },
+          { title: 'Widget de noticias configurado', description: 'Edita este widget para cambiar la fuente RSS' },
+          { title: 'Actualizaciones automáticas', description: 'Las noticias se actualizan cada 15 minutos' }
         ]);
       } finally {
         setLoading(false);
@@ -137,6 +155,16 @@ const LiveNewsWidget = ({ config }: { config: any }) => {
     const interval = setInterval(fetchNews, 15 * 60 * 1000); // Update every 15 minutes
     return () => clearInterval(interval);
   }, [config]);
+
+  // Rotate news items every 8 seconds
+  useEffect(() => {
+    if (news.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % news.length);
+      }, 8000);
+      return () => clearInterval(interval);
+    }
+  }, [news.length]);
 
   if (loading) {
     return (
@@ -149,17 +177,29 @@ const LiveNewsWidget = ({ config }: { config: any }) => {
     );
   }
 
+  const currentNews = news[currentIndex];
+
   return (
-    <div className="space-y-2 p-3 bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900 dark:to-orange-800 rounded-lg">
+    <div className="space-y-2 p-3 bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900 dark:to-orange-800 rounded-lg min-h-[100px]">
       <div className="flex items-center gap-2 mb-2">
         <Rss className="h-4 w-4 text-orange-600" />
         <span className="text-sm font-medium">Últimas Noticias</span>
+        {news.length > 1 && (
+          <span className="text-xs text-orange-600 ml-auto">
+            {currentIndex + 1}/{news.length}
+          </span>
+        )}
       </div>
-      {news.slice(0, 2).map((item, index) => (
-        <div key={index} className="text-xs">
-          <p className="font-medium line-clamp-2">{item.title}</p>
+      {currentNews && (
+        <div className="text-xs space-y-1">
+          <p className="font-medium leading-tight">{currentNews.title}</p>
+          {currentNews.description && (
+            <p className="text-orange-800 dark:text-orange-200 leading-tight line-clamp-3">
+              {currentNews.description.replace(/<[^>]*>/g, '').substring(0, 150)}...
+            </p>
+          )}
         </div>
-      ))}
+      )}
     </div>
   );
 };
@@ -247,10 +287,14 @@ const widgetTypes = [
     icon: Thermometer, 
     description: "Información meteorológica actualizada",
     component: LiveWeatherWidget,
-    defaultConfig: { city: "Mexico City", units: "metric" },
+    defaultConfig: { 
+      city: "Mexico City", 
+      units: "metric", 
+      apiKey: "e437ff7a677ba82390fcd98091006776" 
+    },
     hasApiConfig: true,
     apiFields: [
-      { key: 'apiKey', label: 'API Key', type: 'text' },
+      { key: 'apiKey', label: 'API Key de OpenWeatherMap', type: 'text' },
       { key: 'city', label: 'Ciudad', type: 'text' },
       { key: 'units', label: 'Unidades', type: 'select', options: ['metric', 'imperial'] }
     ]
@@ -261,7 +305,7 @@ const widgetTypes = [
     icon: Rss, 
     description: "Feed de noticias RSS en tiempo real",
     component: LiveNewsWidget,
-    defaultConfig: { rssUrl: "https://feeds.bbci.co.uk/mundo/rss.xml", maxItems: 3 },
+    defaultConfig: { rssUrl: "https://feeds.bbci.co.uk/mundo/rss.xml", maxItems: 5 },
     hasApiConfig: true,
     apiFields: [
       { key: 'rssUrl', label: 'URL RSS', type: 'text' },
@@ -274,7 +318,7 @@ const widgetTypes = [
     icon: Type, 
     description: "Texto personalizable",
     component: TextWidget,
-    defaultConfig: { text: "Texto personalizado", fontSize: "16px", color: "#000000" },
+    defaultConfig: { text: "Ingresa tu texto personalizado aquí", fontSize: "16px", color: "#ffffff" },
     customFields: [
       { key: 'text', label: 'Texto', type: 'textarea' },
       { key: 'fontSize', label: 'Tamaño de letra', type: 'text' },
@@ -294,6 +338,7 @@ export default function Widgets() {
     config: '{}',
     isEnabled: true
   });
+  const [editFormData, setEditFormData] = useState<any>({});
   const { toast } = useToast();
 
   // Fetch widgets
@@ -385,6 +430,13 @@ export default function Widgets() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/widgets"] });
       toast({ title: "Widget eliminado", description: "El widget se ha eliminado correctamente." });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "No se pudo eliminar el widget",
+        variant: "destructive" 
+      });
     }
   });
 
@@ -430,6 +482,37 @@ export default function Widgets() {
     updateWidgetMutation.mutate({
       id: widget.id,
       data: { ...widget, isEnabled: !widget.isEnabled }
+    });
+  };
+
+  const startEditingWidget = (widget: any) => {
+    setEditingWidget(widget);
+    let config = {};
+    try {
+      config = JSON.parse(widget.config || '{}');
+    } catch (error) {
+      config = {};
+    }
+    setEditFormData({
+      name: widget.name,
+      position: widget.position,
+      isEnabled: widget.isEnabled,
+      config: config
+    });
+  };
+
+  const saveWidgetEdit = () => {
+    if (!editingWidget) return;
+    
+    updateWidgetMutation.mutate({
+      id: editingWidget.id,
+      data: {
+        ...editingWidget,
+        name: editFormData.name,
+        position: editFormData.position,
+        isEnabled: editFormData.isEnabled,
+        config: JSON.stringify(editFormData.config)
+      }
     });
   };
 
@@ -606,9 +689,48 @@ export default function Widgets() {
                             <div key={field.key} className="space-y-2">
                               <Label>{field.label}</Label>
                               {field.type === 'textarea' ? (
-                                <Textarea placeholder={`Ingresa ${field.label.toLowerCase()}`} />
+                                <Textarea 
+                                  placeholder={`Ingresa ${field.label.toLowerCase()}`}
+                                  value={(() => {
+                                    try {
+                                      const config = JSON.parse(formData.config);
+                                      return config[field.key] || '';
+                                    } catch {
+                                      return '';
+                                    }
+                                  })()}
+                                  onChange={(e) => {
+                                    try {
+                                      const currentConfig = JSON.parse(formData.config);
+                                      const newConfig = { ...currentConfig, [field.key]: e.target.value };
+                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
+                                    } catch {
+                                      const newConfig = { [field.key]: e.target.value };
+                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
+                                    }
+                                  }}
+                                />
                               ) : field.type === 'select' ? (
-                                <Select>
+                                <Select
+                                  value={(() => {
+                                    try {
+                                      const config = JSON.parse(formData.config);
+                                      return config[field.key] || '';
+                                    } catch {
+                                      return '';
+                                    }
+                                  })()}
+                                  onValueChange={(value) => {
+                                    try {
+                                      const currentConfig = JSON.parse(formData.config);
+                                      const newConfig = { ...currentConfig, [field.key]: value };
+                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
+                                    } catch {
+                                      const newConfig = { [field.key]: value };
+                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
+                                    }
+                                  }}
+                                >
                                   <SelectTrigger>
                                     <SelectValue placeholder={`Seleccionar ${field.label.toLowerCase()}`} />
                                   </SelectTrigger>
@@ -622,6 +744,24 @@ export default function Widgets() {
                                 <Input
                                   type={field.type}
                                   placeholder={`Ingresa ${field.label.toLowerCase()}`}
+                                  value={(() => {
+                                    try {
+                                      const config = JSON.parse(formData.config);
+                                      return config[field.key] || '';
+                                    } catch {
+                                      return '';
+                                    }
+                                  })()}
+                                  onChange={(e) => {
+                                    try {
+                                      const currentConfig = JSON.parse(formData.config);
+                                      const newConfig = { ...currentConfig, [field.key]: e.target.value };
+                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
+                                    } catch {
+                                      const newConfig = { [field.key]: e.target.value };
+                                      setFormData({ ...formData, config: JSON.stringify(newConfig) });
+                                    }
+                                  }}
                                 />
                               )}
                             </div>
@@ -653,6 +793,198 @@ export default function Widgets() {
                       )}
                     </Button>
                   </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Edit Widget Modal */}
+              <Dialog open={!!editingWidget} onOpenChange={() => setEditingWidget(null)}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Editar Widget</DialogTitle>
+                  </DialogHeader>
+                  {editingWidget && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Nombre del Widget</Label>
+                          <Input
+                            value={editFormData.name || ''}
+                            onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                            placeholder="Nombre del widget"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Posición</Label>
+                          <Select value={editFormData.position || 'top-right'} onValueChange={(value) => setEditFormData({...editFormData, position: value})}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="top-left">Superior Izquierda</SelectItem>
+                              <SelectItem value="top-right">Superior Derecha</SelectItem>
+                              <SelectItem value="bottom-left">Inferior Izquierda</SelectItem>
+                              <SelectItem value="bottom-right">Inferior Derecha</SelectItem>
+                              <SelectItem value="center">Centro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Widget-specific configuration */}
+                      {editingWidget.type === 'text' && (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Texto</Label>
+                            <Textarea
+                              value={editFormData.config?.text || ''}
+                              onChange={(e) => setEditFormData({
+                                ...editFormData, 
+                                config: { ...editFormData.config, text: e.target.value }
+                              })}
+                              placeholder="Ingresa el texto que quieres mostrar"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Tamaño de letra</Label>
+                              <Input
+                                value={editFormData.config?.fontSize || '16px'}
+                                onChange={(e) => setEditFormData({
+                                  ...editFormData,
+                                  config: { ...editFormData.config, fontSize: e.target.value }
+                                })}
+                                placeholder="16px"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Color</Label>
+                              <Input
+                                type="color"
+                                value={editFormData.config?.color || '#000000'}
+                                onChange={(e) => setEditFormData({
+                                  ...editFormData,
+                                  config: { ...editFormData.config, color: e.target.value }
+                                })}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {editingWidget.type === 'weather' && (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Ciudad</Label>
+                            <Input
+                              value={editFormData.config?.city || ''}
+                              onChange={(e) => setEditFormData({
+                                ...editFormData,
+                                config: { ...editFormData.config, city: e.target.value }
+                              })}
+                              placeholder="Ciudad"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>API Key de OpenWeatherMap</Label>
+                            <Input
+                              type="password"
+                              value={editFormData.config?.apiKey || ''}
+                              onChange={(e) => setEditFormData({
+                                ...editFormData,
+                                config: { ...editFormData.config, apiKey: e.target.value }
+                              })}
+                              placeholder="Tu API key de OpenWeatherMap"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {editingWidget.type === 'news' && (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>URL RSS</Label>
+                            <Input
+                              value={editFormData.config?.rssUrl || ''}
+                              onChange={(e) => setEditFormData({
+                                ...editFormData,
+                                config: { ...editFormData.config, rssUrl: e.target.value }
+                              })}
+                              placeholder="https://feeds.bbci.co.uk/mundo/rss.xml"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Máximo de noticias</Label>
+                            <Input
+                              type="number"
+                              value={editFormData.config?.maxItems || 3}
+                              onChange={(e) => setEditFormData({
+                                ...editFormData,
+                                config: { ...editFormData.config, maxItems: parseInt(e.target.value) || 3 }
+                              })}
+                              placeholder="3"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {editingWidget.type === 'clock' && (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Formato</Label>
+                            <Select 
+                              value={editFormData.config?.format || '24h'} 
+                              onValueChange={(value) => setEditFormData({
+                                ...editFormData,
+                                config: { ...editFormData.config, format: value }
+                              })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="24h">24 horas</SelectItem>
+                                <SelectItem value="12h">12 horas</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Zona horaria</Label>
+                            <Input
+                              value={editFormData.config?.timezone || 'America/Mexico_City'}
+                              onChange={(e) => setEditFormData({
+                                ...editFormData,
+                                config: { ...editFormData.config, timezone: e.target.value }
+                              })}
+                              placeholder="America/Mexico_City"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end gap-2 pt-4">
+                        <Button variant="outline" onClick={() => setEditingWidget(null)}>
+                          Cancelar
+                        </Button>
+                        <Button 
+                          onClick={saveWidgetEdit}
+                          disabled={updateWidgetMutation.isPending}
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                        >
+                          {updateWidgetMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Guardando...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Guardar Cambios
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </DialogContent>
               </Dialog>
             </div>
@@ -702,14 +1034,19 @@ export default function Widgets() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => setEditingWidget(widget)}
+                              onClick={() => startEditingWidget(widget)}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => deleteWidgetMutation.mutate(widget.id)}
+                              onClick={() => {
+                                if (confirm('¿Estás seguro de que quieres eliminar este widget?')) {
+                                  deleteWidgetMutation.mutate(widget.id);
+                                }
+                              }}
+                              disabled={deleteWidgetMutation.isPending}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
