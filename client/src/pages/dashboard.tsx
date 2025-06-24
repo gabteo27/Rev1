@@ -666,9 +666,6 @@ return (
                     )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-
           <LivePreview />
         </div>
 
