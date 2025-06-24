@@ -2721,6 +2721,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // Player-specific endpoints (authenticated with player token)
+  app.get("/api/player/playlists/:id", authenticatePlayer, async (req: any, res) => {
+    try {
+      const playlistId = parseInt(req.params.id);
+      const playlist = await storage.getPlaylistById(playlistId);
+
+      if (!playlist) {
+        return res.status(404).json({ message: "Playlist not found" });
+      }
+
+      res.json(playlist);
+    } catch (error) {
+      console.error("Error fetching player playlist:", error);
+      res.status(500).json({ message: "Failed to fetch playlist" });
+    }
+  });
+
+  app.get("/api/player/playlists/:id/widgets", authenticatePlayer, async (req: any, res) => {
+    try {
+      const playlistId = parseInt(req.params.id);
+      const widgets = await storage.getPlaylistWidgets(playlistId);
+      res.json(widgets);
+    } catch (error) {
+      console.error("Error fetching player playlist widgets:", error);
+      res.status(500).json({ message: "Failed to fetch playlist widgets" });
+    }
+  });
+
   return httpServer;
 }
-// The code defines several API endpoints and integrates WebSocket for real-time updates, including playlist updates.
+// The code defines several API endpoints and integrates WebSocket for real-time updates, including adding player specific playlist widgets endpoints.

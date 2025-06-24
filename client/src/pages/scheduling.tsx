@@ -240,7 +240,7 @@ export default function Scheduling() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   const { toast } = useToast();
 
-  const { data: schedules = [] } = useQuery({
+  const { data: schedules = [], isLoading } = useQuery({
     queryKey: ["/api/schedules"],
     queryFn: () => apiRequest("/api/schedules").then(res => res.json()),
     retry: 1,
