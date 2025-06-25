@@ -26,7 +26,7 @@ import {
   Globe,
   Type,
   Layout,
-  Widget as WidgetIcon,
+  Component as WidgetIcon,
   Settings,
   Eye,
   EyeOff,
